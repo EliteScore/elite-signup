@@ -33,6 +33,12 @@
     --ring: 267 100% 61%;
 
     --radius: 0.5rem;
+
+    /* Premium EliteScore Design Tokens */
+    --brand: 214 100% 61%; /* #3B82F6 */
+    --brand-2: 258 90% 66%; /* #7C3AED */
+    --ink: 220 39% 11%; /* #0B1020 on light */
+    --ink-dark: 225 71% 95%; /* #EEF2FF on dark */
   }
 }
 
@@ -63,6 +69,23 @@
 
   .gradient-border {
     @apply border border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-indigo-900/20;
+  }
+
+  /* Premium EliteScore Components */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .glass-card {
+    @apply rounded-2xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,.08)] bg-white/[0.04] backdrop-blur;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-white font-semibold bg-[#3B82F6] hover:brightness-110 shadow-[0_8px_24px_rgba(59,130,246,.35)] transition-transform duration-200 active:scale-[.98];
+  }
+
+  .hero-video-frame {
+    @apply rounded-2xl border border-white/10 overflow-hidden shadow-lg bg-white/5;
   }
 
   /* Progress bar animation */

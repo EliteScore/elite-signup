@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export const config = {
-  matcher: ['/((?!_next|static|public|favicon.ico|robots.txt|sitemap.xml|assets|images|fonts).*)'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)',
+  ],
 };
 
 export function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname === '/') return NextResponse.next();
-  return NextResponse.redirect(new URL('/', req.url));
+  // No-op: do not interrupt any requests. Matcher above already excludes Next.js assets.
+  return NextResponse.next();
 }
