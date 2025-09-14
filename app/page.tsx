@@ -525,11 +525,11 @@ export default function HomePage() {
       const data = await response.json()
 
       if (response.ok) {
-        setIsSubmitted(true)
+      setIsSubmitted(true)
         // Reset form after 3 seconds (same as old code)
-        setTimeout(() => {
-          setIsSubmitted(false)
-          setFormData({ name: '', email: '' })
+      setTimeout(() => {
+        setIsSubmitted(false)
+        setFormData({ name: '', email: '' })
         }, 3000)
       } else {
         // Handle server errors (e.g., user already exists)
@@ -580,8 +580,9 @@ export default function HomePage() {
       const formData = new FormData()
       formData.append('file', resumeFile)
       
-      // Call the real resume scoring API
-      const response = await fetch('/api/resume/score', {
+      // Call the backend resume scoring API (same pattern as signup)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
         method: 'POST',
         body: formData,
       })
@@ -590,7 +591,7 @@ export default function HomePage() {
         // Try to get the specific error message from the response
         try {
           const errorData = await response.json()
-          throw new Error(errorData.error || `Server error: ${response.status}`)
+          throw new Error(errorData.error || errorData.message || `Server error: ${response.status}`)
         } catch (parseError) {
           throw new Error(`Server error: ${response.status}`)
         }
@@ -613,7 +614,7 @@ export default function HomePage() {
       
     } catch (error) {
       console.error('Error analyzing resume:', error)
-      setErrorMessage('Failed to analyze resume. Please check your connection and try again.')
+      setErrorMessage('Failed to connect to server. Please check your connection and try again.')
     } finally {
       setIsAnalyzing(false)
     }
