@@ -2,6 +2,28 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, useScroll, useTransform, useSpring, useInView, useAnimation, AnimatePresence, useMotionValue, useVelocity } from "framer-motion"
+
+// Hook to detect mobile devices and reduce motion
+function useReducedMotion() {
+  const [isMobile, setIsMobile] = useState(false)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    setIsMobile(window.innerWidth < 768)
+    setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Return false during SSR and initial render to avoid hydration mismatch
+  if (!mounted) return false
+  
+  return isMobile || prefersReducedMotion
+}
 import { ArrowRight, CheckCircle, Trophy, Users, BarChart2, Zap, Star, User, GraduationCap, Briefcase, TrendingUp, ChevronDown, Shield, Lock, Zap as ZapIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -99,159 +121,128 @@ const faqs = [
   }
 ]
 
-// Modern animated gradient background with enhanced scroll effects
-function AnimatedGradientMesh() {
+// Simplified gradient background - static for mobile performance
+function AnimatedGradientMesh({ shouldReduceMotion }: { shouldReduceMotion: boolean }) {
   const { scrollY } = useScroll()
-  const y1 = useTransform(scrollY, [0, 1000], [0, -50])
-  const y2 = useTransform(scrollY, [0, 1000], [0, -25])
-  const y3 = useTransform(scrollY, [0, 1000], [0, -40])
-  const y4 = useTransform(scrollY, [0, 2000], [0, -100])
-  const y5 = useTransform(scrollY, [0, 1500], [0, -75])
-  
+  const y1 = useTransform(scrollY, [0, 1000], [0, -20])
+  const y2 = useTransform(scrollY, [0, 1000], [0, -15])
+
+  // Use static gradients on mobile for better performance
+  if (shouldReduceMotion) {
+    return (
+      <div className="fixed inset-0 -z-10">
+        <div
+          className="absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full opacity-30"
+          style={{
+            background: "radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%)",
+            filter: "blur(60px)"
+          }}
+        />
+        <div
+          className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle, rgba(124, 58, 237, 0.04) 0%, transparent 70%)",
+            filter: "blur(80px)"
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Desktop version with minimal scroll effects
   return (
     <div className="fixed inset-0 -z-10">
       <motion.div
-        className="absolute top-1/4 left-1/4 w-[800px] h-[800px] rounded-full"
+        className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full opacity-30"
         style={{
-          background: "radial-gradient(circle, rgba(59, 130, 246, 0.03) 0%, transparent 70%)",
-          filter: "blur(100px)",
+          background: "radial-gradient(circle, rgba(59, 130, 246, 0.04) 0%, transparent 70%)",
+          filter: "blur(80px)",
           y: y1
         }}
       />
       <motion.div
-        className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] rounded-full"
+        className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full opacity-20"
         style={{
-          background: "radial-gradient(circle, rgba(124, 58, 237, 0.02) 0%, transparent 70%)",
-          filter: "blur(120px)",
+          background: "radial-gradient(circle, rgba(124, 58, 237, 0.03) 0%, transparent 70%)",
+          filter: "blur(100px)",
           y: y2
-        }}
-      />
-      <motion.div
-        className="absolute top-1/2 left-1/2 w-[400px] h-[400px] rounded-full"
-        style={{
-          background: "radial-gradient(circle, rgba(59, 130, 246, 0.015) 0%, transparent 70%)",
-          filter: "blur(140px)",
-          y: y3
-        }}
-      />
-      <motion.div
-        className="absolute top-1/3 right-1/3 w-[300px] h-[300px] rounded-full"
-        style={{
-          background: "radial-gradient(circle, rgba(124, 58, 237, 0.025) 0%, transparent 70%)",
-          filter: "blur(80px)",
-          y: y4
-        }}
-      />
-      <motion.div
-        className="absolute bottom-1/3 left-1/3 w-[500px] h-[500px] rounded-full"
-        style={{
-          background: "radial-gradient(circle, rgba(59, 130, 246, 0.02) 0%, transparent 70%)",
-          filter: "blur(90px)",
-          y: y5
         }}
       />
     </div>
   )
 }
 
-// Floating particles component (client-only to avoid SSR hydration mismatches)
-function FloatingParticles() {
+// Simplified floating particles - reduced count and complexity for mobile performance
+function FloatingParticles({ shouldReduceMotion }: { shouldReduceMotion: boolean }) {
   const [mounted, setMounted] = useState(false)
-  const seedsRef = useRef<Array<{
-    left: number
-    top: number
-    size: number
-    dx: number[]
-    dy: number[]
-    opacity: number[]
-    duration: number
-    delay: number
-  }>>([])
 
   useEffect(() => {
     setMounted(true)
-    // Generate deterministic-once seeds on the client only
-    const count = 20
-    const seeds = Array.from({ length: count }, () => {
-      const left = Math.random() * 100
-      const top = Math.random() * 100
-      const size = 1 + Math.random() * 1.5
-      const dxMax = (Math.random() * 2 - 1) * 12
-      const dyMax = -15 - Math.random() * 20
-      return {
-        left,
-        top,
-        size,
-        dx: [0, dxMax, 0],
-        dy: [0, dyMax, 0],
-        opacity: [0.12, 0.35, 0.12],
-        duration: 3 + Math.random() * 2,
-        delay: Math.random() * 2
-      }
-    })
-    seedsRef.current = seeds
   }, [])
 
-  if (!mounted) return null
+  // Skip particles on mobile for better performance
+  if (!mounted || shouldReduceMotion) return null
 
   return (
     <div className="fixed inset-0 -z-5 pointer-events-none">
-      {seedsRef.current.map((seed, i) => (
+      {/* Reduced to only 3 particles for desktop */}
+      {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute bg-white rounded-full"
+          className="absolute bg-white rounded-full opacity-20"
           style={{
-            left: `${seed.left}%`,
-            top: `${seed.top}%`,
-            width: `${seed.size}px`,
-            height: `${seed.size}px`
+            left: `${20 + i * 30}%`,
+            top: `${30 + i * 20}%`,
+            width: '2px',
+            height: '2px'
           }}
-          animate={{ x: seed.dx, y: seed.dy, opacity: seed.opacity }}
-          transition={{ duration: seed.duration, repeat: Infinity, delay: seed.delay, ease: "easeInOut" }}
+          animate={{ 
+            y: [-10, 10, -10],
+            opacity: [0.1, 0.3, 0.1]
+          }}
+          transition={{ 
+            duration: 4,
+            repeat: Infinity,
+            delay: i * 0.5,
+            ease: "easeInOut"
+          }}
         />
       ))}
     </div>
   )
 }
 
-// Cluely-style scroll-triggered animations
-const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 }
-}
-
-const staggerContainer = {
-  initial: {},
-  animate: {
-    transition: {
-      staggerChildren: 0.08
+// Optimized animations - conditional based on motion preference
+const createAnimation = (shouldReduceMotion: boolean) => ({
+  fadeInUp: {
+    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 }
+  },
+  staggerContainer: {
+    initial: {},
+    animate: shouldReduceMotion ? {} : {
+      transition: {
+        staggerChildren: 0.05
+      }
     }
+  },
+  revealAnimation: {
+    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 }
+  },
+  slideInLeft: {
+    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: -20 },
+    animate: { opacity: 1, x: 0 }
+  },
+  slideInRight: {
+    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 }
+  },
+  scaleIn: {
+    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.95 },
+    animate: { opacity: 1, scale: 1 }
   }
-}
-
-// Cluely-style reveal animation
-const revealAnimation = {
-  initial: { opacity: 0, y: 40 },
-  animate: { opacity: 1, y: 0 }
-}
-
-// Slide in from left
-const slideInLeft = {
-  initial: { opacity: 0, x: -30 },
-  animate: { opacity: 1, x: 0 }
-}
-
-// Slide in from right
-const slideInRight = {
-  initial: { opacity: 0, x: 30 },
-  animate: { opacity: 1, x: 0 }
-}
-
-// Scale in animation
-const scaleIn = {
-  initial: { opacity: 0, scale: 0.9 },
-  animate: { opacity: 1, scale: 1 }
-}
+})
 
 // Use-case Tabs Component - Modern Design
 function UseCaseTabs() {
@@ -412,6 +403,7 @@ export default function HomePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeFeature, setActiveFeature] = useState('Challenge System')
   const { scrollYProgress } = useScroll()
+  const shouldReduceMotion = useReducedMotion()
   
   // Resume upload states
   const [resumeFile, setResumeFile] = useState<File | null>(null)
@@ -586,39 +578,38 @@ export default function HomePage() {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
-        .animate-scroll {
-          animation: scroll 30s linear infinite;
-          width: 200%;
+        
+        /* Respect user's motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
         }
       `}</style>
       
       <div className="min-h-screen bg-black text-white overflow-x-hidden relative">
-        {/* Scroll Progress Bar */}
-        <motion.div
-          className="fixed top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] z-50 origin-left"
-          style={{ scaleX: scrollYProgress }}
-        />
-        
-        {/* Modern Dark Background with Subtle Texture */}
-        <div className="fixed inset-0 bg-black">
-          {/* Subtle gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/20 via-transparent to-slate-800/10" />
-          <div className="absolute inset-0 bg-gradient-to-tr from-[#3B82F6]/5 via-transparent to-[#7C3AED]/5" />
-          
-          {/* Subtle noise texture */}
-          <div 
-            className="absolute inset-0 opacity-[0.02]"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            }}
+        {/* Scroll Progress Bar - only on desktop */}
+        {!shouldReduceMotion && (
+          <motion.div
+            className="fixed top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] z-50 origin-left"
+            style={{ scaleX: scrollYProgress }}
           />
+        )}
+        
+        {/* Simplified Dark Background */}
+        <div className="fixed inset-0 bg-black">
+          {/* Minimal gradient overlays */}
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/10 via-transparent to-slate-800/5" />
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#3B82F6]/3 via-transparent to-[#7C3AED]/3" />
         </div>
         
         {/* Modern Animated Background */}
-        <AnimatedGradientMesh />
+        <AnimatedGradientMesh shouldReduceMotion={shouldReduceMotion} />
         
         {/* Floating Particles */}
-        <FloatingParticles />
+        <FloatingParticles shouldReduceMotion={shouldReduceMotion} />
       
       {/* Modern Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-2xl border-b border-white/5">
@@ -827,86 +818,84 @@ export default function HomePage() {
 
       {/* Modern Hero Section */}
       <section className="relative pt-28 pb-24 px-6 min-h-screen flex items-center overflow-hidden">
-        {/* Cluely-style animated background */}
-        <motion.div
-          className="absolute inset-0 opacity-5"
-          animate={{
-            background: [
-              "radial-gradient(circle at 20% 20%, #3B82F6 0%, transparent 60%)",
-              "radial-gradient(circle at 80% 80%, #7C3AED 0%, transparent 60%)",
-              "radial-gradient(circle at 20% 80%, #3B82F6 0%, transparent 60%)",
-              "radial-gradient(circle at 80% 20%, #7C3AED 0%, transparent 60%)"
-            ]
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        />
+        {/* Simplified background - static on mobile */}
+        {!shouldReduceMotion ? (
+          <motion.div
+            className="absolute inset-0 opacity-5"
+            animate={{
+              background: [
+                "radial-gradient(circle at 20% 20%, #3B82F6 0%, transparent 60%)",
+                "radial-gradient(circle at 80% 80%, #7C3AED 0%, transparent 60%)"
+              ]
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+          />
+        ) : (
+          <div 
+            className="absolute inset-0 opacity-5"
+            style={{
+              background: "radial-gradient(circle at 50% 50%, #3B82F6 0%, transparent 60%)"
+            }}
+          />
+        )}
         
-        {/* Floating dots - Cluely style */}
-        <motion.div
-          className="absolute top-1/4 left-1/4 w-1 h-1 bg-[#3B82F6] rounded-full"
-          animate={{
-            y: [-15, 15, -15],
-            x: [-10, 10, -10],
-            opacity: [0.3, 0.8, 0.3],
-            scale: [1, 1.5, 1]
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div
-          className="absolute top-1/3 right-1/3 w-1.5 h-1.5 bg-[#7C3AED] rounded-full"
-          animate={{
-            y: [20, -20, 20],
-            x: [15, -15, 15],
-            opacity: [0.2, 0.7, 0.2],
-            scale: [1, 2, 1]
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-        />
-        <motion.div
-          className="absolute bottom-1/3 left-1/3 w-0.5 h-0.5 bg-white rounded-full"
-          animate={{
-            y: [10, -25, 10],
-            x: [-8, 12, -8],
-            opacity: [0.4, 1, 0.4]
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 4
-          }}
-        />
+        {/* Floating dots - simplified for mobile */}
+        {!shouldReduceMotion ? (
+          <>
+            <motion.div
+              className="absolute top-1/4 left-1/4 w-1 h-1 bg-[#3B82F6] rounded-full opacity-40"
+              animate={{
+                y: [-10, 10, -10],
+                opacity: [0.2, 0.6, 0.2]
+              }}
+              transition={{
+                duration: 6,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+            <motion.div
+              className="absolute top-1/3 right-1/3 w-1 h-1 bg-[#7C3AED] rounded-full opacity-30"
+              animate={{
+                y: [10, -10, 10],
+                opacity: [0.1, 0.5, 0.1]
+              }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-[#3B82F6] rounded-full opacity-20" />
+            <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-[#7C3AED] rounded-full opacity-15" />
+          </>
+        )}
         
         <div className="max-w-5xl mx-auto w-full relative z-10">
           <div className="text-center space-y-10">
-            {/* Main Headline - Cluely Style */}
+            {/* Main Headline - Optimized */}
             <motion.div 
               className="space-y-8"
-              initial={{ opacity: 0, y: 60, scale: 0.9 }}
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 30, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ 
-                duration: 1.4, 
+                duration: shouldReduceMotion ? 0 : 0.8, 
                 ease: [0.16, 1, 0.3, 1],
-                delay: 0.1
+                delay: shouldReduceMotion ? 0 : 0.1
               }}
             >
               <h1 className="text-[clamp(48px,6vw,64px)] font-[800] leading-[1.1] tracking-[-0.01em] text-center">
                 <motion.span 
                   className="block text-white"
-                  initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ 
-                    delay: 0.4, 
-                    duration: 1.2, 
+                    delay: shouldReduceMotion ? 0 : 0.2, 
+                    duration: shouldReduceMotion ? 0 : 0.6, 
                     ease: [0.16, 1, 0.3, 1] 
                   }}
                 >
@@ -914,11 +903,11 @@ export default function HomePage() {
                 </motion.span>
                 <motion.span 
                   className="block bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent"
-                  initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ 
-                    delay: 0.6, 
-                    duration: 1.2, 
+                    delay: shouldReduceMotion ? 0 : 0.3, 
+                    duration: shouldReduceMotion ? 0 : 0.6, 
                     ease: [0.16, 1, 0.3, 1] 
                   }}
                 >
@@ -928,11 +917,11 @@ export default function HomePage() {
               
               <motion.p 
                 className="text-[clamp(16px,2vw,20px)] leading-[1.6] text-zinc-400 max-w-2xl mx-auto text-center"
-                initial={{ opacity: 0, y: 30, filter: "blur(5px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ 
-                  delay: 0.8, 
-                  duration: 1, 
+                  delay: shouldReduceMotion ? 0 : 0.4, 
+                  duration: shouldReduceMotion ? 0 : 0.5, 
                   ease: [0.16, 1, 0.3, 1] 
                 }}
               >
@@ -940,33 +929,33 @@ export default function HomePage() {
               </motion.p>
             </motion.div>
 
-            {/* CTAs - Cluely Style */}
+            {/* CTAs - Optimized */}
             <motion.div
               className="space-y-6"
-              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 15, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ 
-                delay: 1, 
-                duration: 1, 
+                delay: shouldReduceMotion ? 0 : 0.5, 
+                duration: shouldReduceMotion ? 0 : 0.5, 
                 ease: [0.16, 1, 0.3, 1] 
               }}
             >
               <motion.button
                 onClick={() => document.getElementById('beta-signup')?.scrollIntoView({ behavior: 'smooth' })}
                 className="bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-white hover:from-[#2563EB] hover:to-[#6D28D9] transition-all duration-300 text-base px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl w-full max-w-sm mx-auto block backdrop-blur-sm"
-                initial={{ opacity: 0, y: 20, filter: "blur(5px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ 
-                  delay: 1.2, 
-                  duration: 0.8, 
+                  delay: shouldReduceMotion ? 0 : 0.6, 
+                  duration: shouldReduceMotion ? 0 : 0.4, 
                   ease: [0.16, 1, 0.3, 1] 
                 }}
-                whileHover={{ 
-                  scale: 1.05, 
-                  y: -2,
+                whileHover={shouldReduceMotion ? {} : { 
+                  scale: 1.02, 
+                  y: -1,
                   transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] }
                 }}
-                whileTap={{ 
+                whileTap={shouldReduceMotion ? {} : { 
                   scale: 0.98,
                   transition: { duration: 0.1 }
                 }}
@@ -1691,51 +1680,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Scrolling Text Section - Modern Design */}
-      <section className="py-20 px-6 relative overflow-hidden">
-        <div className="text-center mb-12">
-          <motion.h2 
-            className="text-[clamp(32px,5vw,48px)] font-[900] text-white mb-4"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            It's time to compete
-          </motion.h2>
-        </div>
-        
-        {/* Scrolling Text Animation */}
-        <div className="relative">
-          <div className="flex animate-scroll">
-            {[
-              "University Applications.", "Internship Hunting.", "Skill Building.", "Peer Competition.", "Resume Scoring.", 
-              "Challenge Completion.", "XP Earning.", "Leaderboard Climbing.", "Badge Collecting.", "Leveling Up."
-            ].map((text, index) => (
-              <div key={index} className="flex-shrink-0 px-8">
-                <span className="text-[clamp(24px,4vw,48px)] font-[900] text-zinc-500 whitespace-nowrap">
-                  {text}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        <div className="text-center mt-12">
-          <motion.button
-            onClick={() => document.getElementById('beta-signup')?.scrollIntoView({ behavior: 'smooth' })}
-            className="bg-white text-black hover:bg-zinc-100 px-8 py-4 rounded-full font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-xl"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4, duration: 0.8 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            Get Started for Free
-          </motion.button>
-        </div>
-      </section>
 
       {/* Competitive Environment Section */}
       <section className="py-24 px-6 relative">
