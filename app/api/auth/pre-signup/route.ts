@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
+import {
+  ensureSchema,
+  findBetaSignupByEmail,
+  insertBetaSignup,
+  isDatabaseConfigured,
+} from '@/lib/db'
 
 // Define the signup data structure
 interface SignupData {
@@ -72,35 +78,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Load existing signups
-    const betaSignups = loadSignups()
+    const cleanUsername = username.trim()
+    const cleanEmail = email.trim().toLowerCase()
 
-    // Check if email already exists
-    const existingSignup = betaSignups.find(signup => signup.email === email)
-    if (existingSignup) {
-      console.log('Duplicate email detected:', email)
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'User with this email already exists',
-          data: null
-        },
-        { status: 409 }
+    // Prefer database when configured; fallback to JSON file
+    if (isDatabaseConfigured()) {
+      await ensureSchema()
+      const existing = await findBetaSignupByEmail(cleanEmail)
+      if (existing) {
+        console.log('Duplicate email detected (db):', cleanEmail)
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'User with this email already exists',
+            data: null,
+          },
+          { status: 409 }
+        )
+      }
+
+      const row = await insertBetaSignup(cleanUsername, cleanEmail)
+      console.log('New beta signup added (db):', row)
+    } else {
+      // JSON file fallback (Heroku ephemeral FS not persisted across deploys)
+      const betaSignups = loadSignups()
+      const existingSignup = betaSignups.find(
+        signup => signup.email === cleanEmail
       )
+      if (existingSignup) {
+        console.log('Duplicate email detected (file):', cleanEmail)
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'User with this email already exists',
+            data: null,
+          },
+          { status: 409 }
+        )
+      }
+
+      const newSignup: SignupData = {
+        username: cleanUsername,
+        email: cleanEmail,
+        timestamp: new Date().toISOString(),
+      }
+      betaSignups.push(newSignup)
+      saveSignups(betaSignups)
+      console.log('New beta signup added (file):', newSignup)
+      console.log('Total signups:', betaSignups.length)
     }
-
-    // Add new signup
-    const newSignup: SignupData = {
-      username: username.trim(),
-      email: email.trim().toLowerCase(),
-      timestamp: new Date().toISOString()
-    }
-
-    betaSignups.push(newSignup)
-    saveSignups(betaSignups)
-
-    console.log('New beta signup added:', newSignup)
-    console.log('Total signups:', betaSignups.length)
 
     return NextResponse.json(
       {

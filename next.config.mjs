@@ -26,6 +26,19 @@ const nextConfig = {
       transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
     },
   },
+  async rewrites() {
+    // Map legacy /v1/* paths to Next API routes to avoid 404s from the browser
+    return [
+      {
+        source: '/v1/auth/pre-signup',
+        destination: '/api/auth/pre-signup',
+      },
+      {
+        source: '/v1/parser/resume/score',
+        destination: '/api/resume/score',
+      },
+    ]
+  },
 };
 
 mergeConfig(nextConfig, userConfig)
