@@ -2,6 +2,44 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, useScroll, useTransform, useSpring, useInView, useAnimation, AnimatePresence, useMotionValue, useVelocity } from "framer-motion"
+
+// Mobile optimization hook
+function useMobileOptimizations() {
+  const [isMobile, setIsMobile] = useState(false)
+  const [reduceMotion, setReduceMotion] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      
+      // Check for reduced motion preference
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      setReduceMotion(prefersReducedMotion)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Return optimized animation configs
+  const getTransition = (baseDuration = 0.5, delay = 0) => {
+    if (reduceMotion) {
+      return { duration: 0.01, delay: 0 }
+    }
+    
+    return {
+      duration: isMobile ? Math.min(baseDuration * 0.6, 0.25) : baseDuration,
+      delay: isMobile ? delay * 0.3 : delay,
+      ease: isMobile ? "easeOut" : "easeInOut",
+      type: "tween" as const // More performant than spring on mobile
+    }
+  }
+
+  return { isMobile, reduceMotion, getTransition }
+}
 import { ArrowRight, CheckCircle, Trophy, Users, BarChart2, Zap, Star, User, GraduationCap, Briefcase, TrendingUp, ChevronDown, Shield, Lock, Zap as ZapIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -157,6 +195,7 @@ function AnimatedGradientMesh() {
 // Floating particles component (client-only to avoid SSR hydration mismatches)
 function FloatingParticles() {
   const [mounted, setMounted] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const seedsRef = useRef<Array<{
     left: number
     top: number
@@ -170,23 +209,26 @@ function FloatingParticles() {
 
   useEffect(() => {
     setMounted(true)
-    // Generate deterministic-once seeds on the client only
-    const count = 20
+    const checkMobile = window.innerWidth < 768
+    setIsMobile(checkMobile)
+    
+    // Drastically reduce particles on mobile for better performance
+    const count = checkMobile ? 6 : 15
     const seeds = Array.from({ length: count }, () => {
       const left = Math.random() * 100
       const top = Math.random() * 100
-      const size = 1 + Math.random() * 1.5
-      const dxMax = (Math.random() * 2 - 1) * 12
-      const dyMax = -15 - Math.random() * 20
+      const size = checkMobile ? 1 + Math.random() * 0.5 : 1 + Math.random() * 1.5
+      const dxMax = (Math.random() * 2 - 1) * (checkMobile ? 6 : 12)
+      const dyMax = checkMobile ? -8 - Math.random() * 10 : -15 - Math.random() * 20
       return {
         left,
         top,
         size,
         dx: [0, dxMax, 0],
         dy: [0, dyMax, 0],
-        opacity: [0.12, 0.35, 0.12],
-        duration: 3 + Math.random() * 2,
-        delay: Math.random() * 2
+        opacity: checkMobile ? [0.06, 0.18, 0.06] : [0.12, 0.35, 0.12],
+        duration: checkMobile ? 1.2 + Math.random() * 0.8 : 3 + Math.random() * 2,
+        delay: Math.random() * (checkMobile ? 0.5 : 2)
       }
     })
     seedsRef.current = seeds
@@ -199,7 +241,7 @@ function FloatingParticles() {
       {seedsRef.current.map((seed, i) => (
         <motion.div
           key={i}
-          className="absolute bg-white rounded-full"
+          className="absolute bg-white rounded-full will-change-transform"
           style={{
             left: `${seed.left}%`,
             top: `${seed.top}%`,
@@ -207,7 +249,13 @@ function FloatingParticles() {
             height: `${seed.size}px`
           }}
           animate={{ x: seed.dx, y: seed.dy, opacity: seed.opacity }}
-          transition={{ duration: seed.duration, repeat: Infinity, delay: seed.delay, ease: "easeInOut" }}
+          transition={{ 
+            duration: seed.duration, 
+            repeat: Infinity, 
+            delay: seed.delay, 
+            ease: "easeOut",
+            type: "tween" // Better performance than spring
+          }}
         />
       ))}
     </div>
@@ -292,7 +340,7 @@ function UseCaseTabs() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.25 }}
               className="text-center"
             >
               <div className="bg-zinc-900/30 backdrop-blur-sm rounded-2xl p-8 max-w-2xl mx-auto border border-zinc-800/30">
@@ -355,7 +403,7 @@ function FAQ() {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.25 }}
                 className="overflow-hidden"
               >
                 <div className="px-6 pb-5 text-zinc-300 leading-relaxed">
@@ -378,8 +426,10 @@ function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: strin
 
   useEffect(() => {
     if (isInView) {
-      const duration = 2000
-      const steps = 50
+      // Optimize for mobile - faster animation, fewer steps
+      const isMobile = window.innerWidth < 768
+      const duration = isMobile ? 800 : 2000
+      const steps = isMobile ? 20 : 50
       const increment = value / steps
       let current = 0
       
@@ -412,6 +462,9 @@ export default function HomePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeFeature, setActiveFeature] = useState('Challenge System')
   const { scrollYProgress } = useScroll()
+  
+  // Mobile optimizations
+  const { isMobile, reduceMotion, getTransition } = useMobileOptimizations()
   
   // Resume upload states
   const [resumeFile, setResumeFile] = useState<File | null>(null)
@@ -456,8 +509,9 @@ export default function HomePage() {
     setIsSubmitting(true)
 
     try {
-      // Call Next.js API route
-      const response = await fetch('/api/auth/pre-signup', {
+      // Call the backend API (same as old working code)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      const response = await fetch(`${apiUrl}/v1/auth/pre-signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -468,31 +522,23 @@ export default function HomePage() {
         })
       })
 
-      const result = await response.json()
+      const data = await response.json()
 
-      if (!response.ok) {
-        if (response.status === 409) {
-          setErrorMessage('This email is already registered for the beta waitlist.')
-        } else {
-          setErrorMessage(result.message || 'Something went wrong. Please try again.')
-        }
-        return
+      if (response.ok) {
+        setIsSubmitted(true)
+        // Reset form after 3 seconds (same as old code)
+        setTimeout(() => {
+          setIsSubmitted(false)
+          setFormData({ name: '', email: '' })
+        }, 3000)
+      } else {
+        // Handle server errors (e.g., user already exists)
+        setErrorMessage(data.message || 'An unexpected error occurred. Please try again.')
       }
-
-      console.log('Beta signup successful:', result)
-      
-      // Show success state
-      setIsSubmitted(true)
-      
-      // Reset form after 5 seconds
-      setTimeout(() => {
-        setIsSubmitted(false)
-        setFormData({ name: '', email: '' })
-      }, 5000)
       
     } catch (error) {
       console.error('Error submitting form:', error)
-      setErrorMessage('Something went wrong. Please try again.')
+      setErrorMessage('Failed to connect to server. Please try again later.')
     } finally {
       setIsSubmitting(false)
     }
@@ -597,6 +643,39 @@ export default function HomePage() {
           animation: scroll 30s linear infinite;
           width: 200%;
         }
+        
+        /* Mobile performance optimizations */
+        @media (max-width: 768px) {
+          .animate-scroll {
+            animation: scroll 15s linear infinite; /* Much faster on mobile */
+          }
+          
+          /* Hardware acceleration for better performance */
+          * {
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+          }
+          
+          /* Reduce blur effects on mobile */
+          [style*="blur"] {
+            filter: blur(20px) !important;
+          }
+        }
+        
+        /* Disable animations for users who prefer reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+          .animate-scroll {
+            animation: none;
+          }
+          
+          * {
+            animation-duration: 0.01s !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01s !important;
+          }
+        }
       `}</style>
       
       <div className="min-h-screen bg-black text-white overflow-x-hidden relative">
@@ -622,10 +701,9 @@ export default function HomePage() {
         </div>
         
         {/* Modern Animated Background */}
-        <AnimatedGradientMesh />
-        
-        {/* Floating Particles */}
-        <FloatingParticles />
+        {/* Conditionally render heavy animations based on device capability */}
+        {!isMobile && <AnimatedGradientMesh />}
+        {!reduceMotion && <FloatingParticles />}
       
       {/* Modern Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-2xl border-b border-white/5">
@@ -686,7 +764,7 @@ export default function HomePage() {
                     className="absolute -bottom-1 left-0 h-px bg-gradient-to-r from-[#3B82F6] to-[#7C3AED]"
                     initial={{ width: 0 }}
                     whileHover={{ width: "100%" }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.25 }}
                   />
                 </motion.a>
               ))}
@@ -751,7 +829,7 @@ export default function HomePage() {
                         ? "M6 18L18 6M6 6l12 12" 
                         : "M4 6h16M4 12h16M4 18h16"
                     }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.25 }}
                   />
                 </motion.svg>
               </motion.button>
@@ -1055,16 +1133,16 @@ export default function HomePage() {
                 >
                   <motion.div 
                     className="w-2 h-2 bg-purple-400 rounded-full"
-                    animate={{ 
-                      scale: [1, 1.2, 1],
+                    animate={!isMobile ? { 
+                      scale: [1, 1.1, 1],
                       opacity: [0.7, 1, 0.7]
-                    }}
-                    transition={{ 
-                      duration: 3, 
+                    } : {}}
+                    transition={!isMobile ? { 
+                      duration: 2, 
                       repeat: Infinity, 
-                      ease: "easeInOut",
-                      delay: 0.6 
-                    }}
+                      ease: "easeOut",
+                      delay: 0.3 
+                    } : {}}
                   />
                   <span>Early adopter perks</span>
                 </motion.div>
@@ -1076,7 +1154,7 @@ export default function HomePage() {
               className="max-w-3xl mx-auto space-y-12 mt-24"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.8 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
             >
               <h2 className="text-[clamp(32px,4vw,48px)] font-[800] leading-[1.1] tracking-[-0.01em] text-center">
                 <span className="text-white">When's the last time you felt </span>
@@ -1188,7 +1266,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.25 }}
                   className="p-8"
                 >
                   {activeFeature === 'Social Leaderboards' && (
@@ -2422,7 +2500,7 @@ export default function HomePage() {
                                 className="flex items-center gap-3"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.25 }}
                           >
                             <motion.div 
                                   className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
