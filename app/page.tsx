@@ -456,8 +456,8 @@ export default function HomePage() {
     setIsSubmitting(true)
 
     try {
-      // Call backend API
-      const response = await fetch('/v1/auth/pre-signup', {
+      // Call Next.js API route
+      const response = await fetch('/api/auth/pre-signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
