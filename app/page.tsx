@@ -456,30 +456,30 @@ export default function HomePage() {
     setIsSubmitting(true)
 
     try {
-      // Simulate API call with local storage for demo
-      await new Promise(resolve => setTimeout(resolve, 1500)) // Simulate network delay
-      
-      // Store in localStorage for demo purposes
-      const existingSignups = JSON.parse(localStorage.getItem('elitescore-signups') || '[]')
-      const newSignup = {
-        name: trimmedName,
-        email: trimmedEmail,
-        timestamp: new Date().toISOString(),
-        id: Date.now().toString()
-      }
-      
-      // Check if email already exists
-      const emailExists = existingSignups.some((signup: any) => signup.email === trimmedEmail)
-      if (emailExists) {
-        setErrorMessage('This email is already registered for the beta waitlist.')
-        setIsSubmitting(false)
+      // Call backend API
+      const response = await fetch('/v1/auth/pre-signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: trimmedName,
+          email: trimmedEmail
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          setErrorMessage('This email is already registered for the beta waitlist.')
+        } else {
+          setErrorMessage(result.message || 'Something went wrong. Please try again.')
+        }
         return
       }
-      
-      existingSignups.push(newSignup)
-      localStorage.setItem('elitescore-signups', JSON.stringify(existingSignups))
-      
-      console.log('Beta signup successful:', newSignup)
+
+      console.log('Beta signup successful:', result)
       
       // Show success state
       setIsSubmitted(true)
