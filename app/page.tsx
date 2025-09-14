@@ -456,8 +456,8 @@ export default function HomePage() {
     setIsSubmitting(true)
 
     try {
-      // Call Next.js API route
-      const response = await fetch('/api/auth/pre-signup', {
+      // Call backend API
+      const response = await fetch('/v1/auth/pre-signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -535,7 +535,7 @@ export default function HomePage() {
       formData.append('file', resumeFile)
       
       // Call the real resume scoring API
-      const response = await fetch('/api/resume/score', {
+      const response = await fetch('/v1/parser/resume/score', {
         method: 'POST',
         body: formData,
       })

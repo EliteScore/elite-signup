@@ -16,6 +16,12 @@ try {
 
 const app = express();
 const PORT = process.env.PORT || 8081;
+
+// Serve Next.js static files in production
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '.next/static')));
+    app.use('/_next', express.static(path.join(__dirname, '.next')));
+}
 const SIGNUPS_FILE = path.join(__dirname, 'beta-signups.json');
 
 // Initialize signups file if it doesn't exist
@@ -29,9 +35,17 @@ let betaSignups = JSON.parse(fs.readFileSync(SIGNUPS_FILE, 'utf8'));
 // Middleware
 // Configure CORS for production
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+        'http://localhost:3000',
+        'https://www.elite-score.com',
+        'https://elite-score.com',
+        'https://elite-score-frontend-e37a4c9b861e.herokuapp.com',
+        process.env.FRONTEND_URL
+    ].filter(Boolean),
     credentials: true,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -404,8 +418,8 @@ app.post('/v1/parser/resume/score', upload.single('file'), async (req, res) => {
 
         // Additional file size validation for resumes
         const fileSizeKB = req.file.size / 1024;
-        if (fileSizeKB < 10 || fileSizeKB > 5000) { // Less than 10KB or more than 5MB is suspicious
-            if (fileSizeKB < 10) {
+        if (fileSizeKB < 1 || fileSizeKB > 5000) { // Less than 1KB or more than 5MB is suspicious
+            if (fileSizeKB < 1) {
                 fs.unlinkSync(req.file.path);
                 return res.status(400).json({
                     error: 'File too small to be a proper resume. Please upload a complete resume document.'
@@ -454,19 +468,85 @@ app.post('/v1/parser/resume/score', upload.single('file'), async (req, res) => {
 });
 
 // Health check
-app.get('/', (req, res) => {
-    res.send('Beta Signup Backend Server is running!');
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'EliteScore Backend',
+        timestamp: new Date().toISOString(),
+        signups: betaSignups.length
+    });
 });
 
-app.listen(PORT, () => {
-    console.log(`\n🚀 Beta Signup Backend Server is running!`);
-    console.log(`📡 Server URL: http://localhost:${PORT}`);
+// Default route for root path
+app.get('/', (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        // Try to serve the Next.js build index file
+        const indexPath = path.join(__dirname, '.next/server/app/index.html');
+        if (fs.existsSync(indexPath)) {
+            res.sendFile(indexPath);
+        } else {
+            // Fallback to simple HTML
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>EliteScore</title>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                </head>
+                <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+                    <h1>🚀 EliteScore Platform</h1>
+                    <p>Welcome to EliteScore - Your personalized career development platform!</p>
+                    <p><strong>Backend Services Status:</strong> ✅ Online</p>
+                    <p><strong>Total Beta Signups:</strong> ${betaSignups.length}</p>
+                    
+                    <h2>API Endpoints</h2>
+                    <ul>
+                        <li><a href="/health">GET /health</a> - Health check</li>
+                        <li><a href="/v1/status">GET /v1/status</a> - Service status</li>
+                        <li>POST /v1/auth/pre-signup - Beta signup registration</li>
+                        <li>POST /v1/parser/resume/score - Resume analysis & scoring</li>
+                        <li><a href="/v1/signups">GET /v1/signups</a> - View beta signups</li>
+                    </ul>
+                    
+                    <h2>Test the APIs</h2>
+                    <p>You can test the signup API with:</p>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
+curl -X POST ${req.protocol}://${req.get('host')}/v1/auth/pre-signup \\
+  -H "Content-Type: application/json" \\
+  -d '{"username": "testuser", "email": "test@example.com"}'
+                    </pre>
+                </body>
+                </html>
+            `);
+        }
+    } else {
+        res.send(`
+            <h1>EliteScore Development Server</h1>
+            <p>Backend server is running on port ${PORT}</p>
+            <p>For the full app, run: <code>npm run dev</code></p>
+            <h2>API Endpoints:</h2>
+            <ul>
+                <li><a href="/v1/status">GET /v1/status</a> - Server status</li>
+                <li>POST /v1/auth/pre-signup - Beta signup</li>
+                <li>POST /v1/parser/resume/score - Resume scoring</li>
+                <li><a href="/v1/signups">GET /v1/signups</a> - List signups</li>
+            </ul>
+        `);
+    }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🚀 EliteScore Backend Server is running!`);
+    console.log(`📡 Server URL: http://0.0.0.0:${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`\n📌 Available endpoints:`);
     console.log(`   POST /v1/auth/pre-signup        - Register for beta`);
     console.log(`   POST /v1/parser/resume/score    - Score resume files`);
     console.log(`   GET  /v1/status                 - Check server status`);
     console.log(`   GET  /v1/signups                - List all signups`);
+    console.log(`   GET  /health                    - Health check`);
     console.log(`\n💾 Signups are saved to: ${SIGNUPS_FILE}`);
     console.log(`📊 Current signups: ${betaSignups.length}`);
-    console.log('\n✨ Ready to accept beta signups!\n');
+    console.log('\n✨ Ready to accept beta signups and resume scoring!\n');
 });
