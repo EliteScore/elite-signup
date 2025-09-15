@@ -20,9 +20,9 @@ function useReducedMotion() {
   }, [])
 
   // Return false during SSR and initial render to avoid hydration mismatch
-  if (!mounted) return false
+  if (!mounted) return { shouldReduceMotion: false, isMobile: false }
   
-  return isMobile || prefersReducedMotion
+  return { shouldReduceMotion: isMobile || prefersReducedMotion, isMobile }
 }
 import { ArrowRight, CheckCircle, Trophy, Users, BarChart2, Zap, Star, User, GraduationCap, Briefcase, TrendingUp, ChevronDown, Shield, Lock, Zap as ZapIcon } from "lucide-react"
 
@@ -212,37 +212,49 @@ function FloatingParticles({ shouldReduceMotion }: { shouldReduceMotion: boolean
   )
 }
 
-// Optimized animations - conditional based on motion preference
-const createAnimation = (shouldReduceMotion: boolean) => ({
-  fadeInUp: {
-    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 }
-  },
-  staggerContainer: {
-    initial: {},
-    animate: shouldReduceMotion ? {} : {
-      transition: {
-        staggerChildren: 0.05
+// Optimized animations - conditional based on motion preference and mobile detection
+const createAnimation = (shouldReduceMotion: boolean, isMobile: boolean = false) => {
+  // Mobile-optimized durations and easing
+  const duration = isMobile ? 0.25 : 0.4
+  const ease = isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1]
+  const staggerDelay = isMobile ? 0.02 : 0.05
+  
+  return {
+    fadeInUp: {
+      initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: isMobile ? 10 : 20 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration, ease }
+    },
+    staggerContainer: {
+      initial: {},
+      animate: shouldReduceMotion ? {} : {
+        transition: {
+          staggerChildren: staggerDelay
+        }
       }
+    },
+    revealAnimation: {
+      initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: isMobile ? 10 : 20 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration, ease }
+    },
+    slideInLeft: {
+      initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: isMobile ? -10 : -20 },
+      animate: { opacity: 1, x: 0 },
+      transition: { duration, ease }
+    },
+    slideInRight: {
+      initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: isMobile ? 10 : 20 },
+      animate: { opacity: 1, x: 0 },
+      transition: { duration, ease }
+    },
+    scaleIn: {
+      initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: isMobile ? 0.98 : 0.95 },
+      animate: { opacity: 1, scale: 1 },
+      transition: { duration, ease }
     }
-  },
-  revealAnimation: {
-    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 }
-  },
-  slideInLeft: {
-    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: -20 },
-    animate: { opacity: 1, x: 0 }
-  },
-  slideInRight: {
-    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: 20 },
-    animate: { opacity: 1, x: 0 }
-  },
-  scaleIn: {
-    initial: shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 }
   }
-})
+}
 
 // Use-case Tabs Component - Modern Design
 function UseCaseTabs() {
@@ -326,7 +338,11 @@ function FAQ() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: index * 0.1, duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ 
+            delay: index * 0.05, 
+            duration: 0.3, 
+            ease: "easeOut" 
+          }}
         >
           <motion.button
             className="w-full px-6 py-5 text-left flex items-center justify-between hover:bg-zinc-800/20 transition-colors"
@@ -362,15 +378,15 @@ function FAQ() {
 }
 
 // Enterprise number counter
-function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
+function AnimatedCounter({ value, suffix = "", isMobile = false }: { value: number; suffix?: string; isMobile?: boolean }) {
   const [count, setCount] = useState(0)
   const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: "-100px" })
+  const isInView = useInView(ref, { once: true, margin: isMobile ? "-50px" : "-100px" })
 
   useEffect(() => {
     if (isInView) {
-      const duration = 2000
-      const steps = 50
+      const duration = isMobile ? 1000 : 2000
+      const steps = isMobile ? 25 : 50
       const increment = value / steps
       let current = 0
       
@@ -403,7 +419,7 @@ export default function HomePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeFeature, setActiveFeature] = useState('Challenge System')
   const { scrollYProgress } = useScroll()
-  const shouldReduceMotion = useReducedMotion()
+  const { shouldReduceMotion, isMobile } = useReducedMotion()
   
   // Resume upload states
   const [resumeFile, setResumeFile] = useState<File | null>(null)
@@ -520,10 +536,15 @@ export default function HomePage() {
       formData.append('file', resumeFile)
       
       // Call the real resume scoring API
-      const response = await fetch('/api/resume/score', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      console.log('Calling resume scoring API:', `${apiUrl}/v1/parser/resume/score`)
+      
+      const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
         method: 'POST',
         body: formData,
       })
+      
+      console.log('Resume scoring response status:', response.status)
 
       if (!response.ok) {
         // Try to get the specific error message from the response
@@ -536,17 +557,19 @@ export default function HomePage() {
       }
 
       const result = await response.json()
+      console.log('Resume scoring API response:', result)
       
       // Map the API response to our component's expected format
       // The backend returns overall_score and component breakdowns
       const scores = {
-        overall: Math.round(result.overall_score || result.score || 0),
-        experience: Math.round(result.components?.experience || result.experience_score || result.experience || 0),
-        skills: Math.round(result.components?.skills || result.skills_score || result.skills || 0), 
-        education: Math.round(result.components?.education || result.education_score || result.education || 0),
-        projects: Math.round(result.components?.ai_signal || result.projects_score || result.projects || 0)
+        overall: Math.round(result.overall_score || 0),
+        experience: Math.round(result.components?.experience || 0),
+        skills: Math.round(result.components?.skills || 0), 
+        education: Math.round(result.components?.education || 0),
+        projects: Math.round(result.components?.ai_signal || 0) // ai_signal maps to projects in our UI
       }
       
+      console.log('Mapped scores:', scores)
       setResumeScore(scores)
       setShowScore(true)
       
@@ -585,6 +608,23 @@ export default function HomePage() {
             animation-duration: 0.01ms !important;
             animation-iteration-count: 1 !important;
             transition-duration: 0.01ms !important;
+          }
+        }
+        
+        /* Mobile animation optimizations */
+        @media (max-width: 768px) {
+          * {
+            will-change: auto;
+          }
+          
+          [data-framer-motion] {
+            will-change: transform, opacity;
+          }
+          
+          /* Reduce motion complexity on mobile */
+          .motion-reduce-mobile {
+            animation-duration: 0.3s !important;
+            transition-duration: 0.3s !important;
           }
         }
       `}</style>
@@ -639,7 +679,7 @@ export default function HomePage() {
               className="hidden md:flex items-center space-x-8"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              transition={{ duration: isMobile ? 0.3 : 0.6, delay: isMobile ? 0.1 : 0.2 }}
             >
               {[
                 { href: "#features", label: "Features" },
@@ -654,9 +694,9 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: -15, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ 
-                    duration: 0.5, 
-                    delay: 0.3 + index * 0.1,
-                    ease: [0.2, 0.8, 0.2, 1]
+                    duration: isMobile ? 0.3 : 0.5, 
+                    delay: isMobile ? 0.15 + index * 0.05 : 0.3 + index * 0.1,
+                    ease: isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1]
                   }}
                   whileHover={{ 
                     y: -2, 
@@ -681,7 +721,11 @@ export default function HomePage() {
               className="hidden md:flex"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+              transition={{ 
+                duration: isMobile ? 0.3 : 0.6, 
+                delay: isMobile ? 0.15 : 0.3, 
+                ease: isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1] 
+              }}
             >
               <motion.button 
                 onClick={() => document.getElementById('beta-signup')?.scrollIntoView({ behavior: 'smooth' })}
@@ -700,7 +744,11 @@ export default function HomePage() {
                 className="text-zinc-400 hover:text-white transition-all duration-200 p-2 rounded-lg hover:bg-zinc-800/50"
                 initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.5, delay: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+                transition={{ 
+                  duration: isMobile ? 0.25 : 0.5, 
+                  delay: isMobile ? 0.1 : 0.2, 
+                  ease: isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1] 
+                }}
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => {
@@ -796,9 +844,9 @@ export default function HomePage() {
                   initial={{ opacity: 0, x: -30, scale: 0.9 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   transition={{ 
-                    duration: 0.4, 
-                    delay: 0.2 + index * 0.1,
-                    ease: [0.2, 0.8, 0.2, 1]
+                    duration: isMobile ? 0.25 : 0.4, 
+                    delay: isMobile ? 0.1 + index * 0.05 : 0.2 + index * 0.1,
+                    ease: isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1]
                   }}
                   whileHover={{ x: 5, scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -883,9 +931,9 @@ export default function HomePage() {
               initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 30, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ 
-                duration: shouldReduceMotion ? 0 : 0.8, 
-                ease: [0.16, 1, 0.3, 1],
-                delay: shouldReduceMotion ? 0 : 0.1
+                duration: shouldReduceMotion ? 0 : (isMobile ? 0.4 : 0.8), 
+                ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1],
+                delay: shouldReduceMotion ? 0 : (isMobile ? 0.05 : 0.1)
               }}
             >
               <h1 className="text-[clamp(48px,6vw,64px)] font-[800] leading-[1.1] tracking-[-0.01em] text-center">
@@ -894,9 +942,9 @@ export default function HomePage() {
                   initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ 
-                    delay: shouldReduceMotion ? 0 : 0.2, 
-                    duration: shouldReduceMotion ? 0 : 0.6, 
-                    ease: [0.16, 1, 0.3, 1] 
+                    delay: shouldReduceMotion ? 0 : (isMobile ? 0.1 : 0.2), 
+                    duration: shouldReduceMotion ? 0 : (isMobile ? 0.3 : 0.6), 
+                    ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
                   }}
                 >
                   Make Hard Work
@@ -906,9 +954,9 @@ export default function HomePage() {
                   initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ 
-                    delay: shouldReduceMotion ? 0 : 0.3, 
-                    duration: shouldReduceMotion ? 0 : 0.6, 
-                    ease: [0.16, 1, 0.3, 1] 
+                    delay: shouldReduceMotion ? 0 : (isMobile ? 0.15 : 0.3), 
+                    duration: shouldReduceMotion ? 0 : (isMobile ? 0.3 : 0.6), 
+                    ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
                   }}
                 >
                   Addictive
@@ -920,9 +968,9 @@ export default function HomePage() {
                 initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ 
-                  delay: shouldReduceMotion ? 0 : 0.4, 
-                  duration: shouldReduceMotion ? 0 : 0.5, 
-                  ease: [0.16, 1, 0.3, 1] 
+                  delay: shouldReduceMotion ? 0 : (isMobile ? 0.2 : 0.4), 
+                  duration: shouldReduceMotion ? 0 : (isMobile ? 0.25 : 0.5), 
+                  ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
                 }}
               >
                 EliteScore is a competitive social network where students turn self-improvement into a game. Upload your resume, complete challenges to earn XP, and compete with peers to get into your dream university or land that internship.
@@ -935,9 +983,9 @@ export default function HomePage() {
               initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 15, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ 
-                delay: shouldReduceMotion ? 0 : 0.5, 
-                duration: shouldReduceMotion ? 0 : 0.5, 
-                ease: [0.16, 1, 0.3, 1] 
+                delay: shouldReduceMotion ? 0 : (isMobile ? 0.25 : 0.5), 
+                duration: shouldReduceMotion ? 0 : (isMobile ? 0.3 : 0.5), 
+                ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
               }}
             >
               <motion.button
@@ -946,18 +994,18 @@ export default function HomePage() {
                 initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ 
-                  delay: shouldReduceMotion ? 0 : 0.6, 
-                  duration: shouldReduceMotion ? 0 : 0.4, 
-                  ease: [0.16, 1, 0.3, 1] 
+                  delay: shouldReduceMotion ? 0 : (isMobile ? 0.3 : 0.6), 
+                  duration: shouldReduceMotion ? 0 : (isMobile ? 0.25 : 0.4), 
+                  ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
                 }}
                 whileHover={shouldReduceMotion ? {} : { 
-                  scale: 1.02, 
-                  y: -1,
-                  transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] }
+                  scale: isMobile ? 1.01 : 1.02, 
+                  y: isMobile ? -0.5 : -1,
+                  transition: { duration: isMobile ? 0.15 : 0.2, ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] }
                 }}
                 whileTap={shouldReduceMotion ? {} : { 
-                  scale: 0.98,
-                  transition: { duration: 0.1 }
+                  scale: isMobile ? 0.99 : 0.98,
+                  transition: { duration: isMobile ? 0.05 : 0.1 }
                 }}
               >
                 Sign Up Now
@@ -1058,7 +1106,10 @@ export default function HomePage() {
               className="max-w-3xl mx-auto space-y-12 mt-24"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.8 }}
+              transition={{ 
+              delay: isMobile ? 0.4 : 0.8, 
+              duration: isMobile ? 0.4 : 0.8 
+            }}
             >
               <h2 className="text-[clamp(32px,4vw,48px)] font-[800] leading-[1.1] tracking-[-0.01em] text-center">
                 <span className="text-white">When's the last time you felt </span>
@@ -1099,8 +1150,8 @@ export default function HomePage() {
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+            transition={{ duration: isMobile ? 0.4 : 0.8 }}
           >
             <h2 className="text-[clamp(36px,5vw,52px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6">
               <span className="text-white">Social competition meets </span>
@@ -1116,8 +1167,11 @@ export default function HomePage() {
             className="flex flex-wrap justify-center gap-3 mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2, duration: 0.8 }}
+            viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+            transition={{ 
+              delay: isMobile ? 0.1 : 0.2, 
+              duration: isMobile ? 0.4 : 0.8 
+            }}
           >
             {["Social Leaderboards", "Challenge System", "Peer Learning"].map((feature, index) => (
               <motion.button
@@ -1131,7 +1185,10 @@ export default function HomePage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.3 + index * 0.1, duration: 0.6 }}
+                transition={{ 
+                  delay: isMobile ? 0.15 + index * 0.05 : 0.3 + index * 0.1, 
+                  duration: isMobile ? 0.3 : 0.6 
+                }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -1542,11 +1599,14 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.7 + index * 0.1, duration: 0.6 }}
+                transition={{ 
+                  delay: isMobile ? 0.35 + index * 0.05 : 0.7 + index * 0.1, 
+                  duration: isMobile ? 0.3 : 0.6 
+                }}
                 whileHover={{ y: -5 }}
               >
                 <div className="text-3xl font-bold text-white mb-2">
-                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} isMobile={isMobile} />
                 </div>
                 <div className="text-sm text-zinc-400">
                   {stat.label}
@@ -1601,9 +1661,9 @@ export default function HomePage() {
                 className="group"
                 initial={{ 
                   opacity: 0, 
-                  y: 60, 
-                  scale: 0.95,
-                  filter: "blur(10px)"
+                  y: isMobile ? 30 : 60, 
+                  scale: isMobile ? 0.98 : 0.95,
+                  filter: isMobile ? "blur(5px)" : "blur(10px)"
                 }}
                 whileInView={{ 
                   opacity: 1, 
@@ -1611,16 +1671,19 @@ export default function HomePage() {
                   scale: 1,
                   filter: "blur(0px)"
                 }}
-                viewport={{ once: true, margin: "-100px" }}
+                viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
                 transition={{ 
-                  delay: index * 0.15,
-                  duration: 1.2,
-                  ease: [0.16, 1, 0.3, 1]
+                  delay: isMobile ? index * 0.05 : index * 0.15,
+                  duration: isMobile ? 0.6 : 1.2,
+                  ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1]
                 }}
                 whileHover={{ 
-                  y: -8,
-                  scale: 1.02,
-                  transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
+                  y: isMobile ? -4 : -8,
+                  scale: isMobile ? 1.01 : 1.02,
+                  transition: { 
+                    duration: isMobile ? 0.2 : 0.3, 
+                    ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
+                  }
                 }}
               >
                 <div className="bg-zinc-900/40 backdrop-blur-md rounded-2xl p-8 border border-zinc-800/50 hover:border-zinc-700/80 transition-all duration-500 h-full hover:bg-zinc-900/60">
@@ -1629,17 +1692,20 @@ export default function HomePage() {
                     <motion.div 
                       className="flex-shrink-0"
                       whileHover={{ 
-                        rotate: [0, -10, 10, 0],
-                        transition: { duration: 0.5 }
+                        rotate: isMobile ? [0, -5, 5, 0] : [0, -10, 10, 0],
+                        transition: { duration: isMobile ? 0.3 : 0.5 }
                       }}
                     >
                       <motion.div 
                         className="w-14 h-14 rounded-2xl bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] flex items-center justify-center shadow-lg"
                         whileHover={{ 
-                          scale: 1.15,
-                          boxShadow: "0 20px 40px -12px rgba(59, 130, 246, 0.4)"
+                          scale: isMobile ? 1.08 : 1.15,
+                          boxShadow: isMobile ? "0 10px 20px -6px rgba(59, 130, 246, 0.3)" : "0 20px 40px -12px rgba(59, 130, 246, 0.4)"
                         }}
-                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ 
+                          duration: isMobile ? 0.2 : 0.3, 
+                          ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
+                        }}
                       >
                         <feature.icon className="h-7 w-7 text-white" />
                       </motion.div>
@@ -1652,9 +1718,9 @@ export default function HomePage() {
                         initial={{ opacity: 0, x: -20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         transition={{ 
-                          delay: index * 0.15 + 0.2, 
-                          duration: 0.8,
-                          ease: [0.16, 1, 0.3, 1]
+                          delay: isMobile ? index * 0.05 + 0.1 : index * 0.15 + 0.2, 
+                          duration: isMobile ? 0.4 : 0.8,
+                          ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1]
                         }}
                       >
                         {feature.title}
@@ -1664,9 +1730,9 @@ export default function HomePage() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ 
-                          delay: index * 0.15 + 0.4, 
-                          duration: 0.8,
-                          ease: [0.16, 1, 0.3, 1]
+                          delay: isMobile ? index * 0.05 + 0.2 : index * 0.15 + 0.4, 
+                          duration: isMobile ? 0.4 : 0.8,
+                          ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1]
                         }}
                       >
                         {feature.description}
@@ -1688,8 +1754,8 @@ export default function HomePage() {
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+            transition={{ duration: isMobile ? 0.4 : 0.8 }}
           >
             <h2 className="text-[clamp(36px,5vw,52px)] font-[900] mb-8 leading-[1.1]">
               <span className="text-white">Turn peer pressure into </span>
@@ -1749,7 +1815,13 @@ export default function HomePage() {
       <section id="how-it-works" className="py-24 px-6 relative">
         <div className="max-w-6xl mx-auto">
           {/* Section Header - Consistent with other sections */}
-          <div className="text-center mb-16">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+            transition={{ duration: isMobile ? 0.4 : 0.8 }}
+          >
             <h2 className="text-[clamp(32px,5vw,48px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6">
               <span className="text-white">How it </span>
               <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">works</span>
@@ -1757,7 +1829,7 @@ export default function HomePage() {
             <p className="text-[clamp(18px,2.5vw,22px)] leading-[1.5] text-zinc-300 max-w-3xl mx-auto">
               Four simple steps to turn self-improvement into a competitive game.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
@@ -1786,9 +1858,17 @@ export default function HomePage() {
                 icon: Trophy,
               },
             ].map((item, index) => (
-              <div
+              <motion.div
                 key={index}
                 className="group relative"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+                transition={{ 
+                  delay: isMobile ? index * 0.1 : index * 0.2, 
+                  duration: isMobile ? 0.4 : 0.6,
+                  ease: isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1]
+                }}
               >
                 <div className="bg-zinc-900/30 backdrop-blur-sm rounded-2xl p-8 h-full border border-zinc-800/30 hover:border-zinc-700/50 transition-all duration-300 relative group">
                   {/* Step Number */}
@@ -1820,7 +1900,7 @@ export default function HomePage() {
                     </span>
                 </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1850,8 +1930,8 @@ export default function HomePage() {
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+            transition={{ duration: isMobile ? 0.4 : 0.8 }}
           >
             <h2 className="text-[clamp(32px,5vw,48px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6">
               <span className="text-white">Word from our </span>
@@ -1891,9 +1971,9 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ 
-                  delay: index * 0.1,
-                  duration: 0.8,
-                  ease: [0.25, 0.46, 0.45, 0.94]
+                  delay: isMobile ? index * 0.05 : index * 0.1,
+                  duration: isMobile ? 0.4 : 0.8,
+                  ease: isMobile ? "easeOut" : [0.25, 0.46, 0.45, 0.94]
                 }}
                 whileHover={{ y: -5 }}
               >
@@ -1904,7 +1984,10 @@ export default function HomePage() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ delay: 0.2 + index * 0.1, duration: 0.6 }}
+                    transition={{ 
+                      delay: isMobile ? 0.1 + index * 0.05 : 0.2 + index * 0.1, 
+                      duration: isMobile ? 0.3 : 0.6 
+                    }}
                   >
                     {[...Array(5)].map((_, i) => (
                       <motion.div
@@ -1913,10 +1996,10 @@ export default function HomePage() {
                         whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
                         transition={{ 
-                          delay: 0.3 + index * 0.1 + i * 0.1, 
-                          duration: 0.4,
-                          type: "spring",
-                          stiffness: 200
+                          delay: isMobile ? 0.15 + index * 0.05 + i * 0.05 : 0.3 + index * 0.1 + i * 0.1, 
+                          duration: isMobile ? 0.2 : 0.4,
+                          type: isMobile ? "tween" : "spring",
+                          stiffness: isMobile ? 100 : 200
                         }}
                       >
                         <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
@@ -1930,7 +2013,10 @@ export default function HomePage() {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: 0.4 + index * 0.1, duration: 0.6 }}
+                    transition={{ 
+                      delay: isMobile ? 0.2 + index * 0.05 : 0.4 + index * 0.1, 
+                      duration: isMobile ? 0.3 : 0.6 
+                    }}
                   >
                     "{member.quote}"
                   </motion.p>
@@ -1941,7 +2027,10 @@ export default function HomePage() {
                     initial={{ opacity: 0, x: -20 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: 0.5 + index * 0.1, duration: 0.6 }}
+                    transition={{ 
+                      delay: isMobile ? 0.25 + index * 0.05 : 0.5 + index * 0.1, 
+                      duration: isMobile ? 0.3 : 0.6 
+                    }}
                   >
                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-zinc-700 group-hover:border-[#3B82F6]/50 transition-colors duration-300">
                       <img 
@@ -1977,8 +2066,8 @@ export default function HomePage() {
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+            transition={{ duration: isMobile ? 0.4 : 0.8 }}
           >
             <h2 className="text-[clamp(32px,5vw,48px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6">
               <span className="text-white">Get Your </span>
@@ -2112,7 +2201,10 @@ export default function HomePage() {
                         key={item.key}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 + 0.6, duration: 0.6 }}
+                        transition={{ 
+                          delay: isMobile ? index * 0.05 + 0.3 : index * 0.1 + 0.6, 
+                          duration: isMobile ? 0.3 : 0.6 
+                        }}
                         className="bg-zinc-900/30 backdrop-blur-sm rounded-xl p-5 border border-zinc-800/40 hover:border-zinc-700/60 transition-all duration-300"
                       >
                         <div className="flex justify-between items-center mb-3">
@@ -2130,7 +2222,11 @@ export default function HomePage() {
                             className="bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] h-2 rounded-full"
                             initial={{ width: 0 }}
                             animate={{ width: `${item.score}%` }}
-                            transition={{ delay: index * 0.1 + 1, duration: 1, ease: "easeOut" }}
+                            transition={{ 
+                              delay: isMobile ? index * 0.05 + 0.5 : index * 0.1 + 1, 
+                              duration: isMobile ? 0.5 : 1, 
+                              ease: "easeOut" 
+                            }}
                           />
                     </div>
                     
@@ -2170,8 +2266,8 @@ export default function HomePage() {
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+            transition={{ duration: isMobile ? 0.4 : 0.8 }}
           >
             <h2 className="text-[clamp(32px,5vw,48px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6">
               <span className="text-white">Frequently asked </span>
@@ -2453,7 +2549,10 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: 1.0 + index * 0.1 }}
+                  transition={{ 
+                    duration: isMobile ? 0.3 : 0.6, 
+                    delay: isMobile ? 0.5 + index * 0.05 : 1.0 + index * 0.1 
+                  }}
                   whileHover={{ y: -5 }}
                 >
                   <div className="w-16 h-16 bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
