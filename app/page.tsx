@@ -2317,22 +2317,6 @@ export default function HomePage() {
                   </>
                 )}
 
-                {/* Recommended Challenges - Always Visible */}
-                <div className="bg-zinc-800/30 rounded-2xl p-6 border border-zinc-700/30">
-                  <h4 className="text-white font-bold mb-4">Recommended Challenges</h4>
-                  <div className="space-y-3">
-                    {[
-                      "Complete 3 technical projects this month",
-                      "Learn 2 new programming languages", 
-                      "Attend 5 networking events",
-                      "Earn a professional certification"
-                    ].map((challenge, index) => (
-                      <div key={index} className="bg-zinc-700/50 rounded-lg p-3 text-sm text-zinc-300">
-                        {challenge}
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
           </motion.div>
