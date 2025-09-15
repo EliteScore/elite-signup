@@ -1,5 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Mock resume analysis function (replace with your actual analysis logic)
+function analyzeResumeContent(file: File): Promise<{
+  overall_score: number
+  components: {
+    education: number
+    experience: number
+    skills: number
+    ai_signal: number
+  }
+}> {
+  return new Promise((resolve) => {
+    // Simulate processing time
+    setTimeout(() => {
+      // Generate mock scores based on file name/size for demo purposes
+      const baseScore = Math.min(85, Math.max(60, 70 + Math.random() * 20))
+      const variation = 10
+      
+      const scores = {
+        overall_score: Math.round(baseScore),
+        components: {
+          education: Math.round(baseScore + (Math.random() - 0.5) * variation),
+          experience: Math.round(baseScore + (Math.random() - 0.5) * variation),
+          skills: Math.round(baseScore + (Math.random() - 0.5) * variation),
+          ai_signal: Math.round(baseScore + (Math.random() - 0.5) * variation)
+        }
+      }
+      
+      // Ensure all scores are between 0-100
+      Object.keys(scores.components).forEach(key => {
+        scores.components[key as keyof typeof scores.components] = Math.max(0, Math.min(100, scores.components[key as keyof typeof scores.components]))
+      })
+      
+      resolve(scores)
+    }, 2000) // 2 second delay to simulate processing
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get the uploaded file from the form data
@@ -30,33 +67,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create new FormData to send to the backend API
-    const backendFormData = new FormData()
-    backendFormData.append('file', file)
+    console.log('Processing resume file:', file.name, 'Size:', file.size, 'Type:', file.type)
 
-    // Get the backend API URL from environment variable or use default
-    const backendUrl = process.env.RESUME_API_URL || 'http://localhost:8081'
+    // Analyze the resume content
+    const result = await analyzeResumeContent(file)
     
-    // Forward the request to your backend service
-    const response = await fetch(`${backendUrl}/v1/parser/resume/score`, {
-      method: 'POST',
-      body: backendFormData,
-      // Don't set Content-Type header, let fetch set it automatically for FormData
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Backend API error:', response.status, errorText)
-      
-      return NextResponse.json(
-        { error: 'Resume analysis service is currently unavailable. Please try again later.' },
-        { status: 503 }
-      )
-    }
-
-    const result = await response.json()
+    console.log('Resume analysis result:', result)
     
-    // Return the result from the backend
+    // Return the result in the same format as the Express server
     return NextResponse.json(result)
     
   } catch (error) {

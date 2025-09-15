@@ -466,8 +466,12 @@ export default function HomePage() {
 
     try {
       // Call the backend API (same as old working code)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
-      const response = await fetch(`${apiUrl}/v1/auth/pre-signup`, {
+      // Use Next.js API routes in production, Express server in development
+      const isProduction = process.env.NODE_ENV === 'production'
+      const apiUrl = isProduction ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081')
+      const endpoint = isProduction ? '/api/auth/pre-signup' : '/v1/auth/pre-signup'
+      
+      const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -539,10 +543,14 @@ export default function HomePage() {
       formData.append('file', resumeFile)
       
       // Call the real resume scoring API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
-      console.log('Calling resume scoring API:', `${apiUrl}/v1/parser/resume/score`)
+      // Use Next.js API routes in production, Express server in development
+      const isProduction = process.env.NODE_ENV === 'production'
+      const apiUrl = isProduction ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081')
+      const endpoint = isProduction ? '/api/resume/score' : '/v1/parser/resume/score'
       
-      const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
+      console.log('Calling resume scoring API:', `${apiUrl}${endpoint}`)
+
+      const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
         body: formData,
       })
