@@ -522,25 +522,66 @@ export default function HomePage() {
     }
   }
 
+  // Health check function
+  const checkApiHealth = async (): Promise<boolean> => {
+    try {
+      const getApiUrl = () => {
+        const envResumeApi = process.env.NEXT_PUBLIC_RESUME_API_URL
+        const envApi = process.env.NEXT_PUBLIC_API_URL
+        const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+        // In prod, require an explicit RESUME API URL (no hardcoded fallback)
+        if (isProd) return envResumeApi || envApi || ''
+        // In dev, default to local scorer port if not provided
+        return envResumeApi || envApi || 'http://localhost:8081'
+      }
+      
+      const apiUrl = getApiUrl()
+      console.log('🔍 API URL being used:', apiUrl)
+      console.log('Checking API health:', `${apiUrl}/v1/parser/health`)
+      
+      const response = await fetch(`${apiUrl}/v1/parser/health`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const healthData = await response.json()
+        console.log('Health check response:', healthData)
+        return true
+      } else {
+        console.error('Health check failed:', response.status, response.statusText)
+        return false
+      }
+    } catch (error) {
+      console.error('Health check error:', error)
+      return false
+    }
+  }
+
   // Retry mechanism for API calls
   const makeApiCall = async (formData: FormData, attempt: number = 1): Promise<any> => {
     const maxRetries = 3
     const getApiUrl = () => {
-      // Production/Heroku environment
-      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-        return process.env.NEXT_PUBLIC_API_URL || 'https://your-heroku-app.herokuapp.com'
-      }
-      // Local development
-      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      const envResumeApi = process.env.NEXT_PUBLIC_RESUME_API_URL
+      const envApi = process.env.NEXT_PUBLIC_API_URL
+      const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+      if (isProd) return envResumeApi || envApi || ''
+      return envResumeApi || envApi || 'http://localhost:8081'
     }
     
     const apiUrl = getApiUrl()
+    console.log(`🔍 API URL being used:`, apiUrl)
     console.log(`Calling resume scoring API (attempt ${attempt}):`, `${apiUrl}/v1/parser/resume/score`)
     
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
     
     try {
+      if (!apiUrl) {
+        throw new Error('Resume API URL is not configured. Set NEXT_PUBLIC_RESUME_API_URL in your environment.')
+      }
       const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
         method: 'POST',
         body: formData,
@@ -629,6 +670,14 @@ export default function HomePage() {
     setRetryCount(0)
 
     try {
+      // First check if the API is healthy
+      console.log('Checking API health before upload...')
+      const isHealthy = await checkApiHealth()
+      
+      if (!isHealthy) {
+        throw new Error('API service is not responding. Please try again later.')
+      }
+      
       // Create FormData for multipart/form-data upload
       const formData = new FormData()
       formData.append('file', resumeFile)
