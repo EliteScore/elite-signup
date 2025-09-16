@@ -425,7 +425,6 @@ export default function HomePage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showScore, setShowScore] = useState(false)
-  const [isScoreLocked, setIsScoreLocked] = useState(true) // Score is locked until beta signup
   const [resumeScore, setResumeScore] = useState({
     overall: 0,
     experience: 0,
@@ -466,12 +465,8 @@ export default function HomePage() {
 
     try {
       // Call the backend API (same as old working code)
-      // Use Next.js API routes in production, Express server in development
-      const isProduction = process.env.NODE_ENV === 'production'
-      const apiUrl = isProduction ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081')
-      const endpoint = isProduction ? '/api/auth/pre-signup' : '/v1/auth/pre-signup'
-      
-      const response = await fetch(`${apiUrl}${endpoint}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      const response = await fetch(`${apiUrl}/v1/auth/pre-signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -486,8 +481,6 @@ export default function HomePage() {
 
       if (response.ok) {
         setIsSubmitted(true)
-        // Unlock the resume score after successful beta signup
-        setIsScoreLocked(false)
         // Reset form after 3 seconds (same as old code)
         setTimeout(() => {
           setIsSubmitted(false)
@@ -523,6 +516,13 @@ export default function HomePage() {
         return
       }
       
+      // Validate file name contains "cv" or "resume"
+      const fileName = file.name.toLowerCase()
+      if (!fileName.includes('cv') && !fileName.includes('resume')) {
+        setErrorMessage('Cannot get the score. Try naming your file as "resume" or "cv" (e.g., "resume.pdf" or "my_cv.docx").')
+        return
+      }
+      
       setResumeFile(file)
       setErrorMessage(null)
     }
@@ -543,14 +543,10 @@ export default function HomePage() {
       formData.append('file', resumeFile)
       
       // Call the real resume scoring API
-      // Use Next.js API routes in production, Express server in development
-      const isProduction = process.env.NODE_ENV === 'production'
-      const apiUrl = isProduction ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081')
-      const endpoint = isProduction ? '/api/resume/score' : '/v1/parser/resume/score'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      console.log('Calling resume scoring API:', `${apiUrl}/v1/parser/resume/score`)
       
-      console.log('Calling resume scoring API:', `${apiUrl}${endpoint}`)
-
-      const response = await fetch(`${apiUrl}${endpoint}`, {
+      const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
         method: 'POST',
         body: formData,
       })
@@ -583,8 +579,6 @@ export default function HomePage() {
       console.log('Mapped scores:', scores)
       setResumeScore(scores)
       setShowScore(true)
-      // Score remains locked until beta signup
-      setIsScoreLocked(true)
       
     } catch (error) {
       console.error('Error analyzing resume:', error)
@@ -597,7 +591,6 @@ export default function HomePage() {
   const resetResumeAnalysis = () => {
     setResumeFile(null)
     setShowScore(false)
-    setIsScoreLocked(true)
     setResumeScore({ overall: 0, experience: 0, skills: 0, education: 0, projects: 0 })
     setErrorMessage(null)
   }
@@ -2126,9 +2119,7 @@ export default function HomePage() {
                       {resumeFile ? (
                         <div>
                           <p className="text-white font-semibold mb-2">✓ {resumeFile.name}</p>
-                          <p className="text-zinc-400 text-sm">
-                            {showScore ? "Resume analyzed! Join beta to unlock your score." : "Click to upload a different file"}
-                          </p>
+                          <p className="text-zinc-400 text-sm">Click to upload a different file</p>
                         </div>
                       ) : (
                         <div>
@@ -2176,94 +2167,33 @@ export default function HomePage() {
             ) : (
               /* Score Results */
               <div className="space-y-8">
-                {isScoreLocked ? (
-                  /* Locked Score State */
-                  <motion.div 
-                    className="text-center mb-16"
-                    initial={{ opacity: 0, y: 30 }}
+                {/* EliteScore Header */}
+                <motion.div 
+                  className="text-center mb-16"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                >
+                  <motion.h2 
+                    className="text-[clamp(48px,5vw,72px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6"
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
+                    transition={{ delay: 0.2, duration: 0.8 }}
                   >
-                    <motion.div 
-                      className="w-24 h-24 bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                    >
-                      <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </motion.div>
-                    
-                    <motion.h2 
-                      className="text-[clamp(32px,4vw,48px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4, duration: 0.8 }}
-                    >
-                      <span className="text-white">Your Resume Has Been </span>
-                      <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">Analyzed!</span>
-                    </motion.h2>
-                    
-                    <motion.p 
-                      className="text-[clamp(16px,2vw,18px)] text-zinc-300 max-w-2xl mx-auto mb-8"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6, duration: 0.8 }}
-                    >
-                      Your resume has been successfully analyzed and scored. Join our beta to unlock your detailed EliteScore and personalized recommendations!
-                    </motion.p>
-
-                    <motion.div
-                      className="bg-zinc-900/30 backdrop-blur-sm rounded-2xl p-8 border border-zinc-800/30 max-w-md mx-auto"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.8, duration: 0.8 }}
-                    >
-                      <div className="text-center mb-6">
-                        <div className="text-4xl font-bold text-zinc-500 mb-2">???</div>
-                        <div className="text-sm text-zinc-400">EliteScore</div>
-                      </div>
-                      
-                      <motion.button
-                        onClick={() => document.getElementById('beta-signup')?.scrollIntoView({ behavior: 'smooth' })}
-                        className="w-full bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-white px-6 py-3 rounded-xl font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-300"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        Unlock My Score - Join Beta
-                      </motion.button>
-                    </motion.div>
-                  </motion.div>
-                ) : (
-                  /* Unlocked Score State */
-                  <>
-                    <motion.div 
-                      className="text-center mb-16"
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.8 }}
-                    >
-                      <motion.h2 
-                        className="text-[clamp(48px,5vw,72px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2, duration: 0.8 }}
-                      >
-                        <span className="text-white">Your </span>
-                        <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
-                          EliteScore: {resumeScore.overall}
-                        </span>
-                      </motion.h2>
-                      <motion.p 
-                        className="text-[clamp(18px,2vw,20px)] text-zinc-300 max-w-2xl mx-auto"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4, duration: 0.8 }}
-                      >
-                        Here's your current progress and personalized insights
-                      </motion.p>
-                    </motion.div>
+                    <span className="text-white">Your </span>
+                    <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
+                      EliteScore: {resumeScore.overall}
+                    </span>
+                  </motion.h2>
+                  <motion.p 
+                    className="text-[clamp(18px,2vw,20px)] text-zinc-300 max-w-2xl mx-auto"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.8 }}
+                  >
+                    Here's your current progress and personalized insights
+                  </motion.p>
+                </motion.div>
 
                 {/* Score Breakdown - Compact Design */}
                 <div className="max-w-4xl mx-auto mb-12">
@@ -2314,9 +2244,6 @@ export default function HomePage() {
                 </div>
                 
                 
-                  </>
-                )}
-
               </div>
             )}
           </motion.div>
