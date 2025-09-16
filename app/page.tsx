@@ -121,51 +121,23 @@ const faqs = [
   }
 ]
 
-// Simplified gradient background - static for mobile performance
+// Simplified gradient background - static for better CSP compatibility
 function AnimatedGradientMesh({ shouldReduceMotion }: { shouldReduceMotion: boolean }) {
-  const { scrollY } = useScroll()
-  const y1 = useTransform(scrollY, [0, 1000], [0, -20])
-  const y2 = useTransform(scrollY, [0, 1000], [0, -15])
-
-  // Use static gradients on mobile for better performance
-  if (shouldReduceMotion) {
-    return (
-      <div className="fixed inset-0 -z-10">
-        <div
-          className="absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full opacity-30"
-          style={{
-            background: "radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%)",
-            filter: "blur(60px)"
-          }}
-        />
-        <div
-          className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full opacity-20"
-          style={{
-            background: "radial-gradient(circle, rgba(124, 58, 237, 0.04) 0%, transparent 70%)",
-            filter: "blur(80px)"
-          }}
-        />
-      </div>
-    )
-  }
-
-  // Desktop version with minimal scroll effects
+  // Always use static gradients to avoid CSP eval issues
   return (
     <div className="fixed inset-0 -z-10">
-      <motion.div
+      <div
         className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full opacity-30"
         style={{
           background: "radial-gradient(circle, rgba(59, 130, 246, 0.04) 0%, transparent 70%)",
-          filter: "blur(80px)",
-          y: y1
+          filter: "blur(80px)"
         }}
       />
-      <motion.div
+      <div
         className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full opacity-20"
         style={{
           background: "radial-gradient(circle, rgba(124, 58, 237, 0.03) 0%, transparent 70%)",
-          filter: "blur(100px)",
-          y: y2
+          filter: "blur(100px)"
         }}
       />
     </div>
@@ -216,7 +188,7 @@ function FloatingParticles({ shouldReduceMotion }: { shouldReduceMotion: boolean
 const createAnimation = (shouldReduceMotion: boolean, isMobile: boolean = false) => {
   // Mobile-optimized durations and easing
   const duration = isMobile ? 0.25 : 0.4
-  const ease = isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1]
+  const ease = "easeOut" // Use simple easing to avoid CSP eval issues
   const staggerDelay = isMobile ? 0.02 : 0.05
   
   return {
@@ -564,28 +536,16 @@ export default function HomePage() {
       const result = await response.json()
       console.log('Resume scoring API response:', result)
       
-      // Validate the API response structure
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format from scoring API')
-      }
-      
-      // Map the API response to our component's expected format with robust parsing
+      // Direct mapping - no validation
       const scores = {
-        overall: Math.max(0, Math.min(100, Math.round(Number(result.overall_score) || 0))),
-        experience: Math.max(0, Math.min(100, Math.round(Number(result.components?.experience) || 0))),
-        skills: Math.max(0, Math.min(100, Math.round(Number(result.components?.skills) || 0))), 
-        education: Math.max(0, Math.min(100, Math.round(Number(result.components?.education) || 0))),
-        projects: Math.max(0, Math.min(100, Math.round(Number(result.components?.ai_signal) || 0))) // ai_signal maps to projects in our UI
+        overall: Math.round(result.overall_score || 0),
+        experience: Math.round(result.components?.experience || 0),
+        skills: Math.round(result.components?.skills || 0), 
+        education: Math.round(result.components?.education || 0),
+        projects: Math.round(result.components?.ai_signal || 0)
       }
       
-      console.log('Mapped scores:', scores)
-      
-      // Validate that we have at least some valid scores
-      const hasValidScores = Object.values(scores).some(score => score > 0)
-      if (!hasValidScores) {
-        throw new Error('No valid scores received from the API')
-      }
-      
+      console.log('Mapped scores before setting state:', scores)
       setResumeScore(scores)
       setShowScore(true)
       
@@ -775,48 +735,31 @@ export default function HomePage() {
                   }
                 }}
               >
-                <motion.svg 
-                  className="h-6 w-6" 
+                <svg 
+                  className="h-6 w-6 transition-transform duration-300" 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
-                  animate={{ 
-                    rotate: isMobileMenuOpen ? 180 : 0,
-                    scale: isMobileMenuOpen ? 1.1 : 1
-                  }}
-                  transition={{ 
-                    duration: 0.3,
-                    ease: [0.2, 0.8, 0.2, 1]
+                  style={{ 
+                    transform: isMobileMenuOpen ? 'rotate(180deg) scale(1.1)' : 'rotate(0deg) scale(1)'
                   }}
                 >
                   {isMobileMenuOpen ? (
-                    <motion.g
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </motion.g>
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   ) : (
-                    <motion.g
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M4 6h16M4 12h16M4 18h16"
-                      />
-                    </motion.g>
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
                   )}
-                </motion.svg>
+                </svg>
               </motion.button>
             </div>
           </div>
@@ -2166,26 +2109,20 @@ export default function HomePage() {
                   )}
                   
                   {/* Analyze Button */}
-                  <motion.button
+                  <button
                     onClick={handleAnalyzeResume}
                     disabled={!resumeFile || isAnalyzing}
-                    className="w-full bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    whileHover={{ scale: resumeFile && !isAnalyzing ? 1.02 : 1 }}
-                    whileTap={{ scale: resumeFile && !isAnalyzing ? 0.98 : 1 }}
+                    className="w-full bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
                   >
                     {isAnalyzing ? (
                       <div className="flex items-center justify-center gap-3">
-                        <motion.div 
-                          className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        />
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>Analyzing your resume...</span>
                       </div>
                     ) : (
                       'Get My Score'
                     )}
-                  </motion.button>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -2268,14 +2205,12 @@ export default function HomePage() {
 
                 {/* Reset Button */}
                 <div className="text-center">
-                  <motion.button
+                  <button
                     onClick={resetResumeAnalysis}
-                    className="bg-zinc-800/50 hover:bg-zinc-700/50 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    className="bg-zinc-800/50 hover:bg-zinc-700/50 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 hover:scale-105 active:scale-95"
                   >
                     Analyze Another Resume
-                  </motion.button>
+                  </button>
                 </div>
               </div>
             )}
