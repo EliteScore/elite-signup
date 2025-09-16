@@ -432,6 +432,7 @@ export default function HomePage() {
     education: 0,
     projects: 0
   })
+  const [retryCount, setRetryCount] = useState(0)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -521,6 +522,102 @@ export default function HomePage() {
     }
   }
 
+  // Retry mechanism for API calls
+  const makeApiCall = async (formData: FormData, attempt: number = 1): Promise<any> => {
+    const maxRetries = 3
+    const getApiUrl = () => {
+      // Production/Heroku environment
+      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        return process.env.NEXT_PUBLIC_API_URL || 'https://your-heroku-app.herokuapp.com'
+      }
+      // Local development
+      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+    }
+    
+    const apiUrl = getApiUrl()
+    console.log(`Calling resume scoring API (attempt ${attempt}):`, `${apiUrl}/v1/parser/resume/score`)
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    
+    try {
+      const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Don't set Content-Type for FormData - let browser set it with boundary
+        },
+        signal: controller.signal,
+      })
+      
+      clearTimeout(timeoutId)
+      console.log(`Resume scoring response status (attempt ${attempt}):`, response.status)
+      
+      if (!response.ok) {
+        // Enhanced error handling with more specific messages
+        let errorMessage = `Server error: ${response.status}`
+        
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.detail || errorMessage
+        } catch (parseError) {
+          // If JSON parsing fails, try to get text response
+          try {
+            const errorText = await response.text()
+            if (errorText) {
+              errorMessage = errorText.length > 100 ? `${errorText.substring(0, 100)}...` : errorText
+            }
+          } catch (textError) {
+            console.warn('Could not parse error response:', textError)
+          }
+        }
+        
+        // Provide user-friendly error messages for common issues
+        if (response.status === 413) {
+          errorMessage = 'File too large. Please upload a resume smaller than 10MB.'
+        } else if (response.status === 415) {
+          errorMessage = 'Unsupported file type. Please upload a PDF, DOC, or DOCX file.'
+        } else if (response.status === 429) {
+          errorMessage = 'Too many requests. Please wait a moment and try again.'
+        } else if (response.status >= 500 && attempt < maxRetries) {
+          // Retry on server errors
+          console.log(`Server error ${response.status}, retrying in ${attempt * 2} seconds...`)
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000))
+          return makeApiCall(formData, attempt + 1)
+        } else if (response.status >= 500) {
+          errorMessage = 'Server is temporarily unavailable. Please try again in a few minutes.'
+        }
+        
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      console.log('Resume scoring API response:', result)
+      
+      // Validate the response structure
+      if (!result || typeof result.overall_score !== 'number') {
+        throw new Error('Invalid response format from server.')
+      }
+      
+      return result
+      
+    } catch (error) {
+      clearTimeout(timeoutId)
+      
+      // Retry on network errors
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorName = error instanceof Error ? error.name : 'Unknown'
+      
+      if ((errorName === 'AbortError' || errorMessage.includes('Failed to fetch')) && attempt < maxRetries) {
+        console.log(`Network error, retrying in ${attempt * 2} seconds...`)
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000))
+        return makeApiCall(formData, attempt + 1)
+      }
+      
+      throw error
+    }
+  }
+
   const handleAnalyzeResume = async () => {
     if (!resumeFile) {
       setErrorMessage('Please upload a resume file first.')
@@ -529,44 +626,22 @@ export default function HomePage() {
 
     setIsAnalyzing(true)
     setErrorMessage(null)
+    setRetryCount(0)
 
     try {
       // Create FormData for multipart/form-data upload
       const formData = new FormData()
       formData.append('file', resumeFile)
       
-      // Call the real resume scoring API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
-      console.log('Calling resume scoring API:', `${apiUrl}/v1/parser/resume/score`)
-      
-      const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
-        method: 'POST',
-        body: formData,
-      })
-      
-      console.log('Resume scoring response status:', response.status)
-
-      if (!response.ok) {
-        // Try to get the specific error message from the response
-        try {
-          const errorData = await response.json()
-          throw new Error(errorData.error || `Server error: ${response.status}`)
-        } catch (parseError) {
-          throw new Error(`Server error: ${response.status}`)
-        }
-      }
-
-      const result = await response.json()
-      console.log('Resume scoring API response:', result)
+      const result = await makeApiCall(formData)
       
       // Map the API response to our component's expected format
-      // The backend returns overall_score and component breakdowns
       const scores = {
-        overall: Math.round(result.overall_score || 0),
-        experience: Math.round(result.components?.experience || 0),
-        skills: Math.round(result.components?.skills || 0), 
-        education: Math.round(result.components?.education || 0),
-        projects: Math.round(result.components?.ai_signal || 0) // ai_signal maps to projects in our UI
+        overall: Math.round(Math.max(0, Math.min(100, result.overall_score || 0))),
+        experience: Math.round(Math.max(0, Math.min(100, result.components?.experience || 0))),
+        skills: Math.round(Math.max(0, Math.min(100, result.components?.skills || 0))), 
+        education: Math.round(Math.max(0, Math.min(100, result.components?.education || 0))),
+        projects: Math.round(Math.max(0, Math.min(100, result.components?.ai_signal || 0)))
       }
       
       console.log('Mapped scores:', scores)
@@ -575,7 +650,20 @@ export default function HomePage() {
       
     } catch (error) {
       console.error('Error analyzing resume:', error)
-      setErrorMessage('Failed to analyze resume. Please check your connection and try again.')
+      
+      // Provide specific error messages based on error type
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorName = error instanceof Error ? error.name : 'Unknown'
+      
+      if (errorName === 'AbortError' || errorName === 'TimeoutError') {
+        setErrorMessage('Request timed out. Please check your connection and try again.')
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        setErrorMessage('Network error. Please check your internet connection and try again.')
+      } else if (errorMessage.includes('CORS')) {
+        setErrorMessage('Server configuration issue. Please contact support if this persists.')
+      } else {
+        setErrorMessage(errorMessage || 'Failed to analyze resume. Please try again.')
+      }
     } finally {
       setIsAnalyzing(false)
     }
@@ -586,6 +674,7 @@ export default function HomePage() {
     setShowScore(false)
     setResumeScore({ overall: 0, experience: 0, skills: 0, education: 0, projects: 0 })
     setErrorMessage(null)
+    setRetryCount(0)
   }
 
   return (
@@ -2130,7 +2219,30 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 text-sm"
                     >
-                      {errorMessage}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium mb-1">Upload Error</div>
+                          <div>{errorMessage}</div>
+                        </div>
+                        <button
+                          onClick={() => setErrorMessage(null)}
+                          className="ml-2 text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      {resumeFile && (
+                        <motion.button
+                          onClick={handleAnalyzeResume}
+                          className="mt-3 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 hover:text-red-300 text-sm transition-all duration-200"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          Try Again
+                        </motion.button>
+                      )}
                     </motion.div>
                   )}
                   
@@ -2249,10 +2361,30 @@ export default function HomePage() {
                     ].map((challenge, index) => (
                       <div key={index} className="bg-zinc-700/50 rounded-lg p-3 text-sm text-zinc-300">
                         {challenge}
-                </div>
+                      </div>
                     ))}
-              </div>
-            </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+                  <motion.button
+                    onClick={resetResumeAnalysis}
+                    className="px-6 py-3 bg-zinc-800/50 hover:bg-zinc-700/50 border border-zinc-700/50 hover:border-zinc-600/50 rounded-xl text-white font-medium transition-all duration-200"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Upload New Resume
+                  </motion.button>
+                  <motion.button
+                    onClick={() => document.getElementById('beta-signup')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="px-6 py-3 bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-white hover:from-[#2563EB] hover:to-[#6D28D9] rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Join Beta to Improve Score
+                  </motion.button>
+                </div>
               </div>
             )}
           </motion.div>
