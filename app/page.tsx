@@ -533,21 +533,43 @@ export default function HomePage() {
         }
       }
 
-      const result = await response.json()
+      let result = await response.json()
       console.log('Resume scoring API response:', result)
+      console.log('Type of result:', typeof result)
       
-      // Direct mapping - no validation
-      const scores = {
-        overall: Math.round(result.overall_score || 0),
-        experience: Math.round(result.components?.experience || 0),
-        skills: Math.round(result.components?.skills || 0), 
-        education: Math.round(result.components?.education || 0),
-        projects: Math.round(result.components?.ai_signal || 0)
+      // If result is a string, parse it again
+      if (typeof result === 'string') {
+        console.log('Result is string, parsing again...')
+        result = JSON.parse(result)
+        console.log('After parsing:', result)
+        console.log('Type after parsing:', typeof result)
       }
       
-      console.log('Mapped scores before setting state:', scores)
-      setResumeScore(scores)
-      setShowScore(true)
+      console.log('Result keys:', Object.keys(result))
+      
+      // Direct mapping with explicit property access
+      const overallScore = result['overall_score'] || result.overall_score || 0
+      const components = result['components'] || result.components || {}
+      
+      console.log('Extracted overall score:', overallScore)
+      console.log('Extracted components:', components)
+      
+      const scores = {
+        overall: Math.round(overallScore),
+        experience: Math.round(components.experience || 0),
+        skills: Math.round(components.skills || 0), 
+        education: Math.round(components.education || 0),
+        projects: Math.round(components.ai_signal || 0)
+      }
+      
+      console.log('Computed scores before setState:', scores)
+      
+      // Use setTimeout to ensure state update happens after current execution
+      setTimeout(() => {
+        setResumeScore(scores)
+        setShowScore(true)
+        console.log('State updated with scores:', scores)
+      }, 100)
       
     } catch (error) {
       console.error('Error analyzing resume:', error)
