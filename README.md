@@ -1,167 +1,138 @@
-# EliteScore 🚀
+# Resume Parsing and Scoring API
 
-A personalized career development platform with AI-powered insights and gamified challenges to help you reach your goals.
+This project provides a FastAPI-based HTTP service that accepts resume files, extracts structured information using [pyresparser](https://github.com/OmkarPathak/pyresparser), and produces a score using a custom `cv_rater` module.  
 
-## ✨ Features
-
-### 🎯 Smart Onboarding
-- **Goal Selection**: Choose from pre-defined career categories
-- **Activity Preferences**: Select activities you enjoy for personalized challenges
-- **Resume Analysis**: AI-powered scoring and insights
-- **Demo Mode**: Try the platform without uploading personal documents
-
-### 🏆 Gamified Experience
-- **Personalized Challenges**: Dynamic challenges based on your goals and interests
-- **Verification System**: Multiple ways to verify challenge completion
-- **XP & Levels**: Track progress with experience points and levels
-- **Streaks**: Maintain momentum with daily challenge streaks
-
-### 📊 Analytics Dashboard
-- **Personal Analytics**: What works best for you
-- **Performance Insights**: Track improvement patterns
-- **Recommendations**: AI-powered suggestions for growth
-- **Progress Tracking**: Visual progress indicators
-
-### 🏅 Multi-Leaderboard System
-- **Join Multiple Boards**: Participate in various communities
-- **Create Leaderboards**: Start your own competitive groups
-- **Dynamic Switching**: Easy switching between different leaderboards
-- **Community Features**: Connect with like-minded individuals
-
-## 🛠️ Tech Stack
-
-- **Framework**: Next.js 15 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS + CSS Variables
-- **UI Components**: Radix UI + Custom Enhanced Components
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **Forms**: React Hook Form + Zod validation
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd elite-signup
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. **Run the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-4. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint issues
-- `npm run type-check` - Run TypeScript type checking
-- `npm run preview` - Build and preview production build
-
-## 📱 Features Overview
-
-### New User Journey
-1. **Welcome & Goal Selection**: Choose your primary focus area
-2. **Activity Preferences**: Select interests for personalized experience
-3. **Resume Upload**: AI analysis with demo option available
-4. **Score & Insights**: Personalized feedback and recommendations
-5. **Dashboard Access**: Full platform features unlocked
-
-### Dashboard Features
-- **Daily Challenges**: Personalized based on goals and activities
-- **Progress Analytics**: Deep insights into performance patterns
-- **Leaderboards**: Multiple community boards with ranking systems
-- **Verification System**: Proof of challenge completion
-
-## 🎨 Design System
-
-The app uses a comprehensive design system with:
-- **Dark Theme**: Optimized for long sessions
-- **Gradient Accents**: Beautiful blue to purple gradients
-- **Enhanced Components**: Custom shadcn/ui extensions
-- **Responsive Design**: Mobile-first approach
-- **Accessibility**: WCAG compliant with keyboard navigation
-
-## 🏗️ Project Structure
-
-```
-elite-signup/
-├── app/                    # Next.js App Router pages
-│   ├── goals/             # Goals & onboarding page
-│   ├── home/              # Main dashboard
-│   ├── landing/           # Landing page
-│   └── ...
-├── components/            # Reusable components
-│   ├── ui/               # Base UI components
-│   └── ...
-├── lib/                  # Utilities and configurations
-├── hooks/                # Custom React hooks
-├── styles/               # Global styles
-└── public/               # Static assets
-```
-
-## 🔧 Configuration
-
-The project includes optimized configurations for:
-- **Next.js**: Performance optimizations and image handling
-- **TypeScript**: Strict type checking with modern target
-- **Tailwind**: Custom design system with animations
-- **ESLint**: Code quality and consistency
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-1. Push to GitHub
-2. Connect repository to Vercel
-3. Deploy automatically
-
-### Manual Deployment
-```bash
-npm run build
-npm run start
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is private and proprietary.
-
-## 🙏 Acknowledgments
-
-- Built with [Next.js](https://nextjs.org/)
-- UI components from [Radix UI](https://www.radix-ui.com/)
-- Icons from [Lucide](https://lucide.dev/)
-- Animations with [Framer Motion](https://www.framer.com/motion/)
+It is designed to run locally for development and on Heroku for deployment.  
+The setup ensures all required NLP resources from NLTK and spaCy are available at runtime.
 
 ---
 
-Made with ❤️ for career growth and development
+## Features
+
+- Health check endpoint (`/health`) verifies that required NLTK corpora and the spaCy model are installed.
+- Resume parsing endpoint (`/api/resume/score`) accepts a PDF or DOCX file upload, parses it, and returns a JSON response with extracted fields and a score.
+- Heroku deployment configuration via `Procfile` and release phase script that pre-downloads NLTK and spaCy assets.
+- `.env` file for configuration, loaded via `python-dotenv`. No system environment variables required.
+
+---
+
+## Project Structure
+
+```
+file-parse-api/
+├─ app.py                # FastAPI app entrypoint
+├─ cv_rater.py           # Custom scoring logic
+├─ .env                  # Configuration (safe to commit if no secrets)
+├─ requirements.txt      # Python dependencies
+├─ Procfile              # Heroku process types
+├─ runtime.txt           # Python version for Heroku
+├─ scripts/
+│  └─ fetch_assets.py    # Downloads NLTK corpora and spaCy model at build time
+├─ .gitignore            # Ignore venv, caches, local data
+└─ nltk_data/            # Local-only cache of NLTK corpora (ignored by git)
+```
+
+---
+
+## Endpoints
+
+### GET `/health`
+Returns service status and availability of NLTK and spaCy resources.  
+
+Example:
+```json
+{
+  "status": "ok",
+  "nltk_data_dir": "./nltk_data",
+  "nltk": {
+    "wordnet": { "available": true, "path": "corpora/wordnet" },
+    "punkt": { "available": true, "path": "tokenizers/punkt" }
+  },
+  "spacy": { "available": true, "model": "en_core_web_sm" },
+  "missing": { "nltk": [], "spacy_model_missing": false }
+}
+```
+
+### POST `/api/resume/score`
+Parses and scores an uploaded resume file.
+
+Example (curl):
+```bash
+curl -X POST http://127.0.0.1:9000/api/resume/score   -F "file=@/path/to/resume.pdf"
+```
+
+Response:
+```json
+{
+  "score": 12,
+  "parsed": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "skills": ["Python", "FastAPI", "NLP"]
+  }
+}
+```
+
+---
+
+## Local Development
+
+1. Clone the repository.
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Linux/Mac
+   .\.venv\Scriptsctivate   # Windows
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Ensure NLTK data is available locally:
+   ```bash
+   python -m nltk.downloader -d ./nltk_data punkt stopwords wordnet averaged_perceptron_tagger maxent_ne_chunker words
+   python -m spacy download en_core_web_sm
+   ```
+5. Start the server:
+   ```bash
+   uvicorn app:app --host 127.0.0.1 --port 9000 --reload
+   ```
+
+---
+
+## Deployment on Heroku
+
+1. Ensure the repo is pushed to GitHub.
+2. Connect the GitHub repo to a Heroku app in the Heroku dashboard.
+3. On deployment, Heroku will:
+   - Install dependencies from `requirements.txt`.
+   - Run `scripts/fetch_assets.py` in the release phase to fetch NLTK corpora and spaCy model into the slug.
+   - Start the API with `uvicorn`.
+
+The `.env` file is committed so the app runs with the same config locally and on Heroku.
+
+---
+
+## Configuration
+
+The following settings are loaded from `.env`:
+
+- `NLTK_DATA`: Path to NLTK data directory. Use `./nltk_data` locally, `/app/nltk_data` on Heroku.
+- `SPACY_MODEL`: SpaCy model name (default: `en_core_web_sm`).
+- `AUTO_DOWNLOAD_NLTK`: If set to `true`, missing NLTK corpora will be downloaded at startup (useful locally).
+- `AUTO_DOWNLOAD_SPACY`: If set to `true`, spaCy model will be downloaded at startup (useful locally).
+
+---
+
+## Cleanup
+
+To reset the environment locally:
+```bash
+deactivate
+rm -rf .venv nltk_data
+```
+
+To remove the app from Heroku:
+```bash
+heroku apps:destroy --app <your-app-name> --confirm <your-app-name>
+```

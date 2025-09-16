@@ -1,0 +1,203 @@
+data engineering
+data analytics
+data science
+etl
+elt
+orchestration
+workflow
+scheduler
+apache airflow
+luigi
+prefect
+dbt
+dagster
+apache nifi
+talend
+informatica
+matillion
+fivetran
+stitch
+meltano
+azure data factory
+glue
+dataprep
+dataflow
+databricks
+pyspark
+spark sql
+spark streaming
+delta lake
+apache iceberg
+apache hudi
+lakefs
+hdfs
+object storage
+data lake
+data warehouse
+lakehouse
+star schema
+snowflake schema
+kimball
+data modeling
+dimensional modeling
+3nf
+olap
+oltp
+columnar
+row store
+index
+bitmap index
+bloom filter
+partition
+clustering
+bucketing
+z-order
+compaction
+vacuum
+materialized view
+query federation
+query acceleration
+caching
+memcached
+redis
+presto
+trino
+hive
+impala
+druid
+pinot
+clickhouse
+bigquery
+redshift
+synapse
+snowflake
+athena
+azure synapse serverless
+polars
+pandas
+numpy
+duckdb
+sqlite
+postgres
+mysql
+sql server
+oracle
+db2
+teradata
+netsuite analytics
+vertica
+greenplum
+snowpipe
+kafka
+ksql
+schema registry
+pulsar
+rabbitmq
+sqs
+pub/sub
+kinesis data streams
+kinesis firehose
+cdc
+change data capture
+debezium
+golden gate
+data quality
+great expectations
+soda core
+deequ
+expectations
+data validation
+anomaly detection
+data lineage
+openlineage
+amundsen
+datahub
+atlas
+collibra
+alation
+mdm
+master data
+reference data
+data governance
+data catalog
+data stewardship
+pii
+phi
+masking
+tokenization
+encryption at rest
+encryption in transit
+key management
+kms
+access control
+row level security
+column level security
+dynamic masking
+privacy
+retention
+archival
+backup
+restore
+snapshot
+time travel
+idempotency
+exactly-once
+at-least-once
+batch
+streaming
+micro-batch
+windowing
+watermarks
+late data
+out-of-order
+event time
+processing time
+udf
+udaf
+udtf
+cost-based optimizer
+statistics
+histograms
+explain plan
+vacuum
+zstd
+snappy
+gzip
+bzip2
+parquet
+orc
+avro
+csv
+json
+ndjson
+iceberg catalog
+hive metastore
+glue catalog
+dataplex
+dataproc
+composer
+looker
+looker studio
+tableau
+power bi
+superset
+metabase
+mode
+redash
+hex
+sigma
+thoughtspot
+kyligence
+semantic layer
+metrics layer
+transform
+reverse etl
+hightouch
+census
+rudderstack
+segment
+feature store
+feast
+kserve
+mlflow tracking
+experiment tracking

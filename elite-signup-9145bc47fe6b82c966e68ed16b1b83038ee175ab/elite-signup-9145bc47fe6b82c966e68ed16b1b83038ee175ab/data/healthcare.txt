@@ -1,0 +1,702 @@
+physician
+surgeon
+hospitalist
+intensivist
+anesthesiologist
+cardiologist
+interventional cardiologist
+electrophysiologist
+pulmonologist
+gastroenterologist
+hepatologist
+endocrinologist
+nephrologist
+rheumatologist
+infectious disease specialist
+hematologist
+medical oncologist
+radiation oncologist
+neurologist
+neurosurgeon
+orthopedic surgeon
+spine surgeon
+plastic surgeon
+vascular surgeon
+general surgeon
+colorectal surgeon
+urologist
+otolaryngologist
+ophthalmologist
+dermatologist
+allergist immunologist
+family physician
+pediatrician
+adolescent medicine
+geriatrician
+ob gyn
+maternal fetal medicine
+neonatologist
+palliative care physician
+emergency physician
+psychiatrist
+child psychiatrist
+clinical psychologist
+neuropsychologist
+registered nurse
+licensed practical nurse
+nurse practitioner
+clinical nurse specialist
+certified registered nurse anesthetist
+certified nurse midwife
+nurse manager
+charge nurse
+triage nurse
+wound care nurse
+icu nurse
+er nurse
+perioperative nurse
+or nurse
+pacu nurse
+cath lab nurse
+dialysis nurse
+home health nurse
+hospice nurse
+school nurse
+public health nurse
+nurse educator
+nurse informaticist
+physician assistant
+respiratory therapist
+physical therapist
+occupational therapist
+speech language pathologist
+audiologist
+radiologic technologist
+mri technologist
+ct technologist
+ultrasound technologist
+sonographer
+nuclear medicine technologist
+radiation therapist
+dosimetrist
+dietitian
+clinical pharmacist
+pharmacy technician
+phlebotomist
+medical assistant
+certified nursing assistant
+health unit coordinator
+medical coder
+medical biller
+case manager
+social worker
+care coordinator
+utilization review nurse
+infection preventionist
+quality improvement specialist
+clinical documentation specialist
+medical scribe
+inpatient
+outpatient
+ambulatory care
+urgent care
+emergency department
+operating room
+intensive care unit
+neonatal intensive care unit
+cardiac icu
+medical surgical unit
+stepdown unit
+cath lab
+endoscopy suite
+infusion center
+wound clinic
+dialysis center
+skilled nursing facility
+long term care
+home health
+hospice
+rehabilitation hospital
+behavioral health unit
+partial hospitalization program
+telehealth
+virtual visit
+triage
+admission
+discharge
+transfer
+bed management
+patient throughput
+rounding
+handoff
+sbar
+soap note
+hpi
+ros
+physical exam
+assessment plan
+progress note
+admission note
+discharge summary
+operative note
+procedure note
+consult note
+perioperative checklist
+timeout procedure
+consent form
+advance directive
+dnr order
+goals of care
+care plan
+care pathway
+order set
+cpoe
+clinical decision support
+sepsis alert
+stroke alert
+stemi protocol
+trauma activation
+fall risk assessment
+braden scale
+morse fall scale
+pain score
+early warning score
+news2
+isbar
+allergy list
+problem list
+medication list
+medication reconciliation
+allergy reconciliation
+immunization record
+medication administration record
+emar
+barcode medication administration
+smartphrases
+smartlinks
+flowsheet
+vitals trending
+care gaps
+referral management
+transition of care
+case management
+utilization management
+prior authorization
+denial management
+appeal letter
+risk adjustment
+hierarchical condition category
+hcc coding
+icd 10 cm
+icd 10 pcs
+cpt
+hcpcs
+modifier 25
+modifier 59
+modifier 24
+place of service
+revenue code
+ms drg
+apr drg
+rvu
+global period
+npi
+taxonomy code
+payer
+medicare
+medicaid
+commercial insurance
+self pay
+charity care
+deductible
+coinsurance
+copay
+out of pocket maximum
+explanation of benefits
+charge capture
+clean claim
+remittance advice
+era posting
+patient statement
+price transparency
+good faith estimate
+surprise billing protections
+e prescribing
+rx refill
+drug formulary
+step therapy
+quantity limit
+ndc code
+rxnorm
+snomed ct
+loinc
+ucum
+nih stroke scale
+glasgow coma scale
+apgar score
+child pugh score
+meld score
+cha2ds2 vasc
+timing of antibiotics
+antimicrobial stewardship
+vte prophylaxis
+central line bundle
+clabsi prevention
+cauti prevention
+ventilator bundle
+isolation precautions
+contact precautions
+droplet precautions
+airborne precautions
+standard precautions
+hand hygiene
+fit testing
+n95 respirator
+pressure injury staging
+wound vac
+negative pressure wound therapy
+enteral nutrition
+parenteral nutrition
+tube feeding
+tpn
+insulin sliding scale
+basal bolus insulin
+opioid stewardship
+pain contract
+pdmp check
+naloxone kit
+dicom
+pacs
+ris
+lis
+his
+adt interface
+hl7 v2
+hl7 v3
+cda
+ccda
+fhir r4
+smart on fhir
+oidc
+oauth 2.0
+interface engine
+mirth connect
+rhapsody integration engine
+intersystems ensemble
+vxu message
+oru message
+orm message
+siu message
+ccd export
+patient portal
+single sign on
+sso
+audit log
+data lineage
+epic
+epic hyperspace
+epic beacon
+epic willow
+epic cupid
+epic cadence
+epic clarity
+epic resolute
+epic grand central
+epic tapestry
+epic healthy planet
+epic bridges
+epic chronicles
+epic mychart
+cerner
+cerner millennium
+cerner powerchart
+cerner pathnet
+cerner radnet
+cerner surginet
+cerner pharmnet
+meditech
+allscripts sunrise
+athenahealth
+nextgen ehr
+greenway prime suite
+eclinicalworks
+practice fusion
+ge healthcare centricity
+philips intellispace
+siemens syngo
+agfa enterprise imaging
+merge pacs
+intelerad
+visage imaging
+dicom worklist
+image fusion
+structured reporting
+voice recognition dictation
+dragon medical
+computer aided detection
+bi rads
+lung rads
+pirads
+tirads
+mammography tomosynthesis
+contrast allergy
+gadolinium safety
+contrast induced nephropathy
+radiation dose monitoring
+ct
+mri
+ultrasound
+x ray
+fluoroscopy
+pet
+spect
+interventional radiology
+catheterization laboratory
+angiography
+stent placement
+thrombectomy
+endoscopy
+colonoscopy
+egd
+bronchoscopy
+thoracentesis
+paracentesis
+central line insertion
+arterial line insertion
+intubation
+extubation
+tracheostomy care
+ventilator management
+ventilator weaning
+high flow nasal cannula
+noninvasive ventilation
+bipap
+cpap
+nebulizer treatment
+spirometry
+abg sampling
+pulse oximetry
+capnography
+ecg
+telemetry monitoring
+holter monitor
+event monitor
+defibrillator
+aed
+pacemaker interrogation
+implantable cardioverter defibrillator
+lvad care
+echocardiography
+treadmill stress test
+nuclear stress test
+tilt table test
+wound debridement
+splinting
+casting
+suturing
+sterile technique
+surgical count
+instrument sterilization
+autoclave cycle
+steam sterilizer
+low temperature sterilization
+biological indicator
+flash sterilization
+tray assembly
+peel pack
+loaner set
+periop turnover
+anticoagulation bridge
+heparin protocol
+warfarin dosing
+inr monitoring
+direct oral anticoagulant
+reversal agent
+blood bank
+type and screen
+crossmatch
+massive transfusion protocol
+pheresis
+platelet transfusion
+frozen plasma
+cryoprecipitate
+hematology analyzer
+point of care testing
+glucose meter
+urinalysis
+rapid strep test
+rapid influenza test
+covid antigen test
+viral pcr panel
+culture and sensitivity
+antibiogram
+lab compendium
+specimen labeling
+chain of custody form
+courier pickup
+turnaround time
+critical value call
+electronic signoff
+deficiency tracking
+peer review
+morbidity and mortality
+root cause analysis team
+sentinel event review
+near miss analysis
+just culture
+high reliability organization
+daily huddle
+visual management board
+bedside report
+whiteboard update
+hourly rounding
+patient education
+teach back
+health literacy
+language services
+interpreter line
+informed consent process
+shared decision making
+advance care planning
+palliative care consult
+hospice referral
+caregiver support
+community health worker
+social determinants of health
+food insecurity screening
+transportation assistance
+home safety assessment
+remote patient monitoring
+care management platform
+closed loop referral
+care coordination platform
+population health registry
+value based care
+bundled payment
+capitated payment
+readmission reduction
+length of stay management
+throughput dashboard
+capacity command center
+predictive bed demand
+hospital at home
+acute care at home
+observation status
+inpatient only list
+status upgrade
+condition code 44
+two midnight rule
+prior auth workflow
+revenue integrity
+charge description master
+cdm maintenance
+price estimator
+patient financial counseling
+charity policy
+payment plan
+point of service collection
+eligibility verification
+coverage discovery
+coordination of benefits
+subrogation
+workers compensation claim
+occupational health
+fit for duty exam
+pre employment physical
+immunization compliance
+tb screening
+n95 fit test clinic
+needle stick protocol
+exposure control plan
+post exposure prophylaxis
+sharps container
+waste segregation
+red bag waste
+pharmaceutical waste
+chemo spill kit
+hazardous drug handling
+usp 800 compliance
+buffer room
+negative pressure room
+ante room
+clean room certification
+hood certification
+beyond use dating
+sterile compounding log
+medication kit exchange
+code cart check
+crash cart
+rapid response team
+code blue
+megacode drill
+simulation lab
+mock survey
+readiness rounding
+environment of care
+life safety code
+medical gas testing
+oxygen tank handling
+suction canister disposal
+bed alarm
+sitter program
+elopement risk
+restraints protocol
+violence prevention
+de escalation
+safe patient handling
+lift team
+bariatric equipment
+pressure redistribution mattress
+fall mats
+hourly turning schedule
+seclusion room
+behavioral health sitter
+suicide risk screening
+columbia suicide severity rating scale
+sbirt screening
+trauma informed care
+hipaa
+hipaa privacy rule
+hipaa security rule
+hipaa breach notification
+minimum necessary standard
+phi
+ephi
+business associate agreement
+baa
+notice of privacy practices
+promoting interoperability
+macra
+mips
+advanced payment model
+fda 510k
+pma application
+de novo classification
+unique device identification
+udi
+quality system regulation 820
+design controls
+supplier controls
+complaint handling process
+post market surveillance plan
+medical device reporting
+mdr submission
+medwatch report
+human factors engineering
+iec 62366
+iec 60601
+iso 13485
+iso 14971
+iec 62304
+usability validation
+cybersecurity for medical devices
+sbom for devices
+fda pre sub meeting
+emerging signals program
+21 cfr 210
+21 cfr 211
+21 cfr 820
+state immunization registry
+acip schedule
+vaccine inventory management
+vaccines for children program
+vfc program
+vaccination reminder recall
+school health record
+birth certificate worksheet
+death certificate worksheet
+medical examiner case
+coroner report
+icd 10 cause of death
+case reportable disease
+public health reporting
+syndromic surveillance
+cancer registry
+trauma registry
+stroke registry
+sepsis core measure
+ami core measure
+pneumonia core measure
+surgical care improvement
+screening colonoscopy interval
+diabetes eye exam gap
+hedis measure
+hcahps
+patient experience survey
+press ganey
+grievance tracking
+service recovery
+a3 for safety
+countermeasure tracking
+sustaining audit
+policy attestation
+annual competencies
+skills day
+preceptor program
+charge capture audit
+overread program
+double read protocol
+peer mentoring
+credentialing
+privileging
+medical staff bylaws
+fppe
+oppe
+credentialing verification
+primary source verification
+delegated credentialing
+network adequacy
+narrow network
+tiered network
+care navigation
+digital front door
+online check in
+self scheduling
+insurance card capture
+photo id capture
+waiting room status
+estimated wait time
+queue management
+kiosk check in
+id band printing
+bedside barcode scan
+positive patient id
+specimen tube relabel
+two person verify
+read back protocol
+closed loop communication
+rapid rounds
+care progression
+expected discharge date
+discharge readiness score
+post discharge call
+30 day follow up
+medication reconciliation at discharge
+teach back at discharge
+after visit summary
+avs
+readmission risk score
+lives saved estimate
+harm index
+serious safety event rate
+culture of safety survey
+safety huddle board
+just culture training
+device recall management
+field safety notice
+udi capture in ehr
+inventory par levels in or
+consignment implant tracking
+implant log
+lot number tracking
+expiration date monitoring
+environmental cleaning checklist
+uv disinfection
+terminal clean
+hand hygiene audit
+flu vaccine campaign
+covid booster clinic
+community vaccination event
+mobile clinic
+school based clinic
+health fair

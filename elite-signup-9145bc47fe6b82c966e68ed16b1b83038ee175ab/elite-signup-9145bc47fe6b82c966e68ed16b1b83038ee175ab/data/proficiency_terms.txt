@@ -1,0 +1,49 @@
+expert:3
+highly expert:3
+subject matter expert:3
+sme:3
+advanced:3
+highly advanced:3
+proficient:3
+highly proficient:3
+strong:3
+deep:3
+seasoned:3
+solid:3
+hands-on:3
+hands on:3
+production-level:3
+production grade:3
+industry-grade:3
+mastery:3
+master-level:3
+guru:3
+ninja:3
+wizard:3
+ace:3
+rockstar:3
+power user:3
+experienced:3
+in-depth:3
+comprehensive:3
+thorough:3
+intermediate:2
+working knowledge:2
+competent:2
+good understanding:2
+practical knowledge:2
+applied knowledge:2
+some experience:2
+moderate experience:2
+familiar:1
+basic:1
+introductory:1
+exposed to:1
+novice:1
+beginner:1
+elementary:1
+foundational:1
+limited experience:1
+learning:1
+developing:1
+ramping up:1

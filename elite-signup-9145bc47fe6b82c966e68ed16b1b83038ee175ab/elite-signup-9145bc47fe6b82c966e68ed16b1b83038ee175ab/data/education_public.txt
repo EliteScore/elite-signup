@@ -1,0 +1,840 @@
+teacher
+classroom teacher
+homeroom teacher
+primary teacher
+elementary teacher
+middle school teacher
+high school teacher
+subject teacher
+math teacher
+science teacher
+english language arts teacher
+social studies teacher
+history teacher
+geography teacher
+computer science teacher
+business teacher
+cte teacher
+career and technical education
+stem teacher
+steam teacher
+special education teacher
+sped teacher
+resource teacher
+inclusion teacher
+gifted and talented teacher
+esl teacher
+ell teacher
+bilingual teacher
+world language teacher
+art teacher
+music teacher
+band director
+choir director
+theater teacher
+physical education teacher
+pe teacher
+health education teacher
+driver education teacher
+library media specialist
+school librarian
+instructional coach
+literacy coach
+math coach
+reading specialist
+interventionist
+behavior interventionist
+paraeducator
+paraprofessional
+teacher aide
+teacher assistant
+substitute teacher
+long term substitute
+student teacher
+resident teacher
+mentor teacher
+master teacher
+lead teacher
+department chair
+grade level chair
+principal
+assistant principal
+dean of students
+dean of instruction
+head of school
+school director
+superintendent
+assistant superintendent
+chief academic officer
+chief schools officer
+district administrator
+curriculum director
+assessment director
+special education director
+english learner coordinator
+title i coordinator
+mtss coordinator
+pbis coordinator
+rtI coordinator
+college and career counselor
+school counselor
+guidance counselor
+school social worker
+school psychologist
+behavior analyst
+bcba
+school nurse
+attendance clerk
+registrar
+bursar
+front office clerk
+family engagement coordinator
+community schools coordinator
+parent liaison
+truancy officer
+school resource officer
+sro
+bus driver
+transportation coordinator
+food service manager
+child nutrition manager
+custodian
+facilities manager
+maintenance technician
+safety coordinator
+school board member
+board of education
+site council
+school site council
+pta
+pto
+parent advisory council
+student council
+student government
+homeroom
+advisory period
+block schedule
+bell schedule
+credit recovery
+seat time
+carnegie unit
+cohort graduation rate
+student mobility
+transcript
+report card
+progress report
+standards based grading
+mastery based learning
+competency based education
+credit by demonstration
+rubric
+analytic rubric
+holistic rubric
+grading policy
+late work policy
+academic integrity
+honor code
+plagiarism check
+formative assessment
+summative assessment
+benchmark assessment
+common assessment
+districtwide assessment
+item bank
+item analysis
+distractor analysis
+standards alignment
+curriculum map
+scope and sequence
+pacing guide
+unit plan
+lesson plan
+learning target
+success criteria
+essential question
+do now
+exit ticket
+bell ringer
+guided practice
+independent practice
+project based learning
+problem based learning
+inquiry based learning
+experiential learning
+service learning
+capstone project
+senior project
+portfolio assessment
+performance task
+oral defense
+peer assessment
+self assessment
+think pair share
+socratic seminar
+jigsaw strategy
+station rotation
+flipped classroom
+blended learning
+hybrid learning
+synchronous learning
+asynchronous learning
+differentiated instruction
+universal design for learning
+udl
+scaffolded instruction
+explicit instruction
+direct instruction
+gradual release model
+i do we do you do
+literacy across the curriculum
+close reading
+writing workshop
+reading workshop
+word study
+phonemic awareness
+phonics
+fluency
+vocabulary development
+comprehension strategies
+math fact fluency
+number sense
+math workshop
+manipulatives
+science notebook
+lab safety contract
+phenomena based instruction
+ngss practices
+engineering design process
+design challenge
+makerspace
+fabrication lab
+career pathway
+work based learning
+youth apprenticeship
+cte concentrator
+industry certification
+dual enrollment
+early college
+ib diploma
+ib middle years programme
+ib primary years programme
+ap course
+ap exam
+honors course
+advanced course
+accelerated course
+credit acceleration
+common core standards
+state academic standards
+college and career readiness standards
+ngss
+wida standards
+early learning standards
+head start standards
+iep
+individualized education program
+504 plan
+child find
+evaluation team report
+eligibility determination
+least restrictive environment
+lre
+free appropriate public education
+fape
+due process hearing
+behavior intervention plan
+bip
+functional behavior assessment
+fba
+progress monitoring
+data team meeting
+student support team
+response to intervention
+rti tiers
+multi tiered system of supports
+mtss tiers
+universal screening
+risk screener
+intervention block
+push in support
+pull out support
+co teaching
+one teach one assist
+station teaching
+parallel teaching
+alternative teaching
+classroom management
+behavior expectations
+schoolwide expectations
+matrix of behaviors
+pbis
+restorative practices
+restorative circle
+restorative conference
+trauma informed practices
+social emotional learning
+sel curriculum
+self management
+self awareness
+relationship skills
+responsible decision making
+growth mindset
+grit
+mindfulness
+check in check out
+attendance intervention
+chronic absenteeism
+early warning indicators
+on track indicator
+behavior referral
+office discipline referral
+student code of conduct
+dress code
+cell phone policy
+acceptable use policy
+digital citizenship
+cyberbullying prevention
+media literacy
+internet safety lesson
+learning loss
+acceleration plan
+extended learning time
+after school program
+before school program
+summer school
+credit recovery lab
+tutoring program
+small group tutoring
+high dosage tutoring
+peer tutoring
+mentoring program
+homework help
+family workshop
+parent teacher conference
+home visit
+family needs assessment
+wraparound services
+community school model
+school based health center
+school pantry
+attendance campaign
+back to school night
+open house
+school improvement plan
+sip
+district strategic plan
+balanced scorecard education
+instructional rounds
+learning walk
+calibration session
+data dive
+professional learning community
+plc agenda
+lesson study
+action research
+peer observation
+coaching cycle
+instructional framework
+teacher evaluation rubric
+observation protocol
+walkthrough form
+student perception survey
+panorama survey
+climate survey
+school culture plan
+equity audit
+equity team
+culturally responsive teaching
+anti bias education
+unconscious bias training
+restorative justice training
+sel training
+new teacher induction
+mentor program
+teacher residency
+professional development day
+pd catalog
+microcredential
+clock hours
+continuing education units
+ceu
+recertification
+licensure renewal
+alt certification
+state certification exam
+praxis exam
+edTPA
+background check
+fingerprint clearance
+substitute permit
+teacher tenure
+seniority list
+collective bargaining agreement
+salary schedule
+step and lane
+stipend
+duty assignment
+supervision duty
+hall duty
+lunch duty
+arrival duty
+dismissal duty
+iep caseload
+class size
+student teacher ratio
+inclusion rate
+pullout minutes
+service minutes
+instructional minutes
+seat time waiver
+instructional materials adoption
+textbook adoption
+open educational resources
+oer
+print vs digital
+accessible materials
+alt text
+captioning
+wcag for education
+assistive technology
+aac device
+screen reader support
+note taker accommodation
+preferential seating
+extended time
+small group testing
+alternate assessment
+standards based iep
+transition plan
+postsecondary goals
+age of majority
+independent living skills
+self determination
+career exploration
+vr services
+community based instruction
+travel training
+school to work
+student records
+cumulative folder
+cum file
+records request
+student information system
+sis
+powerschool
+infinite campus
+skyward sis
+aeries sis
+synergy sis
+tyler sis
+student enrollment
+lottery process
+waitlist management
+zoning
+attendance boundary
+school assignment
+open enrollment
+intra district transfer
+interdistrict transfer
+school choice
+magnet school
+charter school
+authorizer
+charter petition
+charter renewal
+charter oversight
+charter performance framework
+charter compact
+portfolio management
+voucher program
+education savings account
+esa program
+parent trigger
+site based management
+local control
+school governance council
+sunshine law compliance
+open meetings act
+public records request
+foia request
+board policy
+administrative regulation
+handbook update
+policy revision
+policy adoption
+stakeholder engagement
+public comment
+listening session
+town hall
+community stakeholder map
+equity impact analysis
+logic model
+theory of change
+outputs outcomes impacts
+implementation plan
+fidelity of implementation
+continuous improvement plan
+plan do study act cycle
+root cause analysis tools
+fishbone diagram education
+five whys education
+needs assessment
+resource allocation
+weighted student formula
+school budget
+site based budgeting
+encumbrance tracking
+grant budget
+object code
+function code
+program code
+fund code
+chart of accounts k12
+purchase requisition k12
+purchase order k12
+grant compliance
+allowable costs
+time and effort reporting
+semi annual certification
+monthly time distribution
+equipment inventory k12
+supplanting vs supplementing
+comparability
+maintenance of effort
+moe
+equitable services
+private school consultation
+consolidated application
+cash management improvement act
+drawdown
+reimbursement request
+single audit education
+monitoring visit education
+corrective action plan education
+title i
+title ii part a
+title iii
+title iv a
+title ix education
+mckinney vento
+homeless liaison
+foster youth liaison
+english learner plan
+home language survey
+initial eLPAC
+annual eLPAC
+wida access
+language proficiency growth
+immigrant program
+migrant education
+neglected and delinquent program
+idea part b
+child count
+maintenance of effort idea
+disproportionality
+early intervening services
+ceis
+perkins v
+cte reserve grant
+nontraditional participation
+pos concentrator
+civil rights compliance office
+ocr complaint
+section 504 compliance
+student nondiscrimination
+bullying prevention policy
+harassment investigation
+threat assessment team
+reunification plan
+emergency operations plan
+school safety drill
+lockdown drill
+evacuation drill
+shelter in place
+reunification site
+incident command system
+ics roles at school
+school messenger
+mass notification system education
+visitor management system
+volunteer clearance
+field trip forms
+permission slip
+chaperone training
+risk management education
+student accident insurance
+athletic eligibility
+transfer eligibility
+amateurism rules
+coach certification
+concussion protocol
+return to play
+heat acclimatization
+athletic trainer
+activity account
+student club charter
+fundraiser approval
+raffle permit
+booster club bylaws
+cash handling procedures
+ticket reconciliation
+gate receipts
+inventory of assets
+textbook inventory
+device checkout
+one to one program
+acceptable use agreement
+content filter
+web filter policy
+learning management system
+lms canvas
+lms blackboard
+lms moodle
+brightspace d2l
+google classroom
+class dojo
+seesaw
+schoology
+digital learning plan
+virtual academy
+remote learning day
+snow day waiver
+student device insurance
+hotspot program
+erate
+category one erate
+category two erate
+cipa compliance
+technology plan
+tech refresh cycle
+help desk ticket
+service level target education
+edtech pilot
+interoperability
+one roster
+clever roster
+classlink
+rostering automation
+identity management education
+single sign on education
+rostering data validation
+secure file transfer education
+sftp feed
+state reporting
+calpads
+cedars
+pims
+staar data file
+assessment vendor file
+n size reporting
+suppression rules
+longitudinal data system
+data governance education
+data steward
+student privacy pledge
+directory information
+deidentification
+data sharing agreement education
+research request process
+institutional review board
+irb approval education
+human subjects training
+informed consent education
+randomized controlled trial education
+quasi experimental design education
+propensity score matching education
+difference in differences education
+cost effectiveness analysis education
+return on investment education
+program evaluation rubric
+implementation science education
+continuous quality review education
+school accreditation
+district accreditation
+cognia accreditation
+state accreditation review
+program review higher ed
+course evaluation
+student learning outcomes
+slo
+curriculum committee
+academic senate
+faculty appointment
+tenure track
+adjunct faculty
+graduate assistant
+teaching assistant
+research assistant
+bursar office higher ed
+registrar office
+financial aid office
+admissions counselor higher ed
+recruitment funnel
+application completion rate
+yield rate
+summer melt
+orientation program
+first year experience
+learning community
+academic advising
+degree audit
+catalog management
+program of study
+major declaration
+minor declaration
+credit hour
+contact hour
+clock hour
+seat utilization
+room scheduling
+space utilization
+campus safety
+title ix coordinator higher ed
+clery act
+campus security authority
+annual security report
+student conduct code
+judicial affairs
+hearing officer
+student success center
+tutoring center
+writing center
+math lab
+disability services office
+accommodation letter
+note taking services
+testing center
+proctoring
+placement test
+english placement
+math placement
+co requisites
+pre requisites
+course articulation
+transfer credit evaluation
+credit for prior learning
+prior learning assessment
+pla portfolio
+competency badge
+microcredential higher ed
+stackable credential
+work study
+federal work study
+pell grant
+teach grant
+stafford loan
+plus loan
+sap appeal
+satisfactory academic progress
+financial hold
+bursar hold
+tuition remission
+residency classification
+in state tuition
+out of state tuition
+housing assignment
+meal plan
+campus housing waiver
+student activities fee
+student union
+student affairs
+intramural sports
+greek life
+student organization
+service learning center
+alumni relations
+annual fund
+major gifts
+capital campaign
+planned giving
+grant prospecting
+foundation relations
+donor stewardship
+gift acknowledgement
+gift acceptance policy education
+crm for advancement
+moves management
+gift officer portfolio
+grant proposal narrative
+need statement
+goals and objectives
+work plan
+timeline and milestones
+logic model for grants
+evaluation plan for grants
+budget narrative
+match requirement
+indirect cost rate
+federal negotiating rate
+cost share
+letter of support
+memorandum of understanding education
+mou with partners
+subaward agreement education
+prime recipient
+pass through entity
+uei number
+sam registration
+grants.gov submission
+just in time request education
+drawdown in g5
+quarterly performance report
+annual performance report
+closeout report
+records retention education
+form 990 preparation
+schedule o narrative
+board conflict of interest
+whistleblower policy education
+document retention policy education
+nonprofit bylaws
+fiscal sponsorship
+sponsored project administration
+omb uniform guidance
+2 cfr 200
+cost principles education
+time and effort certification education
+single audit preparation education
+indirect cost proposal education
+procurement standards education
+micro purchase threshold education
+small purchase procedures education
+sealed bid procurement education
+rfa
+rfp education
+rfi education
+bid tabulation education
+contract routing education
+board approval item
+consent agenda
+meeting minutes
+public hearing notice
+stakeholder outreach plan
+media relations for schools
+press release for schools
+talking points education
+crisis communications plan education
+school report card
+accountability index
+atsi identification
+tsi identification
+comprehensive support and improvement
+targeted support and improvement
+alternative school accountability
+graduation cohort rules
+dropout recovery
+reengagement program
+workforce board partnership
+wioa youth program
+american rescue plan esser
+cares esser
+esser ii
+safe return plan
+continuity of services plan
+school health protocols
+test to stay program
+vaccination clinic at school
+contact tracing at school
+case investigation at school
+return to learn plan
+learning recovery plan

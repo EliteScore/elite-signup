@@ -1,0 +1,225 @@
+python
+java
+c
+c++
+c#
+javascript
+typescript
+go
+rust
+scala
+r
+sql
+bash
+linux
+git
+docker
+kubernetes
+terraform
+ansible
+jenkins
+github actions
+gitlab ci
+aws
+azure
+gcp
+snowflake
+databricks
+spark
+hadoop
+airflow
+dbt
+tableau
+power bi
+looker
+superset
+excel
+pandas
+numpy
+scikit-learn
+xgboost
+lightgbm
+catboost
+opencv
+pytorch
+tensorflow
+keras
+fastapi
+flask
+django
+spring boot
+react
+next.js
+node.js
+express
+vue
+angular
+graphql
+rest
+grpc
+kafka
+rabbitmq
+redis
+postgres
+mysql
+sql server
+oracle
+mongodb
+elasticsearch
+neo4j
+cassandra
+clickhouse
+redshift
+bigquery
+synapse
+lakehouse
+s3
+ec2
+eks
+ecs
+lambda
+cloudformation
+azure devops
+iad (identity and access management)
+okta
+auth0
+oauth2
+oidc
+jwt
+sso
+nist 800-53
+iso 27001
+soc 2
+hipaa
+gdpr
+pci dss
+siem
+soar
+splunk
+elk
+crowdstrike
+sentinelone
+defender for endpoint
+firewalls
+ids
+ips
+wireshark
+burp suite
+metasploit
+nmap
+owasp top 10
+threat modeling
+dast
+sast
+sdlc
+secure coding
+incident response
+ir playbooks
+forensics
+reverse engineering
+sast
+qa automation
+pytest
+junit
+selenium
+cypress
+playwright
+performance testing
+jmeter
+new relic
+datadog
+prometheus
+grafana
+opentelemetry
+observability
+slo
+sli
+sla
+incident management
+on-call
+agile
+scrum
+kanban
+safe
+product discovery
+product analytics
+a/b testing
+feature flags
+mixpanel
+amplitude
+appsflyer
+seo
+sem
+google ads
+facebook ads
+content marketing
+email marketing
+crm
+salesforce
+hubspot
+marketo
+pardot
+zendesk
+servicenow
+jira
+confluence
+autocad
+solidworks
+catia
+siemens nx
+ansys
+matlab
+simulink
+pid control
+plc
+scada
+labview
+sap
+oracle erp
+netsuite
+epic (emr)
+cerner
+medical coding
+icd-10
+cpt
+hl7
+fhir
+clinical trials
+gcp (good clinical practice)
+fmea
+spc
+lean
+six sigma
+value stream mapping
+supply chain
+mrp
+s&op
+procurement
+logistics
+warehouse management
+tms
+wms
+financial modeling
+valuation
+fp&a
+budgeting
+forecasting
+sox
+us gaap
+ifrs
+contracts
+negotiation
+litigation
+ediscovery
+privacy compliance
+cipp/us
+cipp/e
+ux research
+ux design
+ui design
+figma
+sketch
+invision
+design systems
+accessibility
+wcag

@@ -1,0 +1,628 @@
+accounting principles
+us gaap
+ifrs
+statutory accounting
+chart of accounts
+general ledger
+subledger
+trial balance
+period close
+month end close
+quarter close
+year end close
+hard close
+soft close
+journal entry
+je approval
+accrual accounting
+reversing entry
+prepaid expense
+deferred revenue
+unearned revenue
+fixed assets
+capitalization policy
+depreciation schedule
+straight line depreciation
+declining balance
+useful life
+impairment testing
+goodwill impairment
+intangible assets
+amortization
+inventory valuation
+fifo method
+lifo method
+weighted average cost
+standard cost
+cost of goods sold
+working capital
+cash conversion cycle
+days sales outstanding
+days payable outstanding
+days inventory outstanding
+free cash flow
+cash flow statement
+direct method cash flow
+indirect method cash flow
+balance sheet
+income statement
+common size analysis
+horizontal analysis
+vertical analysis
+ratio analysis
+current ratio
+quick ratio
+debt to equity
+interest coverage
+return on equity
+return on assets
+ebit
+ebitda
+operating margin
+gross margin
+net margin
+budgeting
+forecasting
+rolling forecast
+driver based planning
+zero based budgeting
+variance to plan
+budget vs actual
+management reporting
+financial consolidation
+intercompany elimination
+minority interest
+segment reporting
+transfer pricing policy
+arm s length principle
+allocations
+cost center
+profit center
+shared services
+treasury
+cash management
+liquidity management
+short term investments
+commercial paper
+money market fund
+fx exposure
+fx hedge
+interest rate hedge
+commodity hedge
+hedge accounting
+derivative designation
+fair value hedge
+cash flow hedge
+net investment hedge
+swap accounting
+ifrs 9 hedge effectiveness
+counterparty risk
+credit support annex
+csa
+isda master agreement
+credit risk
+market risk
+liquidity risk
+operational risk
+model risk
+concentration risk
+climate risk
+risk appetite
+risk tolerance
+risk register
+key risk indicator
+kri
+key performance indicator
+kpi definition
+three lines model
+risk and control matrix
+rcm
+control design
+control effectiveness
+test of controls
+substantive testing
+walkthrough
+process narrative
+sox
+sarbanes oxley act
+sox section 302
+sox section 404
+entity level controls
+it general controls
+itgc
+change management control
+logical access control
+backup and recovery control
+segregation of duties
+sod analysis
+privileged access review
+user access review
+sox deficiency
+significant deficiency
+material weakness
+remediation plan
+management testing
+external audit
+internal audit
+co sourced audit
+audit universe
+audit plan
+audit fieldwork
+audit workpapers
+issue rating
+finding remediation
+root cause analysis memo
+coso internal control framework
+coso erm
+basel ii
+basel iii
+basel iv
+ccar
+d fast
+fr y 14
+bcbs 239
+mifid ii
+emir
+sftr
+crr
+crd iv
+crd v
+solvency ii
+ifrs 9
+ifrs 17
+cecl
+asc 326
+asc 606
+asc 842
+lease accounting
+right of use asset
+lease liability
+embedded lease
+revenue recognition
+five step model
+variable consideration
+contract asset
+contract liability
+percentage of completion
+completed contract
+bill and hold
+principal versus agent
+consolidation assessment
+v ie analysis
+primary beneficiary
+going concern
+subsequent events
+contingent liability
+provisioning
+allowance for credit losses
+impairment allowance
+expected credit loss
+stress testing
+scenario analysis
+sensitivity analysis
+value at risk
+var
+expected shortfall
+backtesting
+model validation
+challenge function
+independent price verification
+ipv
+pnl explain
+front to back reconciliation
+break resolution
+nostro reconciliation
+position reconciliation
+aged breaks
+attestation
+trading book
+banking book
+order management
+order lifecycle
+market order
+limit order
+stop order
+stop limit order
+iceberg order
+fill or kill
+immediate or cancel
+good til canceled
+best execution
+order routing
+smart order router
+market microstructure
+market data feed
+level 1 quotes
+level 2 order book
+bid ask spread
+latency
+slippage
+transaction cost analysis
+tca
+capital markets
+equities
+fixed income
+municipal bonds
+high yield bonds
+investment grade bonds
+commercial paper program
+repos
+reverse repo
+futures
+options
+swaps
+credit default swap
+total return swap
+equity swap
+interest rate swap
+swaption
+fx forward
+non deliverable forward
+securities lending
+prime brokerage
+margin requirements
+initial margin
+variation margin
+haircut
+collateral management
+triparty repo
+custody
+clearing
+settlement
+dtc
+nscc
+occ
+t 2 settlement
+fail to deliver
+securities master
+corporate actions
+dividend processing
+stock split
+reverse split
+spin off
+rights issue
+tender offer
+proxy voting
+shareholder meeting
+transfer agent
+warrant exercise
+american depository receipt
+adr
+private equity
+venture capital
+leveraged buyout
+mbo
+mbi
+fund accounting
+nav calculation
+waterfall distribution
+carried interest
+hurdle rate
+management fee
+subscription document
+redemption notice
+side letter
+placement memorandum
+limited partnership agreement
+lpa
+fund of funds
+real estate finance
+loan to value
+debt service coverage ratio
+dscr
+noi
+cap rate
+lease abstract
+triple net lease
+escrow account
+title insurance
+escrow holdback
+1031 exchange
+like kind exchange
+mortgage servicing
+special servicing
+nonperforming loan
+watchlist
+credit underwriting
+credit memo
+financial covenants
+leverage covenant
+interest coverage covenant
+maintenance covenant
+incurrence covenant
+cure period
+default notice
+waiver request
+restructuring
+workout
+bankruptcy
+chapter 11
+chapter 7
+chapter 13
+debtor in possession
+dip financing
+prepackaged bankruptcy
+prearranged bankruptcy
+creditors committee
+preference claim
+fraudulent transfer
+claims reconciliation
+plan of reorganization
+confirmation hearing
+legal department
+legal operations
+matter management
+outside counsel
+engagement letter
+billing guidelines
+alternative fee arrangement
+rate card
+ebilling
+ledes format
+spend management
+knowledge management
+playbook
+litigation hold
+legal hold
+ediscovery
+document review
+technology assisted review
+predictive coding
+privilege review
+redaction
+chain of custody log
+evidence management
+court docket
+briefing schedule
+motion to dismiss
+summary judgment
+trial preparation
+discovery requests
+interrogatories
+requests for admission
+requests for production
+subpoena response
+protective order
+settlement agreement
+consent decree
+injunction
+mediation
+arbitration
+negotiation strategy
+alternative dispute resolution
+adr process
+case law research
+statutory interpretation
+regulatory comment letter
+rulemaking
+notice and comment
+administrative law judge
+consent order
+monitor report
+corporate law
+entity formation
+articles of incorporation
+bylaws
+shareholders agreement
+operating agreement
+board resolution
+minutes of meeting
+fiduciary duties
+duty of care
+duty of loyalty
+business judgment rule
+corporate governance
+audit committee
+compensation committee
+nominating committee
+proxy statement
+say on pay
+insider trading policy
+trading blackout
+reg fd
+reg s k
+reg s x
+reg m
+reg d
+reg s
+reg nms
+reg sci
+reg best interest
+beneficial ownership report
+schedule 13d
+schedule 13g
+form 10 k
+form 10 q
+form 8 k
+form s 1
+form s 3
+form s 8
+form 144
+section 16 reporting
+10b5 1 plan
+securities law
+blue sky law
+investment advisers act
+investment company act
+bank secrecy act
+bsa aml
+patriot act compliance
+kyc
+customer due diligence
+enhanced due diligence
+sanctions screening
+ofac list
+pep screening
+adverse media screening
+transaction monitoring
+suspicious activity report
+currency transaction report
+travel rule
+model governance
+alert tuning
+case management system
+quality assurance review
+independent testing
+consumer compliance
+udaap
+fair lending
+hmda
+cra
+reg z
+reg e
+reg b
+reg cc
+reg d reserve requirements
+reg o insider lending
+reg w affiliate transactions
+payments compliance
+pci dss
+card network rules
+chargeback management
+dispute reason code
+friendly fraud
+chargeback representment
+acquirer
+issuer
+payment facilitator
+payfac
+money transmitter licensing
+msb registration
+agent of payee
+escheatment
+unclaimed property
+privacy program
+gdpr
+ccpa
+cpra
+lgpd
+pipl china
+pipeda
+pdpa singapore
+dpia
+records of processing
+data subject rights
+right to access
+right to erasure
+right to rectification
+right to portability
+privacy by design
+data minimization
+purpose limitation
+lawful basis
+consent management
+cookie banner
+cross border transfers
+standard contractual clauses
+binding corporate rules
+schrems ii assessment
+dpa
+data processing addendum
+information security policy
+incident response plan
+breach notification
+regulator outreach
+consumer complaint handling
+ombudsman response
+whistleblower hotline
+ethics policy
+code of conduct
+anti bribery
+anti corruption
+fcp a compliance
+uk bribery act
+gift and entertainment policy
+conflict of interest disclosure
+third party risk
+due diligence questionnaire
+vendor risk assessment
+contract lifecycle management
+contract intake
+contract review
+risk clauses
+indemnification clause
+limitation of liability
+liquidated damages
+force majeure
+most favored nation
+exclusivity clause
+non compete clause
+non solicitation
+assignment clause
+change of control
+governing law
+venue clause
+arbitration clause
+severability
+entire agreement
+amendment provision
+order form
+master services agreement
+msa
+statement of work
+sow
+service level agreement
+sla
+service credit
+data sharing agreement
+license agreement
+subscription agreement
+oem agreement
+distribution agreement
+reseller agreement
+channel partner agreement
+professional services agreement
+independent contractor agreement
+employment agreement
+offer letter
+non disclosure agreement
+mutual nda
+one way nda
+patent law
+patent prosecution
+patent portfolio
+freedom to operate
+prior art search
+office action response
+continuation application
+pct application
+trademark law
+clearance search
+specimen of use
+statement of use
+opposition proceeding
+copyright law
+dmca notice
+takedown request
+open source license compliance
+permissive license
+copyleft license
+gpl obligations
+contribution license agreement
+privacy notice
+terms of service
+acceptable use policy
+records retention schedule
+litigation readiness
+regulatory reporting
+regulatory examination
+supervisory letter response
+matters requiring attention
+mra remediation
+matters requiring immediate attention
+mria remediation
+board reporting
+regulatory dashboard
+compliance training
+annual attestation
+certification process
+policy management
+procedure update
+gap assessment
+read across analysis
+issue management
+corrective action plan
+lessons learned
+lessons logged
+enterprise policy library
+compliance calendar

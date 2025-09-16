@@ -1,0 +1,247 @@
+aws
+ec2
+ebs
+efs
+fsx
+s3
+glacier
+s3 glacier deep archive
+s3 intelligent tiering
+cloudfront
+route 53
+vpc
+subnet
+nat gateway
+internet gateway
+transit gateway
+direct connect
+site-to-site vpn
+private link
+elb
+alb
+nlb
+autoscaling
+launch template
+iam
+organizations
+control tower
+aws sso
+cognito
+kms
+secrets manager
+parameter store
+cloudwatch
+cloudwatch logs
+cloudwatch events
+eventbridge
+cloudtrail
+config
+backup
+license manager
+waf
+shield
+guardduty
+inspector
+detective
+macie
+security hub
+network firewall
+certificate manager
+acm
+sns
+sqs
+ses
+step functions
+lambda
+api gateway
+app runner
+elastic beanstalk
+lightsail
+batch
+fargate
+ecs
+ecr
+eks
+opensearch
+elasticsearch service
+rds
+aurora
+dynamodb
+elasticache
+memorydb
+neptune
+timestream
+documentdb
+keyspaces
+redshift
+athena
+glue
+lake formation
+data exchange
+quicksight
+kinesis data streams
+kinesis firehose
+kinesis data analytics
+emr
+datasync
+transfer family
+snowball
+snowmobile
+iot core
+greengrass
+iotevents
+sagemaker
+forecast
+personalize
+textract
+comprehend
+rekognition
+translate
+polly
+transcribe
+mediaconvert
+mediapackage
+elemental
+workspaces
+appstream
+workdocs
+workmail
+chime
+quicksight
+codecommit
+codebuild
+codedeploy
+codepipeline
+cloud9
+amplify
+cdk
+cloudformation
+
+azure
+virtual machines
+vm scale sets
+managed disks
+availability sets
+proximity placement groups
+virtual network
+subnet
+nsg
+udr
+load balancer
+application gateway
+front door
+traffic manager
+vpn gateway
+expressroute
+dns zones
+storage account
+blob storage
+file storage
+queue storage
+table storage
+data lake storage gen2
+azure sql
+managed instance
+cosmos db
+postgres flexible server
+mysql flexible server
+cache for redis
+event hubs
+service bus
+event grid
+functions
+app service
+container instances
+aks
+acr
+logic apps
+api management
+key vault
+azure ad
+entra id
+managed identity
+policy
+blueprints
+monitor
+log analytics
+application insights
+automation account
+backup
+site recovery
+bastion
+devtest labs
+synapse analytics
+data factory
+databricks
+analysis services
+purview
+power bi embedded
+ml studio
+cognitive services
+speech services
+translator
+form recognizer
+maps
+iot hub
+device provisioning service
+
+gcp
+compute engine
+persistent disk
+cloud storage
+nearline storage
+archive storage
+filestore
+cloud sql
+spanner
+bigtable
+memorystore
+firestore
+datastore
+vpc
+subnets
+cloud nat
+cloud vpn
+interconnect
+cloud dns
+network load balancing
+http load balancing
+cloud armor
+iap
+identity aware proxy
+iam
+kms
+secret manager
+cloud logging
+cloud monitoring
+cloud trace
+cloud profiler
+error reporting
+operations suite
+pub/sub
+dataflow
+dataproc
+composer
+dataplex
+data catalog
+bigquery
+bigquery ml
+bigquery omni
+looker studio
+vertex ai
+cloud run
+cloud functions
+app engine
+gke
+artifact registry
+cloud build
+source repositories
+workflows
+scheduler
+tasks
+endpoints
+apigee
+recommender
+resourcemanager
+billing
+organization policy

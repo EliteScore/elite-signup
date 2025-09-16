@@ -1,0 +1,132 @@
+pmp
+prince2 foundation
+prince2 practitioner
+scrum master
+csm
+psm i
+psm ii
+pspo i
+safe agilist
+itil foundation
+itil practitioner
+ckad
+cka
+cks
+hashicorp terraform associate
+aws certified cloud practitioner
+aws certified solutions architect associate
+aws certified solutions architect professional
+aws certified developer associate
+aws certified devops engineer professional
+aws certified sysops administrator
+azure fundamentals az-900
+azure administrator az-104
+azure developer az-204
+azure solutions architect expert
+gcp associate cloud engineer
+gcp professional cloud architect
+gcp professional data engineer
+compTIA a+
+compTIA network+
+compTIA security+
+comptia linux+
+cissp
+cism
+cisa
+crisc
+ceh
+oscp
+oswe
+gwapt
+gpen
+gcih
+gcfe
+grem
+ccna
+ccnp
+ccie
+rhce
+rhCSA
+lfcs
+lfce
+docker certified associate
+kubestronaut
+snowflake snowpro core
+databricks lakehouse fundamentals
+databricks data engineer associate
+dbt fundamentals
+dbt advanced
+sas base programmer
+tableau desktop specialist
+tableau certified data analyst
+power bi data analyst associate
+looker business analyst
+google analytics individual qualification
+meta digital marketing associate
+hubspot inbound marketing
+salesforce administrator
+salesforce platform app builder
+salesforce developer
+sap certified application associate
+oracle certified professional java se
+oracle database administrator certified
+microsoft certified: power platform fundamentals
+microsoft certified: data analyst associate
+six sigma green belt
+six sigma black belt
+lean practitioner
+apics cpim
+apics csCP
+asq cqA
+asq cmQ/oe
+cfa level i
+cfa level ii
+cfa charterholder
+cpa
+acca
+cma
+frM
+camS
+finra series 7
+finra series 63
+finra series 65
+hrci phr
+hrci sphr
+shrm-cp
+shrm-scp
+bcba
+rn
+bsn
+bsn-rn
+cnor
+ccrn
+crna
+acls
+bls
+pals
+ahrq quality
+epic hyperspace
+epic resolute
+cerner millenium
+epic chronicles
+epic bridges
+google professional ux designer
+nielsen norman ux certification
+hcie-architecture
+istqb foundation
+istqb advanced test analyst
+aws machine learning specialty
+aws data analytics specialty
+azure ai engineer associate
+gcp professional machine learning engineer
+kafka developer certification
+confluent kafka administrator
+okta certified professional
+auth0 certified expert
+mulesoft developer
+boomi integration developer
+servicenow system administrator
+servicenow application developer
+splunk core certified power user
+elastic certified engineer
+neo4j certified professional

@@ -1,0 +1,376 @@
+security operations
+blue team
+red team
+purple team
+adversary emulation
+breach and attack simulation
+threat hunting
+detection engineering
+alert triage
+incident containment
+post incident review
+tabletop exercise
+playbook
+runbook
+kill chain
+mitre att&ck
+diamond model
+cis controls
+zero trust
+microsegmentation
+software defined perimeter
+ztna
+sase
+deception technology
+honeypot
+threat intelligence
+stix
+taxii
+misp
+ioc
+perimeter firewall
+next generation firewall
+ngfw
+web application firewall
+waf
+runtime application self protection
+rasp
+intrusion detection system
+ids
+intrusion prevention system
+ips
+network detection and response
+ndr
+endpoint detection and response
+edr
+extended detection and response
+xdr
+security information and event management
+siem
+security orchestration automation and response
+soar
+ueba
+log management
+immutable logs
+syslog
+sysmon
+osquery
+auditd
+windows event forwarding
+zeek
+suricata
+snort
+packet capture
+pcap
+netflow
+ipfix
+ssl inspection
+tls decryption
+certificate transparency
+ct log monitoring
+hsts
+tls 1.3
+perfect forward secrecy
+pfs
+ocsp stapling
+dns security
+dnssec
+doh
+dot
+secure email gateway
+spf
+dkim
+dmarc
+mta sts
+tls rpt
+bimi
+phishing simulation
+smishing
+vishing
+pretexting
+business email compromise
+bec
+account takeover
+ato
+password spraying
+credential stuffing
+rate limiting
+captcha
+bot management
+ddos protection
+api security
+api gateway
+service mesh mtls
+json web token
+jwt
+jwe
+jws
+token binding
+pkce
+saml 2.0
+kerberos
+ldap
+radius
+tacacs+
+scim
+webauthn
+fido2
+passkey
+multi factor authentication
+adaptive authentication
+risk based authentication
+privileged access management
+pam
+password vault
+just in time access
+least privilege
+role based access control
+rbac
+attribute based access control
+abac
+policy as code
+opa
+data classification
+data labeling
+need to know
+privacy engineering
+pseudonymization
+tokenization
+format preserving encryption
+differential privacy
+k anonymity
+l diversity
+t closeness
+data masking
+field level encryption
+transparent data encryption
+tde
+row level security
+rls
+sensitive data discovery
+dlp endpoint
+dlp network
+dlp cloud
+cloud access security broker
+casb
+secure web gateway
+swg
+remote browser isolation
+rbi
+vulnerability management
+attack surface management
+asm
+asset inventory
+cves
+cwes
+cvss score
+vulnerability scanning
+authenticated scan
+agent based scan
+patch management
+patch baseline
+change advisory board
+cab
+secure configuration
+cis benchmark
+stig
+hardening guide
+gold image
+application allowlisting
+device control
+usb control
+file integrity monitoring
+fim
+audit trail
+tamper evidence
+chain of custody
+bitlocker
+filevault
+full disk encryption
+fde
+self encrypting drive
+sed
+key management
+kms
+hsm
+trusted platform module
+tpm
+measured boot
+secure boot
+uefi secure boot
+attestation
+remote attestation
+confidential computing
+intel tdx
+amd sev
+secure enclave
+sgx
+trustzone
+aslr
+dep
+stack canary
+control flow integrity
+cfi
+code signing
+notarization
+supply chain security
+software bill of materials
+sbom
+cyclonedx
+spdx
+in toto
+slsa level
+artifact repository
+provenance
+dependency scanning
+software composition analysis
+sca
+sast
+dast
+iast
+secret scanning
+git leak detection
+commit signing
+sigstore
+cosign
+notary v2
+container security
+image scanning
+runtime security
+admission controller
+opa gatekeeper
+kyverno
+falco
+seccomp profile
+apparmor
+selinux
+capabilities drop
+rootless container
+namespace isolation
+cgroup limits
+kubernetes rbac
+network policy
+pod security standard
+pss
+etcd encryption
+api audit log
+cloud security posture management
+cspm
+cloud workload protection
+cwpp
+cloud infrastructure entitlement management
+ciem
+identity governance and administration
+iga
+secrets management
+hashicorp vault
+aws kms
+aws secrets manager
+aws guardduty
+aws security hub
+aws macie
+aws iam access analyzer
+aws inspector
+aws config
+aws shield
+aws waf
+aws cloudtrail
+azure key vault
+microsoft defender for cloud
+microsoft sentinel
+conditional access
+azure policy
+gcp cloud kms
+gcp security command center
+vpc service controls
+beyondcorp
+cloud armor
+governance risk and compliance
+grc tool
+soc 2
+trust service criteria
+iso 27001
+iso 27002
+iso 27005
+iso 27701
+iso 22301
+nist cyber security framework
+nist csf
+nist sp 800 53
+nist sp 800 171
+nist sp 800 37
+nist sp 800 61
+nist sp 800 115
+cmmc
+fedramp moderate
+fedramp high
+state ramp
+bcp
+drp
+rto
+rpo
+backup immutability
+air gapped backup
+offline backup
+backup encryption
+ransomware protection
+exfiltration detection
+digital forensics
+disk imaging
+memory forensics
+volatility
+autopsy
+kape
+timeline analysis
+mft analysis
+prefetch analysis
+yara triage
+malware analysis
+static analysis
+dynamic analysis
+sandbox evasion
+packer detection
+reverse engineering
+disassembly
+decompilation
+ida pro
+ghidra
+radare2
+x64dbg
+frida
+hooking
+syscall tracing
+powershell logging
+script block logging
+amsi
+credential guard
+lateral movement detection
+kerberoast detection
+pass the hash detection
+dcsync detection
+bloodhound analysis
+tier 0 protection
+secure admin workstation
+saw
+jump server
+bastion host
+network access control
+nac
+dot1x
+posture assessment
+wireless security
+wpa3
+wpa2 enterprise
+eap tls
+rogue ap detection
+rogue device detection
+iot security
+ot security
+ics security
+iec 62443
+nist sp 800 82
+modbus security
+dnp3 security
+opc ua security
+scada firewall
+data diode

@@ -1,0 +1,147 @@
+phd
+doctor of philosophy
+dphil
+md
+do
+jd
+llb
+llm
+mba
+emba
+mpp
+mpa
+mph
+msc
+m.s.
+m.eng
+meng
+ma
+m.a.
+mscs
+ms ee
+ms me
+msce
+msc cs
+msc data science
+bsc
+b.s.
+ba
+b.a.
+beng
+b.eng
+btech
+b.tech
+be
+bs cs
+bs ee
+bs me
+bsce
+bs mathematics
+bs statistics
+bs physics
+bs chemistry
+bs biology
+associate
+aas
+as
+community college
+certificate
+bootcamp
+nanodegree
+postdoc
+post-doctoral
+doctoral candidate
+thesis
+dissertation
+honors
+cum laude
+magna cum laude
+summa cum laude
+valedictorian
+salutatorian
+dean's list
+gpa
+major
+minor
+double major
+concentration
+coursework
+capstone
+research assistant
+teaching assistant
+ta
+ra
+graduate assistant
+undergraduate research
+mature student
+continuing education
+distance learning
+online degree
+mooc
+coursera specialization
+edx micromasters
+udacity nanodegree
+professional certificate
+co-op
+erasmus
+study abroad
+exchange program
+stem
+non-stem
+humanities
+social sciences
+liberal arts
+engineering
+computer science
+electrical engineering
+mechanical engineering
+civil engineering
+chemical engineering
+industrial engineering
+biomedical engineering
+materials science
+environmental engineering
+data science
+statistics
+applied mathematics
+mathematics
+physics
+chemistry
+biology
+biochemistry
+microbiology
+genetics
+neuroscience
+psychology
+economics
+finance
+accounting
+business administration
+marketing
+management
+supply chain
+operations research
+information systems
+information technology
+cybersecurity
+law
+public policy
+public health
+education
+architecture
+urban planning
+design
+human-computer interaction
+hci
+communication
+journalism
+media studies
+geology
+geoscience
+oceanography
+earth science
+agriculture
+veterinary
+nursing
+pharmacy
+dentistry

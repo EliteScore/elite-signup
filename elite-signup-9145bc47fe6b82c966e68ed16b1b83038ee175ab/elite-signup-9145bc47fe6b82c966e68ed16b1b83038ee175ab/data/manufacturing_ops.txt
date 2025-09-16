@@ -1,0 +1,564 @@
+mes
+erp
+mrp
+mrp ii
+aps
+s&op
+ibp
+demand planning
+demand sensing
+demand shaping
+supply planning
+production planning
+master production schedule
+mps
+rough cut capacity planning
+rccp
+finite capacity scheduling
+capacity requirements planning
+crp
+constraint based scheduling
+dispatch list
+shop floor control
+work center
+routing sheet
+traveler
+work order
+production order
+supermarket pull
+heijunka
+heijunka box
+jidoka
+poka yoke
+visual management
+obeya
+gemba walk
+kamishibai board
+standardized work
+standard work combination table
+yamazumi chart
+changeover time
+smed
+setup reduction
+bottleneck analysis
+theory of constraints
+toc
+drum buffer rope
+buffer management
+flow line
+cell manufacturing
+cellular layout
+line balancing
+value stream design
+kaizen blitz
+continuous improvement
+pdca
+dmaic
+dmadv
+qc story
+8d
+a3 problem solving
+hoshin kanri
+policy deployment
+visual factory
+suggestion system
+total productive maintenance
+tpm
+reliability centered maintenance
+rcm
+preventive maintenance
+planned maintenance
+predictive maintenance
+condition based maintenance
+cbm
+run to failure
+maintenance strategy
+maintenance planning
+maintenance scheduling
+maintenance backlog
+cmms
+computerized maintenance management system
+work request
+maintenance work order
+lubrication program
+spare parts management
+mro inventory
+maintenance bom
+pm schedule
+root cause failure analysis
+rcfa
+vibration analysis
+ultrasound inspection
+infrared thermography
+oil analysis
+motor circuit analysis
+shaft alignment
+dynamic balancing
+mtbf
+mttr
+weibull analysis
+risk based inspection
+rbi
+reliability block diagram
+spare parts criticality
+critical equipment list
+asset hierarchy
+asset register
+eam
+enterprise asset management
+sap pm
+sap qm
+sap mm
+sap sd
+sap pp
+sap wm
+sap ewm
+sap tm
+sap apo
+sap ibp
+sap me
+sap mii
+sap gts
+sap ariba
+sap fi
+sap co
+sap fico
+sap ps
+sap bw
+sap bo
+sap bpc
+sap mdg
+sap s 4hana
+oracle e business suite
+oracle fusion cloud scm
+oracle scm cloud
+oracle netsuite
+jd edwards
+microsoft dynamics 365 supply chain
+dynamics 365 finance and operations
+infor cloudsuite industrial
+infor syteline
+ifs applications
+epicor erp
+abas erp
+odoo
+plex erp
+delmiaworks
+qad erp
+sage x3
+priority erp
+iqms
+wms
+tms
+yard management system
+yms
+manhattan wms
+blue yonder wms
+blue yonder tms
+oracle wms
+infor wms
+korber wms
+highjump wms
+netsuite wms
+fishbowl inventory
+zoho inventory
+shipstation
+project44
+fourkites
+transporeon
+bringg
+flexport
+freight forwarder
+consolidator
+customs broker
+customs clearance
+hs code
+harmonized system
+tariff classification
+duty drawback
+import compliance
+export compliance
+export license
+itar
+ear
+letter of credit
+commercial invoice
+packing list
+certificate of origin
+bill of lading
+air waybill
+pro number
+incoterms 2020
+exw
+fca
+fob
+cif
+cfr
+dap
+dpu
+ddp
+demurrage
+detention charges
+free time
+last mile delivery
+final mile
+cross docking
+cross dock
+hub and spoke
+milk run
+route optimization
+vehicle routing problem
+vrp
+fleet management
+dot compliance
+hazmat shipping
+dangerous goods
+iata dgr
+imdg code
+adr
+hazcom
+inventory management
+inventory control
+abc analysis
+abc xyz segmentation
+xyz analysis
+safety stock
+reorder point
+min max planning
+economic order quantity
+eoq
+order up to level
+moq
+lot sizing
+dynamic lot sizing
+wagner whitin algorithm
+part period balancing
+period order quantity
+fixed order quantity
+lead time
+supplier lead time
+serial genealogy
+unit genealogy
+batch genealogy
+serial number tracking
+fefo
+fifo
+lifo
+vendor managed inventory
+vmi
+consignment inventory
+cycle counting
+physical inventory
+inventory accuracy
+shrinkage
+obsolescence
+dead stock
+slow mover
+inventory turns
+days of supply
+days inventory outstanding
+dio
+backorder
+stockout
+fill rate
+service level
+available to promise
+atp
+capable to promise
+ctp
+sourcing
+strategic sourcing
+category management
+spend analysis
+tail spend management
+purchase requisition
+purchase order
+blanket purchase order
+release order
+schedule agreement
+vendor evaluation
+supplier scorecard
+supplier audit
+supplier qualification
+supplier development
+supplier onboarding
+request for information
+rfi
+request for quotation
+rfq
+request for proposal
+rfp
+e sourcing
+e auction
+reverse auction
+procure to pay
+p2p
+source to pay
+s2p
+three way match
+two way match
+invoice reconciliation
+po flip
+accounts payable automation
+payment terms
+net 30
+net 60
+dynamic discounting
+factoring
+should cost analysis
+clean sheet costing
+cost breakdown
+landed cost
+total cost of ownership
+tco
+make or buy
+insourcing
+outsourcing
+nearshoring
+reshoring
+supplier risk
+multi sourcing
+dual sourcing
+single sourcing
+supplier collaboration
+vendor portal
+qms
+quality management system
+total quality management
+tqm
+acceptance sampling
+aql
+zero defect
+ppm defects
+scrap rate
+rework rate
+yield loss
+first pass yield
+rolled throughput yield
+control chart
+p chart
+np chart
+c chart
+u chart
+process mapping
+sipoc
+ctq
+voice of customer
+voc
+gage management
+calibration recall
+metrology lab
+measurement uncertainty
+msa 4th edition
+layered process audit
+lpa
+supplier corrective action request
+scar
+corrective action plan
+production readiness review
+prr
+process validation
+golden sample
+run at rate
+r@r
+process capability study
+initial process study
+machine capability
+cmk
+pre production run
+pilot run
+ramp up
+rate readiness
+line trial
+kitting
+supermarket
+pull signal
+electronic kanban
+job shop
+flow shop
+batch production
+discrete manufacturing
+process manufacturing
+mixed mode manufacturing
+configure to order
+engineer to order
+make to stock
+make to order
+assemble to order
+build to order
+postponement
+mass customization
+digital twin
+manufacturing analytics
+process mining
+celonis
+qlik sense
+power bi
+tableau
+snowflake
+databricks
+data historian
+osisoft pi system
+aveva historian
+kepware
+opc ua
+mqtt
+edge computing
+iiot
+industry 4.0
+m2m
+predictive quality
+anomaly detection
+standard costing
+actual costing
+backflush costing
+activity based costing
+variance analysis
+material price variance
+material usage variance
+labor rate variance
+labor efficiency variance
+overhead variance
+absorption costing
+bill of resources
+capacity planning
+finite scheduling
+production scheduling
+sequencing
+setup matrix
+changeover matrix
+family scheduling
+product wheel
+cycle stock
+buffer stock
+decoupling inventory
+safety capacity
+capacity cushion
+time fence
+planning time fence
+demand time fence
+cumulative lead time
+pegging
+netting
+time phased planning
+forecast consumption
+allocation
+global atp
+receiving
+putaway
+slotting optimization
+wave planning
+wave picking
+zone picking
+batch picking
+pick to light
+put to light
+pick by voice
+pick by vision
+goods to person
+person to goods
+pick face
+replenishment
+cycle count program
+warehouse slotting
+bin location
+location control
+palletization
+unit load
+load building
+pallet configuration
+warehouse kitting
+consolidation
+deconsolidation
+staging area
+shipping manifest
+packing station
+packaging specification
+hazmat packaging
+fmcg packaging
+corrugated box
+rsc carton
+edge crush test
+burst strength
+pallet pattern
+stretch wrap
+shrink wrap
+desiccant
+moisture indicator
+shock indicator
+tilt indicator
+reusable container
+returnable packaging
+expendable packaging
+returnable dunnage
+demand review
+supply review
+pre s&op
+executive s&op
+scenario planning
+what if analysis
+constraint review
+supplier code of conduct
+conflict minerals reporting
+responsible minerals initiative
+rmi
+cmrt
+rohs compliance
+reach compliance
+proposition 65
+tsca
+scope 1 emissions
+scope 2 emissions
+scope 3 emissions
+lifecycle assessment
+lca
+ghg protocol
+science based targets
+sbti
+carbon accounting
+circular economy
+remanufacturing
+reverse logistics
+order management
+order promising
+order allocation
+backlog management
+failure reporting
+mttd
+mtta
+overall labor effectiveness
+ole
+job safety analysis
+jsa
+behavior based safety
+lockout device
+process safety management
+psm
+management of change
+moc
+hazard identification
+bowtie analysis
+risk matrix
+stop work authority
+near miss reporting
+edi
+ansi x12
+edifact
+asn
+sscc
+gs1 128
+qr code
+rfid
+barcode label
+datamatrix
+agv
+amr
+conveyor control
+wcs
+warehouse control system
+wms wcs integration
+pick to robot
+cobot
+collaborative robot
+plc scada integration
+vision inspection system

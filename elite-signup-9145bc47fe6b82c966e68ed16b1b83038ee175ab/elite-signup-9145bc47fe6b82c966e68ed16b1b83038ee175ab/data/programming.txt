@@ -1,0 +1,224 @@
+python
+java
+c
+c++
+c#
+go
+rust
+kotlin
+swift
+objective-c
+php
+ruby
+perl
+lua
+elixir
+erlang
+clojure
+haskell
+ocaml
+scala
+dart
+typescript
+javascript
+shell
+bash
+powershell
+r
+matlab
+julia
+fortran
+cobol
+vb.net
+f#
+assembly
+wasm
+webassembly
+sql
+t-sql
+pl/sql
+graphql
+rest
+soap
+grpc
+protobuf
+thrift
+openapi
+swagger
+json
+xml
+yaml
+toml
+csv
+avro
+parquet
+orc
+flatbuffers
+capnproto
+messagepack
+oop
+functional programming
+reactive programming
+event-driven
+microservices
+monolith
+serverless
+design patterns
+solid
+dry
+kiss
+yagni
+tdd
+bdd
+ddd
+clean architecture
+hexagonal architecture
+cqrs
+event sourcing
+dependency injection
+inversion of control
+reflection
+metaprogramming
+concurrency
+parallelism
+multithreading
+multiprocessing
+async
+await
+coroutines
+futures
+promises
+locks
+semaphores
+actors
+channels
+ipc
+sockets
+udp
+tcp
+http client
+http server
+websocket
+tls
+ssl
+encryption
+hashing
+compression
+serialization
+deserialization
+file io
+memory management
+pointers
+garbage collection
+jit
+aot
+interpreter
+compiler
+llvm
+gcc
+clang
+msvc
+cmake
+make
+bazel
+ninja
+gradle
+maven
+sbt
+ant
+pip
+poetry
+pipenv
+virtualenv
+conda
+npm
+yarn
+pnpm
+bundler
+cargo
+go modules
+dub
+rebar
+mix
+tox
+pytest
+unittest
+nose
+junit
+testng
+assertj
+hamcrest
+mockito
+powermock
+mocha
+jest
+vitest
+chai
+sinon
+rspec
+minitest
+doctest
+coverage
+lint
+flake8
+black
+ruff
+pylint
+eslint
+prettier
+ktlint
+checkstyle
+spotbugs
+findsecbugs
+sonarqube
+git
+gitflow
+semantic versioning
+changelog
+commitlint
+husky
+pre-commit
+code review
+static analysis
+dynamic analysis
+profiling
+benchmark
+perf tuning
+memory leak
+race condition
+deadlock
+code generation
+codegen
+templates
+macros
+scripting
+cli
+repl
+sdk
+api
+library
+framework
+package manager
+module system
+plugin system
+extension
+ffi
+cgo
+jni
+cython
+numba
+ctypes
+pybind11
+swig
+cross compile
+target triple
+endian
+big endian
+little endian
+unicode
+utf-8
+utf-16
+locale
+i18n
+l10n
+accessibility

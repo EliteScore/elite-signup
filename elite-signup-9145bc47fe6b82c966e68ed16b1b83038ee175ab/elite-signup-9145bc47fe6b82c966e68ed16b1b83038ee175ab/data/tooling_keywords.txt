@@ -1,0 +1,264 @@
+created
+performed
+packaging
+documentation
+change order
+ecr
+plm
+solidworks
+arena
+deployed
+shipped
+published
+validated
+experiment
+published
+peer-reviewed
+in press
+conference abstract
+field sampling
+expedition
+submersible
+ROV
+fluid sampling
+laboratory methods
+modeling
+advisor
+supervised
+mentored
+grant
+fellowship
+reviewer
+committee
+created
+performed
+packaging
+documentation
+change order
+ecr
+plm
+solidworks
+arena
+deployed
+shipped
+published
+validated
+experiment
+published
+peer-reviewed
+in press
+conference abstract
+field sampling
+expedition
+submersible
+ROV
+fluid sampling
+laboratory methods
+modeling
+advisor
+supervised
+mentored
+grant
+fellowship
+reviewer
+committee
+designed
+developed
+implemented
+integrated
+automated
+optimized
+refactored
+tested
+verified
+qualified
+characterized
+documented
+standardized
+templated
+reviewed
+audited
+inspected
+calibrated
+commissioned
+decommissioned
+released
+containerized
+orchestrated
+monitored
+instrumented
+profiled
+debugged
+triaged
+mitigated
+resolved
+escalated
+prioritized
+scheduled
+scoped
+estimated
+benchmarked
+simulated
+modeled
+prototyped
+fabricated
+assembled
+machined
+3d printed
+welded
+soldered
+brazed
+potted
+conformal coating
+encapsulated
+sop
+work instruction
+traveler
+batch record
+dmr
+dhr
+bom management
+change control
+ecn
+ncr
+capa
+root cause analysis
+5 whys
+fishbone diagram
+fmea
+dfmea
+pfmea
+control plan
+ppap
+apqp
+msa
+spc
+design review
+gate review
+mrb
+deviation
+waiver
+concession
+risk assessment
+hazard analysis
+fault tree analysis
+bowtie analysis
+pfd
+p&id
+haccp
+8d
+corrective action plan
+preventive action
+kaizen
+kanban
+agile
+scrum
+sprint
+retrospective
+backlog grooming
+standup
+code review
+pull request
+merge request
+ci
+cd
+pipeline
+artifact
+release notes
+changelog
+version control
+semantic versioning
+tagging
+branching strategy
+feature flag
+canary release
+blue-green deployment
+rollback
+hotfix
+patch management
+jira
+confluence
+github
+gitlab
+bitbucket
+jenkins
+circleci
+travis ci
+azure devops
+docker
+kubernetes
+helm
+terraform
+ansible
+aws
+azure
+gcp
+altium designer
+kicad
+eagle
+ansys
+comsol
+abaqus
+solidworks simulation
+autodesk inventor
+fusion 360
+onshape
+matlab
+simulink
+labview
+origin
+graphpad prism
+imagej
+arduino
+raspberry pi
+plc
+siemens tia portal
+allen-bradley
+ladder logic
+scada
+wonderware
+ignition
+test plan
+test protocol
+test report
+verification protocol
+validation protocol
+iq
+oq
+pq
+evt
+dvt
+pvt
+environmental testing
+vibration testing
+shock testing
+drop testing
+thermal cycling
+humidity testing
+salt spray
+ingress protection
+ip67
+emc testing
+emi testing
+esd testing
+burn-in
+endurance testing
+reliability testing
+accelerated life test
+sample size
+aql
+iso 9001
+iso 13485
+as9100
+gmp
+glp
+gcp
+21 cfr part 11
+ce marking
+ul certification
+fcc
+reach
+weee
+ipc-a-610
+ipc j-std-001
+ipc-2221

@@ -1,0 +1,245 @@
+linux
+debian
+ubuntu
+alpine
+rhel
+centos
+amazon linux
+suse
+systemd
+journald
+logrotate
+cron
+ssh
+bash
+zsh
+fish
+tmux
+vim
+nano
+curl
+wget
+jq
+yq
+git
+git lfs
+git hooks
+github actions
+gitlab ci
+circleci
+travis ci
+teamcity
+bamboo
+azure pipelines
+aws codebuild
+aws codepipeline
+gcp cloud build
+jenkins
+jenkins pipelines
+buildkite
+drone
+spinnaker
+argo workflows
+argo cd
+fluxcd
+tekton
+spacelift
+harness
+octopus deploy
+artifact registry
+nexus
+jfrog artifactory
+harbor
+quay
+ecr
+gcr
+acr
+docker
+docker compose
+dockerfile
+container registry
+podman
+buildah
+kaniko
+skopeo
+kubernetes
+k8s
+kubeadm
+kops
+eks
+aks
+gke
+openshift
+rancher
+nomad
+consul
+vault
+service mesh
+istio
+linkerd
+cilium
+calico
+istio ingress
+nginx ingress
+traefik
+envoy
+haproxy
+load balancer
+helm
+helmfile
+charts
+kustomize
+sealed secrets
+external secrets
+sops
+configmap
+secret
+statefulset
+daemonset
+init container
+sidecar
+operators
+opa
+gatekeeper
+kyverno
+policy
+rbac
+networkpolicy
+pod security
+runtimeclass
+cri
+containerd
+cri-o
+runc
+cgroups
+namespaces
+seccomp
+apparmor
+selinux
+terraform
+terragrunt
+pulumi
+cloudformation
+cdk
+ansible
+chef
+puppet
+saltstack
+packer
+vagrant
+nix
+nixos
+provisioning
+immutable infrastructure
+blue green
+canary
+progressive delivery
+feature flags
+launchdarkly
+unleash
+spike arrest
+rate limit
+throttle
+api gateway
+service discovery
+service registry
+dns
+bind
+route 53
+cloud dns
+private dns
+vpc
+subnet
+nat
+vpn
+transit gateway
+peering
+bgp
+ipsec
+wireguard
+openvpn
+firewall
+iptables
+nftables
+waf
+web application firewall
+ddos
+shield
+cloud armor
+cloudflare
+anycast
+cdns
+prometheus
+alertmanager
+grafana
+loki
+tempo
+mimir
+thanos
+opentelemetry
+otel collector
+jaeger
+zipkin
+new relic
+datadog
+dynatrace
+appdynamics
+splunk
+elk
+elasticsearch
+logstash
+kibana
+filebeat
+metricbeat
+heartbeat
+graylog
+papertrail
+sumologic
+honeycomb
+sentry
+rollbar
+instana
+pagerduty
+opsgenie
+victorops
+on-call
+runbook
+playbook
+slo
+sli
+sla
+error budget
+toil
+blameless postmortem
+chaos engineering
+gremlin
+litmus
+resilience
+disaster recovery
+backup
+restore
+dr runbook
+high availability
+active-active
+active-passive
+autoscaling
+hpa
+vpa
+cluster autoscaler
+cost optimization
+finops
+spot
+reserved instances
+savings plans
+security baseline
+cis benchmarks
+benchmarking
+compliance
+auditing
+secrets management
+key rotation
+kms
+hashicorp vault
+aws kms
+gcp kms
+azure key vault

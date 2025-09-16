@@ -1,0 +1,619 @@
+solidworks
+solidworks composer
+solidworks pdm
+solidworks simulation
+autocad
+autocad mechanical
+autocad electrical
+autocad plant 3d
+civil 3d
+revit
+revit mep
+navisworks
+navisworks manage
+inventor
+fusion 360
+vault
+catia
+catia v5
+catia v6
+siemens nx
+nx nastran
+nx cam
+simcenter 3d
+teamcenter
+creo
+pro engineer
+ptc creo parametric
+ptc windchill
+ansys
+ansys workbench
+ansys mechanical
+ansys fluent
+ansys cfx
+ansys maxwell
+ansys hfss
+abaqus
+abaqus cae
+msc nastran
+patran
+hypermesh
+optistruct
+ls dyna
+radioss
+adams
+comsol multiphysics
+altair inspire
+altair hyperworks
+autodesk robot structural analysis
+etabs
+sap2000
+staad pro
+tekla structures
+tekla structural designer
+tekla tedds
+idea statica
+midas civil
+plaxis
+geostudio
+slope w
+bentley microstation
+bentley openroads
+bentley openbuildings
+infraworks
+bluebeam revu
+solibri
+archicad
+sketchup pro
+rhino
+grasshopper
+solid edge
+solid edge st
+altium designer
+cadence allegro
+orcad
+mentor graphics pads
+mentor xpedition
+kicad
+eagle cad
+diptrace
+ltspice
+pspice
+hspice
+enovia
+smarteam
+aras innovator
+agile plm
+arena plm
+sap ectr
+mastercam
+powermill
+edgecam
+solidcam
+hsmworks
+hypermill
+gibbscam
+esprit cam
+camworks
+featurecam
+vericut
+polyworks
+polyworks inspector
+metrolog x4
+geomagic design x
+geomagic control x
+cloudcompare
+meshlab
+star ccm+
+openfoam
+autodesk cfd
+gd&t
+geometric dimensioning and tolerancing
+iso 2768
+iso 286
+iso 1101
+iso fits h7 g6
+ansi y14.5
+asme y14.5
+surface finish symbol
+welding symbol
+datums
+feature control frame
+true position
+basic dimension
+bilateral tolerance
+unilateral tolerance
+limit and fit
+hole basis system
+shaft basis system
+title block
+revision control
+drawing release
+engineering change order
+ecr
+ecn
+mrb
+dcr
+bom
+bill of materials
+ebom
+mbom
+parts list
+ballooning
+exploded view
+section view
+detail view
+auxiliary view
+general arrangement
+fabrication drawing
+shop drawing
+isometric drawing
+p&id
+pfd
+piping isometric
+spool drawing
+cnc machining
+cnc milling
+cnc turning
+5 axis machining
+lathe
+mill turn
+drilling
+tapping
+boring
+reaming
+broaching
+thread rolling
+grinding
+surface grinding
+cylindrical grinding
+centerless grinding
+honing
+lapping
+polishing
+deburring
+electrochemical machining
+edm
+wire edm
+sinker edm
+additive manufacturing
+3d printing
+fused deposition modeling
+sla
+sls
+dmls
+slm
+ebm
+binder jetting
+metal 3d printing
+topology optimization
+support generation
+heat treatment
+annealing
+normalizing
+tempering
+quenching
+case hardening
+carburizing
+nitriding
+carbonitriding
+shot peening
+anodizing
+passivation
+electroplating
+powder coating
+painting
+chemical conversion coating
+sheet metal
+sheet metal design
+k factor
+bend allowance
+bend deduction
+neutral axis
+grain direction
+bending
+hemming
+flanging
+beading
+rivetting
+spot welding
+resistance welding
+laser cutting
+plasma cutting
+waterjet cutting
+turret punching
+press brake
+roll forming
+deep drawing
+progressive die
+blanking
+piercing
+notching
+coining
+embossing
+hydroforming
+injection molding
+two shot molding
+overmolding
+gas assist molding
+insert molding
+in mold labeling
+runner balancing
+gate design
+sprue
+runner
+gate
+ejector pin
+draft angle
+warpage
+sink marks
+weld lines
+family mold
+hot runner
+cold runner
+mold flow analysis
+moldflow
+cooling channels
+venting
+pack and hold
+cycle time
+blow molding
+extrusion
+film extrusion
+profile extrusion
+tubing extrusion
+thermoforming
+rotational molding
+compression molding
+transfer molding
+pultrusion
+die casting
+gravity die casting
+permanent mold casting
+sand casting
+green sand
+shell molding
+investment casting
+lost wax casting
+lost foam casting
+core making
+risers and gates
+porosity
+hot tear
+chills
+feeder design
+casting simulation
+thread specification
+unc
+unf
+iso metric thread
+coarse thread
+fine thread
+helicoil
+rivet nut
+clinch nut
+pem fastener
+stud welding
+weld procedure
+weld map
+fillet weld
+groove weld
+butt weld
+stitch weld
+seal weld
+braze
+solder
+adhesive bonding
+torque spec
+preload
+safety factor
+spc
+cp
+cpk
+ppk
+apqp
+ppap
+control plan
+msa
+gage r&r
+first article inspection
+fair
+inspection plan
+go no go gauge
+pin gauge
+thread plug gauge
+caliper
+micrometer
+height gauge
+surface plate
+cmm
+coordinate measuring machine
+pc dmis
+calypso
+spc chart
+x bar r chart
+process capability
+dimensional stackup
+tolerance analysis
+fmea
+dfmea
+pfmea
+dfa
+dfm
+dfs
+dft
+six sigma
+lean manufacturing
+5s
+kaizen
+poke yoke
+value stream mapping
+kanban
+takt time
+oee
+andon
+steel
+stainless steel
+aluminum
+copper
+brass
+titanium
+magnesium
+nickel alloy
+inconel
+monel
+hastelloy
+plastics
+abs
+pc
+pc abs
+pp
+pa66
+peek
+pbt
+acetal
+pom
+hdpe
+ldpe
+uhmwpe
+petg
+pmma
+composites
+carbon fiber
+glass fiber
+aramid fiber
+prepreg
+vacuum bagging
+autoclave
+resin infusion
+rtm
+filament winding
+honeycomb core
+sandwich panel
+piping class
+pipe schedule
+pipe spec
+valve specification
+buttweld fitting
+socket weld
+threaded fitting
+flange rating
+asme b16.5
+asme b31.3
+asme b31.1
+pressure vessel
+asme section viii
+heat exchanger
+shell and tube
+plate heat exchanger
+htri
+tema
+pumps
+pump curve
+npsh
+control valve
+relief valve
+psv
+orifice plate
+flow meter
+rotameter
+piping stress analysis
+caesar ii
+autopipe
+spring hanger
+pipe support
+expansion loop
+flexibility analysis
+tag numbering
+loop diagram
+i o list
+logic diagram
+cause and effect matrix
+hazop
+hazid
+lopa
+sil
+dcs
+scada
+plc
+sis
+fire and gas
+bim coordination
+clash detection
+coordination meeting
+rfi
+submittal
+method statement
+work pack
+inspection test plan
+itp
+project quality plan
+wbs
+cost code
+quantity takeoff
+qto
+as built
+redline
+punch list
+snag list
+mechanical completion
+pre commissioning
+commissioning
+start up
+turnover package
+handover
+permit to work
+toolbox talk
+job hazard analysis
+lift plan
+rigging plan
+scaffolding
+confined space
+lockout tagout
+hot work permit
+hse plan
+osha 1910
+osha 1926
+nfpa 70e
+nec
+iec
+iso 45001
+iso 14001
+iso 9001
+iatf 16949
+as9100
+api 650
+api 1104
+aci 318
+aashto
+eurocode
+bs en
+astm standards
+dnv
+abs
+aws d1.1
+iso 3834
+en 1090
+ul listing
+ce marking
+survey control
+benchmark
+total station
+theodolite
+rtk gps
+laser scan
+point cloud
+lidar
+photogrammetry
+ground control point
+leveling
+traverse
+cut and fill
+earthwork
+grading
+alignment
+corridor modeling
+cross section
+stationing
+asphalt paving
+concrete pour
+rebar detailing
+post tensioning
+prestressed concrete
+formwork
+shuttering
+slump test
+compressive strength test
+cube test
+cylinder test
+curing compound
+expansion joint
+control joint
+screed
+vibrator
+shotcrete
+guniting
+geotextile
+geogrid
+gabion
+riprap
+retaining wall
+soil nailing
+micropile
+bored pile
+driven pile
+pile integrity test
+dynamic load test
+static load test
+plate load test
+spt
+cpt
+borehole log
+uscs
+atterberg limits
+proctor test
+cbr
+permeability test
+triaxial test
+oedometer test
+load calculation
+heat load
+cooling load
+ashrae
+vav
+vrf
+chilled water
+cooling tower
+ahu
+fcu
+duct sizing
+static pressure
+smacna
+fire dampers
+smoke control
+sprinkler system
+nfpa 13
+hydraulic calculation
+pump head
+head loss
+u value
+r value
+dew point
+psychrometrics
+plenum
+duct leakage test
+balancing
+single line diagram
+schematic diagram
+wiring diagram
+cable schedule
+load schedule
+panel schedule
+short circuit study
+arc flash study
+protective device coordination
+earthing
+grounding
+lighting layout
+lux level
+iec 60364
+nfpa 70
+harmonics
+vfd
+ups
+generator sizing
+switchgear
+mcc
+bus duct
+cable tray
+conduit
+track alignment
+ballast
+sleeper
+rail weld
+turnout
+overhead catenary
+third rail
+signaling
+interlocking
+grade crossing

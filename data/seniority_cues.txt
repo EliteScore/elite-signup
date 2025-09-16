@@ -1,0 +1,141 @@
+principal: 10
+principal engineer: 10
+staff: 8
+staff engineer: 9
+distinguished: 10
+distinguished engineer: 10
+fellow: 10
+chief: 10
+chief architect: 10
+chief scientist: 10
+cto: 10
+cio: 10
+ciso: 10
+ceo: 10
+coo: 10
+vp: 10
+vice president: 10
+svp: 10
+evp: 10
+executive director: 9
+managing director: 9
+director: 8
+senior director: 9
+associate director: 7
+head: 8
+head of: 8
+lead: 7
+team lead: 7
+tech lead: 7
+practice lead: 7
+chapter lead: 7
+group manager: 7
+manager: 6
+engineering manager: 7
+program manager: 6
+product manager: 6
+project manager: 6
+senior manager: 7
+supervisor: 6
+foreman: 6
+superintendent: 8
+architect: 8
+solution architect: 8
+enterprise architect: 9
+data architect: 8
+security architect: 8
+senior architect: 9
+consultant: 6
+senior consultant: 7
+principal consultant: 9
+associate consultant: 5
+analyst: 3
+senior analyst: 5
+principal analyst: 8
+research scientist: 7
+senior research scientist: 8
+principal scientist: 9
+data scientist: 6
+senior data scientist: 7
+principal data scientist: 9
+software engineer: 5
+senior software engineer: 7
+principal software engineer: 9
+full stack engineer: 5
+backend engineer: 5
+frontend engineer: 5
+devops engineer: 5
+site reliability engineer: 6
+qa engineer: 4
+test engineer: 4
+embedded engineer: 5
+electrical engineer: 5
+mechanical engineer: 5
+civil engineer: 5
+structural engineer: 6
+manufacturing engineer: 5
+process engineer: 5
+senior process engineer: 7
+operations manager: 6
+senior operations manager: 7
+supply chain manager: 6
+logistics manager: 6
+plant manager: 8
+general manager: 8
+finance manager: 6
+fp&a manager: 6
+controller: 7
+cfo: 10
+accountant: 4
+senior accountant: 5
+lead accountant: 6
+auditor: 4
+senior auditor: 6
+legal counsel: 7
+associate attorney: 6
+senior associate: 7
+partner: 10
+of counsel: 8
+paralegal: 3
+nurse: 4
+charge nurse: 6
+nurse manager: 7
+clinical supervisor: 6
+attending physician: 10
+resident physician: 6
+medical director: 9
+pharmacist in charge: 8
+teacher: 4
+lead teacher: 6
+department chair: 8
+assistant professor: 7
+associate professor: 8
+professor: 9
+dean: 9
+principal (school): 8
+coach: 4
+senior product manager: 7
+principal product manager: 9
+design lead: 7
+ux lead: 7
+creative director: 8
+marketing manager: 6
+senior marketing manager: 7
+brand director: 8
+sales manager: 6
+regional sales manager: 7
+vp sales: 10
+customer success manager: 6
+hr manager: 6
+talent acquisition lead: 7
+head of people: 8
+intern: 1
+trainee: 1
+apprentice: 1
+junior: 2
+graduate: 2
+associate: 4
+assistant: 3
+coordinator: 3
+specialist: 4
+senior specialist: 5

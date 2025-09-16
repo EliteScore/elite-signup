@@ -1,0 +1,238 @@
+aws certified cloud practitioner
+aws certified solutions architect – associate
+aws certified solutions architect – professional
+aws certified developer – associate
+aws certified sysops administrator – associate
+aws certified devops engineer – professional
+aws certified security – specialty
+aws certified advanced networking – specialty
+aws certified data analytics – specialty
+aws certified machine learning – specialty
+aws certified database – specialty
+aws certified sap on aws – specialty
+microsoft certified: azure fundamentals (az-900)
+microsoft certified: azure administrator associate (az-104)
+microsoft certified: azure developer associate (az-204)
+microsoft certified: azure solutions architect expert (az-305)
+microsoft certified: azure security engineer associate (az-500)
+microsoft certified: azure ai fundamentals (ai-900)
+microsoft certified: azure data fundamentals (dp-900)
+microsoft certified: azure data engineer associate (dp-203)
+microsoft certified: azure ai engineer associate (ai-102)
+microsoft certified: power bi data analyst associate (pl-300)
+microsoft certified: power platform fundamentals (pl-900)
+microsoft certified: security compliance and identity fundamentals (sc-900)
+microsoft certified: identity and access administrator associate (sc-300)
+microsoft certified: information protection administrator associate (sc-400)
+google cloud certified: associate cloud engineer
+google cloud certified: professional cloud architect
+google cloud certified: professional data engineer
+google cloud certified: professional cloud developer
+google cloud certified: professional cloud security engineer
+google cloud certified: professional devops engineer
+google cloud certified: professional machine learning engineer
+google cloud certified: professional network engineer
+google cloud digital leader
+cka (certified kubernetes administrator)
+ckad (certified kubernetes application developer)
+cks (certified kubernetes security specialist)
+kcna (kubernetes and cloud native associate)
+hashicorp terraform associate
+hashicorp vault associate
+hashicorp consul associate
+lpic-1 linux administrator
+lpic-2 linux engineer
+lpic-3 linux enterprise professional
+lfcs (linux foundation certified sysadmin)
+lfce (linux foundation certified engineer)
+rhcsa (red hat certified system administrator)
+rhce (red hat certified engineer)
+rhca (red hat certified architect)
+comptia a+
+comptia network+
+comptia security+
+comptia linux+
+comptia server+
+comptia project+
+comptia cloud+
+comptia cySA+
+comptia penTest+
+comptia casp+
+cissp (isc)²
+sscp (isc)²
+ccsp (isc)²
+csslp (isc)²
+cism (isaca)
+cisa (isaca)
+crisc (isaca)
+cdpse (isaca)
+ceh (certified ethical hacker)
+chfi (computer hacking forensic investigator)
+oscp (offensive security certified professional)
+oswp (offensive security wireless professional)
+oswe (offensive security web expert)
+osep (offensive security experienced pentester)
+osee (offensive security exploitation expert)
+giac gsec
+giac gcih
+giac gcfe
+giac gcfa
+giac gcti
+giac gpen
+giac gwapt
+giac gced
+giac gcia
+giac grem
+giac gweb
+giac gccc
+giac gcpn
+giac gcld
+palo alto pcnse
+palo alto pccet
+palo alto pcnsa
+fortinet nse 1
+fortinet nse 2
+fortinet nse 3
+fortinet nse 4
+fortinet nse 5
+fortinet nse 6
+fortinet nse 7
+fortinet nse 8
+checkpoint ccsa
+checkpoint ccse
+juniper jncia-junos
+juniper jncis
+juniper jncip
+cisco ccna
+cisco ccnp enterprise
+cisco ccnp security
+cisco ccie enterprise infrastructure
+cisco ccie security
+f5 101 application delivery fundamentals
+f5 201 tmose
+cwna (certified wireless network admin)
+cwsp (certified wireless security professional)
+aruba acma
+aruba acmp
+itil 4 foundation
+itil 4 managing professional
+prince2 foundation
+prince2 practitioner
+pmp (project management professional)
+capm (certified associate in project management)
+pmi-acp (agile certified practitioner)
+csm (certified scrum master)
+psm i
+psm ii
+psm iii
+cspo (certified scrum product owner)
+pspo i
+pspo ii
+safe agilist (sa)
+safe scrum master (ssm)
+safe product owner/product manager (popm)
+safe release train engineer (rte)
+six sigma yellow belt
+lean six sigma green belt
+lean six sigma black belt
+lean six sigma master black belt
+asq cqE (quality engineer)
+asq cqa (quality auditor)
+asq cmq/oe (manager of quality)
+asq csqe (software quality engineer)
+apics cpim
+apics cscp
+apics cltd
+ism cpsm
+ism cpsd
+snowflake snowpro core
+snowflake snowpro advanced: architect
+snowflake snowpro advanced: data engineer
+databricks lakehouse fundamentals
+databricks data engineer associate
+databricks data engineer professional
+databricks machine learning associate
+databricks machine learning professional
+tableau desktop specialist
+tableau certified data analyst
+looker business analyst
+power bi data analyst (pl-300)
+google analytics individual qualification
+hubspot inbound marketing
+hubspot marketing software
+meta blueprint media buying professional
+meta blueprint media planning professional
+salesforce administrator
+salesforce advanced administrator
+salesforce platform app builder
+salesforce sales cloud consultant
+salesforce service cloud consultant
+cfa level i
+cfa level ii
+cfa level iii
+frm part i
+frm part ii
+caia level i
+caia level ii
+cma (ima)
+cpa
+acca
+cima
+cipfa
+cipm (privacy manager)
+cipp/us
+cipp/e
+cipp/c
+cipp/g
+cipt
+iapp fip
+ceds (aceds e-discovery)
+oshA 10
+osha 30
+nebosh igc
+iosh managing safely
+leed green associate
+leed ap bd+c
+leed ap id+c
+leed ap o+m
+pe (professional engineer)
+se (structural engineer)
+shrm-cp
+shrm-scp
+phr
+sphr
+gphr
+aPHR
+rn (registered nurse)
+bsn
+msn
+lpn
+lvn
+cna
+bls
+acls
+pals
+nrp
+nihss
+tncc
+enpc
+ccrn
+cen
+ocn
+cnor
+crna
+arrt
+rdms
+rrt
+pt
+dpt
+ot
+otr/l
+slp
+pharmd
+rph
+naplex
+bcps
+cpht
+rd (registered dietitian)
+cdces (certified diabetes care and education specialist)

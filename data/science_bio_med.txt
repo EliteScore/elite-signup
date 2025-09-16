@@ -1,0 +1,852 @@
+pcr
+rt pcr
+qpcr
+ddpcr
+touchdown pcr
+nested pcr
+multiplex pcr
+primer design
+annealing temperature
+melting temperature
+amplicon
+gel electrophoresis
+agarose gel
+polyacrylamide gel
+sds page
+western blot
+northern blot
+southern blot
+dot blot
+elisa
+sandwich elisa
+indirect elisa
+competitive elisa
+lateral flow assay
+immunochromatography
+immunoprecipitation
+co immunoprecipitation
+chromatin immunoprecipitation
+chip seq
+atac seq
+rna seq
+single cell rna seq
+scrna seq
+spatial transcriptomics
+metagenomics
+amplicon sequencing
+whole genome sequencing
+whole exome sequencing
+targeted sequencing
+bisulfite sequencing
+methylation sequencing
+chip qPCR
+riboseq
+long read sequencing
+nanopore sequencing
+pacbio smrt
+illumina novaseq
+illumina hiseq
+illumina miseq
+illumina nextseq
+ion torrent
+library preparation
+adapter ligation
+end repair
+a tailing
+size selection
+bead cleanup
+ampure beads
+pcr free library
+tagmentation
+nextera
+barcoding
+index hopping
+dual index
+tile sequencing
+quality control
+fastqc
+multiqc
+qubit
+nanodrop
+bioanalyzer
+tapestation
+fragment analyzer
+fastq
+fasta
+sam
+bam
+cram
+vcf
+bcf
+bed
+gtf
+gff3
+bwa
+bowtie2
+hisat2
+star aligner
+kallisto
+salmon
+cellranger
+umi deduplication
+umi tools
+read trimming
+cutadapt
+trimmomatic
+adapter trimming
+low complexity filtering
+alignment
+variant calling
+gatk
+freebayes
+mutect2
+haplotypecaller
+ploidy
+somatic variant
+germline variant
+indel realignment
+base quality recalibration
+samtools
+bcftools
+picard
+bedtools
+plink
+annovar
+snpeff
+vcftools
+cnv calling
+sv calling
+manta
+delly
+lumpy
+breakdancer
+fusion detection
+star fusion
+arriba
+gene ontology
+pathway analysis
+gsea
+deseq2
+edge r
+limma voom
+batch effect
+combat
+pca
+umap
+tsne
+clustering
+differential expression
+fold change
+fdr
+benjamini hochberg
+multiple testing correction
+reference genome
+grch38
+hg19
+mm10
+ensembl
+refseq
+dbsnp
+clinvar
+gnomad
+cosmic
+hgvs notation
+cadd score
+polyphen
+sift
+pathogenic variant
+likely pathogenic
+variant of uncertain significance
+benign variant
+acmg guidelines
+molecular cloning
+restriction digest
+restriction map
+ligation
+blunt end ligation
+sticky end ligation
+ta cloning
+gateway cloning
+gibson assembly
+golden gate assembly
+transformation
+heat shock
+electroporation
+competent cells
+blue white screening
+colony pcr
+miniprep
+midiprep
+maxiprep
+endotoxin free prep
+plasmid map
+vector backbone
+promoter
+cds
+utr
+poly a signal
+selection marker
+antibiotic resistance
+ori
+copy number
+site directed mutagenesis
+overlap extension pcr
+dna purification
+gel extraction
+spin column
+silica membrane
+phenol chloroform
+ethanol precipitation
+rna extraction
+trizol
+dnase treatment
+cdna synthesis
+reverse transcription
+rnase free technique
+rna integrity number
+rin
+northern transfer
+sirna
+shrna
+mirna
+antisense oligo
+transfection
+lipofection
+polyethylenimine
+viral transduction
+lentiviral vector
+aav vector
+adenoviral vector
+moa
+mo i
+titration
+pseudotyping
+crisper
+crispr
+cas9
+cas12
+base editing
+prime editing
+guide rna
+sgrna
+off target analysis
+knockout
+knockin
+conditional knockout
+cre lox
+flp recombinase
+tamoxifen inducible
+cell culture
+primary cells
+cell line
+passage number
+doubling time
+mycoplasma testing
+co2 incubator
+biosafety cabinet
+bsc class ii
+bsl 1
+bsl 2
+bsl 2 plus
+bsl 3
+bsl 4
+aseptic technique
+sterile technique
+surface sterilization
+trypsinization
+cell counting
+hemocytometer
+trypan blue exclusion
+viability assay
+mtt assay
+resazurin assay
+brdu incorporation
+edU assay
+colony formation assay
+wound healing assay
+scratch assay
+transwell assay
+boyden chamber
+co culture
+spheroid culture
+organoids
+3d culture
+microcarrier culture
+spinner flask
+bioreactor
+shake flask
+roller bottle
+cryopreservation
+liquid nitrogen storage
+freezing medium
+dmso
+fbs
+serum free medium
+chemically defined medium
+dmem
+rpmi 1640
+ham f12
+imdm
+glutamine
+pen strep
+gentamicin
+amphotericin b
+antibiotic selection
+g418
+puromycin
+hygromycin
+blasticidin
+zeocin
+immunology
+antigen
+antibody
+epitope
+paratope
+isotype
+igg
+iga
+igm
+igd
+ige
+monoclonal antibody
+polyclonal antibody
+hybridoma
+cytokine
+interleukin
+il 2
+il 6
+ifn gamma
+tnf alpha
+treg
+th1
+th2
+th17
+b cell
+t cell
+nk cell
+macrophage
+dendritic cell
+neutrophil
+eosinophil
+basophil
+phagocytosis
+opsonization
+complement cascade
+class switching
+affinity maturation
+immunophenotyping
+flow cytometry
+facs
+macs
+fluorochrome
+compensation
+spillover
+gating strategy
+forward scatter
+side scatter
+mfi
+intracellular staining
+fixation
+permeabilization
+immunofluorescence
+if staining
+confocal microscopy
+widefield microscopy
+phase contrast microscopy
+fluorescence microscopy
+live cell imaging
+frap
+fret
+super resolution microscopy
+sted
+sim
+storm
+electron microscopy
+sem
+tem
+cryo em
+negative staining
+ultramicrotomy
+histology
+grossing
+fixatives
+formalin
+paraformaldehyde
+decal
+tissue processing
+embedding
+paraffin block
+cryosection
+microtome
+cryostat
+slide mounting
+coverslipping
+h&e stain
+hematoxylin and eosin
+pas stain
+periodic acid schiff
+masson trichrome
+silver stain
+immunohistochemistry
+ihc
+in situ hybridization
+fish
+cish
+tma
+digital pathology
+image analysis
+whole slide imaging
+microbiology
+culture media
+broth culture
+agar plate
+streak plate
+spread plate
+pour plate
+anaerobic culture
+microaerophilic culture
+colony morphology
+gram stain
+acid fast stain
+zinneelson stain
+antibiotic susceptibility
+kirby bauer
+disk diffusion
+mic determination
+broth microdilution
+e test
+minimum bactericidal concentration
+mbc
+biofilm assay
+planktonic growth
+lag phase
+log phase
+stationary phase
+sporulation
+quorum sensing
+metabolism
+aerobe
+anaerobe
+facultative anaerobe
+microaerophile
+capnophile
+pathogenicity
+virulence factor
+toxigenicity
+virology
+viral load
+ct value
+neutralization assay
+plaque assay
+tcid50
+hemagglutination assay
+reverse genetics
+biosafety level
+parasitology
+thick smear
+thin smear
+ova and parasite exam
+elispot
+cytotoxicity assay
+ldh release
+toxicity screening
+toxicology
+ames test
+micronucleus assay
+comet assay
+noael
+loael
+ld50
+pk pd
+pharmacokinetics
+pharmacodynamics
+auc
+cmax
+tmax
+half life
+bioavailability
+clearance
+volume of distribution
+population pk
+noncompartmental analysis
+bioequivalence
+hplc
+uplc
+gc
+gc ms
+lc ms
+lc ms ms
+maldi tof
+nmr spectroscopy
+capillary electrophoresis
+icp ms
+mass spectrometry
+chromatography
+affinity chromatography
+ion exchange chromatography
+size exclusion chromatography
+hydrophobic interaction chromatography
+protein a purification
+membrane filtration
+tff
+ultrafiltration
+diafiltration
+buffer exchange
+cip
+sip
+clean in place
+steam in place
+sterile filtration
+0.2 micron filter
+bioprocessing
+upstream processing
+downstream processing
+fed batch
+perfusion
+seed train
+bioreactor control
+dissolved oxygen
+ph control
+cell density
+viable cell density
+titer
+specific productivity
+q p
+media optimization
+design of experiments
+doe
+response surface methodology
+cell bank
+master cell bank
+working cell bank
+sterility testing
+endotoxin testing
+lps assay
+lalmulus amebocyte lysate
+l a l test
+bioburden
+environmental monitoring
+air sampling
+surface sampling
+settle plates
+contact plates
+gowning
+cleanroom
+iso class 5
+iso class 7
+iso class 8
+deviation
+nonconformance
+oos
+oot
+change control
+capa
+root cause analysis
+5 whys
+fishbone diagram
+risk assessment
+fmea
+glp
+gcp
+gmp
+clia
+cap accreditation
+iso 15189
+alcoa
+alcoa plus
+good documentation practice
+gdp documentation
+audit trail
+data integrity
+21 cfr part 11
+part 11 compliance
+sop
+work instruction
+batch record
+raw data
+glp archive
+tmf
+trial master file
+crf
+ecrf
+edc
+source data verification
+monitoring visit
+site initiation visit
+closeout visit
+interim analysis
+dsmb
+data safety monitoring board
+protocol
+protocol amendment
+informed consent
+assent
+screening
+enrollment
+randomization
+blinding
+double blind
+single blind
+open label
+placebo controlled
+active comparator
+crossover design
+parallel design
+dose escalation
+3 plus 3 design
+mtd
+dlt
+safety run in
+simon two stage
+adaptive design
+noninferiority trial
+equivalence trial
+superiority trial
+endpoint
+primary endpoint
+secondary endpoint
+surrogate endpoint
+composite endpoint
+intercurrent event
+itt analysis
+per protocol
+as treated
+adverse event
+serious adverse event
+susar
+meddra coding
+who drug coding
+conmeds
+concomitant medication
+compliance
+visit window
+protocol deviation
+protocol violation
+query management
+data cleaning
+database lock
+clinical study report
+csr
+ich e6 r2
+ich m3
+ich e9
+consort
+strobe
+prisma
+spirit
+animal models
+rodent model
+murine model
+rat model
+zebrafish model
+drosophila model
+c elegans
+nonhuman primate
+xenograft
+pdx model
+syngeneic model
+orthotopic model
+tail vein injection
+iv dosing
+ip dosing
+po dosing
+gavage
+micro osmatic pump
+telemetry
+behavioral assays
+rotarod
+open field test
+elevated plus maze
+morris water maze
+tail flick test
+von frey test
+ethics approval
+iacuc
+3rs
+refinement
+reduction
+replacement
+animal welfare
+necropsy
+gross pathology
+histopathology
+hematology
+clinical chemistry
+serology
+specimen collection
+whole blood
+serum
+plasma
+csf
+urine
+saliva
+sputum
+stool
+tissue biopsy
+fine needle aspiration
+core needle biopsy
+ffpe
+fresh frozen
+stabilization
+rnAlater
+dry ice shipping
+cold chain
+chain of custody
+sample tracking
+barcode labeling
+l i m s
+lab information management system
+ reagent preparation
+lot traceability
+expiration dating
+calibration
+preventive maintenance
+equipment qualification
+iq oq pq
+installation qualification
+operational qualification
+performance qualification
+metrology
+pipetting technique
+gravimetric verification
+uncertainty
+traceability
+reference standard
+calibration curve
+standard curve
+limit of detection
+limit of quantitation
+linearity
+accuracy
+precision
+repeatability
+reproducibility
+robustness
+selectivity
+specificity
+matrix effect
+spike recovery
+stability study
+freeze thaw cycles
+bench top stability
+long term stability
+interference testing
+carryover
+blank control
+negative control
+positive control
+no template control
+housekeeping gene
+reference gene
+normalization
+delta ct
+delta delta ct
+kaplan meier
+cox proportional hazards
+hazard ratio
+odds ratio
+relative risk
+confidence interval
+p value
+alpha level
+power calculation
+sample size estimation
+anova
+ancova
+manova
+wilcoxon rank sum
+kruskal wallis
+chi square test
+fisher exact test
+mixed effects model
+random effects
+fixed effects
+missing data
+multiple imputation
+loq
+lod
+cv percent
+z prime
+plate map
+384 well plate
+96 well plate
+12 well plate
+6 well plate
+pipette calibration
+multichannel pipette
+repeat pipettor
+microplate reader
+absorbance
+fluorescence
+luminescence
+chemiluminescence
+time resolved fluorescence
+fret assay
+bret assay
+high content imaging
+image segmentation
+cell profiler
+masking
+thresholding
+region of interest
+object tracking
+colocalization
+autophagy assay
+apoptosis assay
+caspase activity
+tunnel assay
+annexin v staining
+mitochondrial membrane potential
+jc 1 staining
+oxidative stress
+ros detection
+dichlorofluorescein
+complement fixation test
+agglutination test
+coombs test
+blood typing
+crossmatch
+hama interference
+heterophilic antibody
+mouse to human antibody
+allergen testing
+igg subclass
+neutralizing antibody
+anti drug antibody
+immunogenicity assessment
+biomarker assay
+pk assay
+ligand binding assay
+calcium flux
+patch clamp
+electrophysiology
+membrane potential
+ion channel assay
+receptor occupancy
+surface plasmon resonance
+spr
+biolayer interferometry
+bli
+isothermal titration calorimetry
+itc
+differential scanning calorimetry
+dsc
+thermal shift assay
+protein expression
+recombinant protein
+inclusion bodies
+refolding
+protein purification
+his tag
+gst tag
+tag cleavage
+dialysis
+concentration
+protein quantitation
+bradford assay
+bicinchoninic acid assay
+lowry assay
+amino acid analysis
+end to end traceability
+chain of identity
+chain of custody audit

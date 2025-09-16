@@ -1,0 +1,208 @@
+product management
+product strategy
+product vision
+product narrative
+product charter
+product brief
+one pager
+bet backlog
+opportunity backlog
+product backlog hygiene
+problem framing workshop
+impact mapping
+outcome mapping
+dual track delivery
+dual track discovery
+product trio
+product council
+go to market plan
+gtm checklist
+market segmentation
+tam sam som
+ideal customer profile
+icp refinement
+persona segmentation
+jobs atlas
+value proposition design
+category design
+positioning statement
+message market fit
+brand positioning
+brand architecture
+brand house
+tone of voice guide
+editorial style guide
+pricing strategy
+pricing research
+willingness to pay
+conjoint analysis
+gabor granger
+van westendorp
+value metric
+usage based pricing
+tiered pricing
+per seat pricing
+hybrid pricing
+list price
+street price
+discount structure
+promo calendar
+coupon code strategy
+bundling
+unbundling
+product packaging
+pricing experiments
+price elasticity
+monetization model
+free trial
+freemium
+reverse trial
+time boxed trial
+credit based model
+paywall
+metered paywall
+soft paywall
+hard paywall
+upgrade path
+plan migration
+grandfathering
+billing operations
+invoicing workflow
+dunning
+revenue recognition rules
+contracted arr
+arr
+mrr
+tcv
+acv
+aov
+arpu
+arrr metrics
+pirate metrics
+activation rate
+adoption rate
+time to value
+aha moment
+retention cohort
+cohort analysis
+survival curve
+churn analysis
+gross churn
+net churn
+gross revenue retention
+grr
+net revenue retention
+nrr
+expansion revenue
+contraction revenue
+logo retention
+win rate
+pipeline coverage
+forecast accuracy
+weighted pipeline
+sales velocity
+sales cycle length
+lead to win
+lead response time
+sla response time
+service credits policy
+sales funnel stages
+top of funnel
+middle of funnel
+bottom of funnel
+mofu content
+bofu content
+lead generation
+demand generation
+demand capture
+demand creation
+lead nurturing
+lead scoring model
+behavioral scoring
+fit scoring
+lead enrichment
+lead routing
+round robin routing
+account based marketing
+abm
+account based experience
+abx
+target account list
+tal
+one to one abm
+one to few abm
+one to many abm
+contact strategy
+multithreading
+buyer committee
+economic buyer
+technical buyer
+champion enablement
+mutual action plan
+map
+customer lifecycle
+lifecycle stages
+mql
+sal
+sql
+sqo
+opportunity stage
+closed won
+closed lost
+loss reason coding
+post mortem sales
+win loss interviews
+sales playbooks
+sales enablement
+battlecard
+competitive intel
+objection handling
+discovery call
+discovery framework
+demo flow
+value hypothesis
+value calculator
+roi calculator
+proof of value
+pilot program
+land and expand
+solution selling
+consultative selling
+value selling
+challenger sale
+sandler selling
+spin selling
+meddICC
+meddpicc
+medic
+bant
+spiced framework
+deal desk
+approval matrix
+discount approval
+quote to cash
+cpq
+order form template
+msa template awareness
+redline process
+e signature
+doc routing
+partner program
+channel sales
+reseller program
+referral program
+affiliate program
+marketplace listing
+listing optimization
+co marketing
+co sell
+partner sourced pipeline
+partner assisted pipeline
+partner portal
+partner onboarding
+partner tiering
+partner spiff
+market research
+competitive landscape
+swot for market
+porter five for

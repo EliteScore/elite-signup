@@ -1,0 +1,122 @@
+{
+  "software_engineering": [
+    "software engineer",
+    "senior software engineer",
+    "backend engineer",
+    "frontend engineer",
+    "full stack engineer",
+    "mobile developer",
+    "android developer",
+    "ios developer",
+    "devops engineer",
+    "site reliability engineer",
+    "sre",
+    "platform engineer",
+    "systems engineer",
+    "qa engineer",
+    "test automation engineer",
+    "embedded software engineer",
+    "firmware engineer",
+    "game developer",
+    "data engineer",
+    "ml engineer",
+    "ml ops engineer",
+    "cloud engineer"
+  ],
+  "data_ai": [
+    "data scientist",
+    "senior data scientist",
+    "applied scientist",
+    "research scientist",
+    "machine learning engineer",
+    "ai engineer",
+    "nlp engineer",
+    "computer vision engineer",
+    "business intelligence analyst",
+    "data analyst",
+    "analytics engineer"
+  ],
+  "product_design": [
+    "product manager",
+    "senior product manager",
+    "group product manager",
+    "product owner",
+    "ux designer",
+    "ui designer",
+    "product designer",
+    "ux researcher",
+    "design researcher"
+  ],
+  "security_it": [
+    "security engineer",
+    "application security engineer",
+    "cloud security engineer",
+    "security analyst",
+    "grc analyst",
+    "it support specialist",
+    "systems administrator",
+    "network engineer"
+  ],
+  "project_ops": [
+    "project manager",
+    "program manager",
+    "scrum master",
+    "agile coach",
+    "operations manager",
+    "business analyst"
+  ],
+  "finance_legal_hr": [
+    "financial analyst",
+    "accountant",
+    "auditor",
+    "controller",
+    "tax associate",
+    "corporate lawyer",
+    "paralegal",
+    "contract manager",
+    "hr generalist",
+    "recruiter",
+    "talent acquisition"
+  ],
+  "marketing_sales": [
+    "marketing manager",
+    "growth marketer",
+    "seo specialist",
+    "content strategist",
+    "social media manager",
+    "performance marketer",
+    "sales representative",
+    "account executive",
+    "customer success manager"
+  ],
+  "healthcare_life_sciences": [
+    "registered nurse",
+    "physician",
+    "pharmacist",
+    "clinical researcher",
+    "lab technician",
+    "biostatistician",
+    "medical assistant"
+  ],
+  "engineering_cad": [
+    "mechanical engineer",
+    "electrical engineer",
+    "civil engineer",
+    "structural engineer",
+    "manufacturing engineer",
+    "industrial engineer",
+    "process engineer",
+    "quality engineer",
+    "cad designer",
+    "drafter"
+  ],
+  "education_nonprofit_public": [
+    "teacher",
+    "lecturer",
+    "postdoctoral researcher",
+    "research assistant",
+    "policy analyst",
+    "nonprofit program manager",
+    "grant writer"
+  ]
+}
