@@ -425,7 +425,6 @@ export default function HomePage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showScore, setShowScore] = useState(false)
-  const [isScoreLocked, setIsScoreLocked] = useState(true) // Score is locked until beta signup
   const [resumeScore, setResumeScore] = useState({
     overall: 0,
     experience: 0,
@@ -433,7 +432,7 @@ export default function HomePage() {
     education: 0,
     projects: 0
   })
-
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -486,8 +485,6 @@ export default function HomePage() {
 
       if (response.ok) {
         setIsSubmitted(true)
-        // Unlock the resume score after successful beta signup
-        setIsScoreLocked(false)
         // Reset form after 3 seconds (same as old code)
         setTimeout(() => {
           setIsSubmitted(false)
@@ -542,15 +539,12 @@ export default function HomePage() {
       const formData = new FormData()
       formData.append('file', resumeFile)
       
-      // Call the real resume scoring API
-      // Use Next.js API routes in production, Express server in development
-      const isProduction = process.env.NODE_ENV === 'production'
-      const apiUrl = isProduction ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081')
-      const endpoint = isProduction ? '/api/resume/score' : '/v1/parser/resume/score'
+      // Use the Heroku CV scoring API
+      const apiUrl = 'https://elite-score-cv-rating-only-a1143431be59.herokuapp.com/v1/parser/resume/score'
       
-      console.log('Calling resume scoring API:', `${apiUrl}${endpoint}`)
+      console.log('Calling resume scoring API:', apiUrl)
 
-      const response = await fetch(`${apiUrl}${endpoint}`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
       })
@@ -571,7 +565,6 @@ export default function HomePage() {
       console.log('Resume scoring API response:', result)
       
       // Map the API response to our component's expected format
-      // The backend returns overall_score and component breakdowns
       const scores = {
         overall: Math.round(result.overall_score || 0),
         experience: Math.round(result.components?.experience || 0),
@@ -583,8 +576,6 @@ export default function HomePage() {
       console.log('Mapped scores:', scores)
       setResumeScore(scores)
       setShowScore(true)
-      // Score remains locked until beta signup
-      setIsScoreLocked(true)
       
     } catch (error) {
       console.error('Error analyzing resume:', error)
@@ -597,7 +588,6 @@ export default function HomePage() {
   const resetResumeAnalysis = () => {
     setResumeFile(null)
     setShowScore(false)
-    setIsScoreLocked(true)
     setResumeScore({ overall: 0, experience: 0, skills: 0, education: 0, projects: 0 })
     setErrorMessage(null)
   }
@@ -2073,7 +2063,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Resume Score Section - Dashboard Style */}
+      {/* Resume Score Section - Coming Soon */}
       <section id="resume-score" className="py-24 px-6 relative">
         <div className="max-w-6xl mx-auto">
           <motion.div 
@@ -2102,11 +2092,11 @@ export default function HomePage() {
             {!showScore ? (
               /* Upload Interface */
               <div className="max-w-2xl mx-auto text-center">
-              <div className="space-y-8">
+                <div className="space-y-8">
                   <div>
-                  <h3 className="text-2xl font-bold text-white mb-4">Upload Your Resume</h3>
-                  <p className="text-zinc-300 mb-8">Get your personalized score and see how you stack up against students at your dream university.</p>
-                </div>
+                    <h3 className="text-2xl font-bold text-white mb-4">Upload Your Resume</h3>
+                    <p className="text-zinc-300 mb-8">Get your personalized score and see how you stack up against students at your dream university.</p>
+                  </div>
                 
                   {/* File Upload Area */}
                   <div className="relative">
@@ -2120,24 +2110,22 @@ export default function HomePage() {
                     <div className="border-2 border-dashed border-zinc-600 rounded-2xl p-12 text-center hover:border-zinc-500 transition-colors cursor-pointer group">
                       <div className="w-20 h-20 bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                         <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </div>
                       {resumeFile ? (
                         <div>
                           <p className="text-white font-semibold mb-2">✓ {resumeFile.name}</p>
-                          <p className="text-zinc-400 text-sm">
-                            {showScore ? "Resume analyzed! Join beta to unlock your score." : "Click to upload a different file"}
-                          </p>
+                          <p className="text-zinc-400 text-sm">Click to upload a different file</p>
                         </div>
                       ) : (
                         <div>
-                  <p className="text-white font-semibold mb-2">Drop your resume here</p>
-                  <p className="text-zinc-400 text-sm">PDF, DOC, or DOCX files accepted</p>
+                          <p className="text-white font-semibold mb-2">Drop your resume here</p>
+                          <p className="text-zinc-400 text-sm">PDF, DOC, or DOCX files accepted</p>
                         </div>
                       )}
                     </div>
-                </div>
+                  </div>
                 
                   {/* Error Message */}
                   {errorMessage && (
@@ -2151,7 +2139,7 @@ export default function HomePage() {
                   )}
                   
                   {/* Analyze Button */}
-                <motion.button
+                  <motion.button
                     onClick={handleAnalyzeResume}
                     disabled={!resumeFile || isAnalyzing}
                     className="w-full bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2170,109 +2158,47 @@ export default function HomePage() {
                     ) : (
                       'Get My Score'
                     )}
-                </motion.button>
+                  </motion.button>
+                </div>
               </div>
-                  </div>
             ) : (
               /* Score Results */
               <div className="space-y-8">
-                {isScoreLocked ? (
-                  /* Locked Score State */
-                  <motion.div 
-                    className="text-center mb-16"
-                    initial={{ opacity: 0, y: 30 }}
+                <motion.div 
+                  className="text-center mb-16"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8 }}
+                >
+                  <motion.h2 
+                    className="text-[clamp(48px,5vw,72px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6"
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
+                    transition={{ delay: 0.2, duration: 0.8 }}
                   >
-                    <motion.div 
-                      className="w-24 h-24 bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                    >
-                      <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </motion.div>
-                    
-                    <motion.h2 
-                      className="text-[clamp(32px,4vw,48px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4, duration: 0.8 }}
-                    >
-                      <span className="text-white">Your Resume Has Been </span>
-                      <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">Analyzed!</span>
-                    </motion.h2>
-                    
-                    <motion.p 
-                      className="text-[clamp(16px,2vw,18px)] text-zinc-300 max-w-2xl mx-auto mb-8"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6, duration: 0.8 }}
-                    >
-                      Your resume has been successfully analyzed and scored. Join our beta to unlock your detailed EliteScore and personalized recommendations!
-                    </motion.p>
+                    <span className="text-white">Your </span>
+                    <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
+                      EliteScore: {resumeScore.overall}
+                    </span>
+                  </motion.h2>
+                  <motion.p 
+                    className="text-[clamp(18px,2vw,20px)] text-zinc-300 max-w-2xl mx-auto"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.8 }}
+                  >
+                    Here's your current progress and personalized insights
+                  </motion.p>
+                </motion.div>
 
-                    <motion.div
-                      className="bg-zinc-900/30 backdrop-blur-sm rounded-2xl p-8 border border-zinc-800/30 max-w-md mx-auto"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.8, duration: 0.8 }}
-                    >
-                      <div className="text-center mb-6">
-                        <div className="text-4xl font-bold text-zinc-500 mb-2">???</div>
-                        <div className="text-sm text-zinc-400">EliteScore</div>
-                      </div>
-                      
-                      <motion.button
-                        onClick={() => document.getElementById('beta-signup')?.scrollIntoView({ behavior: 'smooth' })}
-                        className="w-full bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-white px-6 py-3 rounded-xl font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-300"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        Unlock My Score - Join Beta
-                      </motion.button>
-                    </motion.div>
-                  </motion.div>
-                ) : (
-                  /* Unlocked Score State */
-                  <>
-                    <motion.div 
-                      className="text-center mb-16"
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.8 }}
-                    >
-                      <motion.h2 
-                        className="text-[clamp(48px,5vw,72px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2, duration: 0.8 }}
-                      >
-                        <span className="text-white">Your </span>
-                        <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
-                          EliteScore: {resumeScore.overall}
-                        </span>
-                      </motion.h2>
-                      <motion.p 
-                        className="text-[clamp(18px,2vw,20px)] text-zinc-300 max-w-2xl mx-auto"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4, duration: 0.8 }}
-                      >
-                        Here's your current progress and personalized insights
-                      </motion.p>
-                    </motion.div>
-
-                {/* Score Breakdown - Compact Design */}
+                {/* Score Breakdown */}
                 <div className="max-w-4xl mx-auto mb-12">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
-                      { key: 'experience', label: 'Experience', score: resumeScore.experience, description: 'Strong technical background with progressive responsibilities' },
-                      { key: 'skills', label: 'Skills', score: resumeScore.skills, description: 'Consider adding more in-demand technologies' },
-                      { key: 'education', label: 'Education', score: resumeScore.education, description: 'Solid academic foundation' },
-                      { key: 'projects', label: 'Projects', score: resumeScore.projects, description: 'Good project portfolio, could use more variety' }
+                      { key: 'experience', label: 'Experience', score: resumeScore.experience, description: 'Your work experience and professional background' },
+                      { key: 'skills', label: 'Skills', score: resumeScore.skills, description: 'Technical and soft skills assessment' },
+                      { key: 'education', label: 'Education', score: resumeScore.education, description: 'Educational background and achievements' },
+                      { key: 'projects', label: 'Projects', score: resumeScore.projects, description: 'Project portfolio and practical experience' }
                     ].map((item, index) => (
                       <motion.div
                         key={item.key}
@@ -2291,9 +2217,9 @@ export default function HomePage() {
                               {item.score}
                             </span>
                             <span className="text-zinc-500 text-sm">/100</span>
-                    </div>
-                    </div>
-                    
+                          </div>
+                        </div>
+                        
                         <div className="w-full bg-zinc-800/60 rounded-full h-2 mb-3">
                           <motion.div 
                             className="bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] h-2 rounded-full"
@@ -2305,18 +2231,25 @@ export default function HomePage() {
                               ease: "easeOut" 
                             }}
                           />
-                    </div>
-                    
+                        </div>
+                        
                         <p className="text-sm text-zinc-400 leading-relaxed">{item.description}</p>
                       </motion.div>
                     ))}
                   </div>
                 </div>
-                
-                
-                  </>
-                )}
 
+                {/* Reset Button */}
+                <div className="text-center">
+                  <motion.button
+                    onClick={resetResumeAnalysis}
+                    className="bg-zinc-800/50 hover:bg-zinc-700/50 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Analyze Another Resume
+                  </motion.button>
+                </div>
               </div>
             )}
           </motion.div>
