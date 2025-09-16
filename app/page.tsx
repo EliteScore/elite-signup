@@ -1655,84 +1655,33 @@ export default function HomePage() {
               <motion.div
                 key={index}
                 className="group"
-                initial={{ 
-                  opacity: 0, 
-                  y: isMobile ? 30 : 60, 
-                  scale: isMobile ? 0.98 : 0.95,
-                  filter: isMobile ? "blur(5px)" : "blur(10px)"
-                }}
-                whileInView={{ 
-                  opacity: 1, 
-                  y: 0, 
-                  scale: 1,
-                  filter: "blur(0px)"
-                }}
-                viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-20px" }}
                 transition={{ 
-                  delay: isMobile ? index * 0.05 : index * 0.15,
-                  duration: isMobile ? 0.6 : 1.2,
-                  ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1]
+                  delay: index * 0.1,
+                  duration: 0.4,
+                  ease: "easeOut"
                 }}
-                whileHover={{ 
-                  y: isMobile ? -4 : -8,
-                  scale: isMobile ? 1.01 : 1.02,
-                  transition: { 
-                    duration: isMobile ? 0.2 : 0.3, 
-                    ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
-                  }
-                }}
+                whileHover={{ y: -3 }}
               >
                 <div className="bg-zinc-900/40 backdrop-blur-md rounded-2xl p-8 border border-zinc-800/50 hover:border-zinc-700/80 transition-all duration-500 h-full hover:bg-zinc-900/60">
                   <div className="flex items-start gap-6">
                     {/* Icon */}
-                    <motion.div 
-                      className="flex-shrink-0"
-                      whileHover={{ 
-                        rotate: isMobile ? [0, -5, 5, 0] : [0, -10, 10, 0],
-                        transition: { duration: isMobile ? 0.3 : 0.5 }
-                      }}
-                    >
-                      <motion.div 
-                        className="w-14 h-14 rounded-2xl bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] flex items-center justify-center shadow-lg"
-                        whileHover={{ 
-                          scale: isMobile ? 1.08 : 1.15,
-                          boxShadow: isMobile ? "0 10px 20px -6px rgba(59, 130, 246, 0.3)" : "0 20px 40px -12px rgba(59, 130, 246, 0.4)"
-                        }}
-                        transition={{ 
-                          duration: isMobile ? 0.2 : 0.3, 
-                          ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1] 
-                        }}
-                      >
+                    <div className="flex-shrink-0">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                         <feature.icon className="h-7 w-7 text-white" />
-                      </motion.div>
-                    </motion.div>
+                      </div>
+                    </div>
                     
                     {/* Content */}
                     <div className="flex-1">
-                      <motion.h3 
-                        className="text-xl font-[700] text-white mb-3 group-hover:text-[#3B82F6] transition-colors duration-300"
-                        initial={{ opacity: 0, x: -20 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        transition={{ 
-                          delay: isMobile ? index * 0.05 + 0.1 : index * 0.15 + 0.2, 
-                          duration: isMobile ? 0.4 : 0.8,
-                          ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1]
-                        }}
-                      >
+                      <h3 className="text-xl font-[700] text-white mb-3 group-hover:text-[#3B82F6] transition-colors duration-300">
                         {feature.title}
-                      </motion.h3>
-                      <motion.p 
-                        className="text-zinc-300 leading-relaxed text-base"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ 
-                          delay: isMobile ? index * 0.05 + 0.2 : index * 0.15 + 0.4, 
-                          duration: isMobile ? 0.4 : 0.8,
-                          ease: isMobile ? "easeOut" : [0.16, 1, 0.3, 1]
-                        }}
-                      >
+                      </h3>
+                      <p className="text-zinc-300 leading-relaxed text-base">
                         {feature.description}
-                      </motion.p>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1857,13 +1806,13 @@ export default function HomePage() {
               <motion.div
                 key={index}
                 className="group relative"
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: isMobile ? "-50px" : "-100px" }}
+                viewport={{ once: true, margin: "-20px" }}
                 transition={{ 
-                  delay: isMobile ? index * 0.1 : index * 0.2, 
-                  duration: isMobile ? 0.4 : 0.6,
-                  ease: isMobile ? "easeOut" : [0.2, 0.8, 0.2, 1]
+                  delay: index * 0.1, 
+                  duration: 0.4,
+                  ease: "easeOut"
                 }}
               >
                 <div className="bg-zinc-900/30 backdrop-blur-sm rounded-2xl p-8 h-full border border-zinc-800/30 hover:border-zinc-700/50 transition-all duration-300 relative group">
@@ -1963,71 +1912,31 @@ export default function HomePage() {
               <motion.div
                 key={index}
                 className="group"
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ 
-                  delay: isMobile ? index * 0.05 : index * 0.1,
-                  duration: isMobile ? 0.4 : 0.8,
-                  ease: isMobile ? "easeOut" : [0.25, 0.46, 0.45, 0.94]
+                  delay: index * 0.1,
+                  duration: 0.4,
+                  ease: "easeOut"
                 }}
-                whileHover={{ y: -5 }}
+                whileHover={{ y: -3 }}
               >
                 <div className="bg-zinc-900/30 backdrop-blur-sm rounded-2xl p-8 border border-zinc-800/30 hover:border-zinc-700/50 transition-all duration-300 h-full group-hover:shadow-xl group-hover:shadow-[#3B82F6]/10">
                   {/* Stars */}
-                  <motion.div 
-                    className="flex items-center gap-1 mb-6"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ 
-                      delay: isMobile ? 0.1 + index * 0.05 : 0.2 + index * 0.1, 
-                      duration: isMobile ? 0.3 : 0.6 
-                    }}
-                  >
+                  <div className="flex items-center gap-1 mb-6">
                     {[...Array(5)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, scale: 0 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ 
-                          delay: isMobile ? 0.15 + index * 0.05 + i * 0.05 : 0.3 + index * 0.1 + i * 0.1, 
-                          duration: isMobile ? 0.2 : 0.4,
-                          type: isMobile ? "tween" : "spring",
-                          stiffness: isMobile ? 100 : 200
-                        }}
-                      >
-                        <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
-                      </motion.div>
+                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-yellow-400" />
                     ))}
-                  </motion.div>
+                  </div>
                   
                   {/* Quote */}
-                  <motion.p 
-                    className="text-zinc-200 leading-relaxed mb-8 text-lg italic"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ 
-                      delay: isMobile ? 0.2 + index * 0.05 : 0.4 + index * 0.1, 
-                      duration: isMobile ? 0.3 : 0.6 
-                    }}
-                  >
+                  <p className="text-zinc-200 leading-relaxed mb-8 text-lg italic">
                     "{member.quote}"
-                  </motion.p>
+                  </p>
                   
                   {/* Team Member Info */}
-                  <motion.div 
-                    className="flex items-center gap-4"
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ 
-                      delay: isMobile ? 0.25 + index * 0.05 : 0.5 + index * 0.1, 
-                      duration: isMobile ? 0.3 : 0.6 
-                    }}
-                  >
+                  <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-zinc-700 group-hover:border-[#3B82F6]/50 transition-colors duration-300">
                       <img 
                         src={member.image} 
@@ -2047,7 +1956,7 @@ export default function HomePage() {
                         {member.role}
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               </motion.div>
             ))}
