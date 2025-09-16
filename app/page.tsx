@@ -432,7 +432,6 @@ export default function HomePage() {
     education: 0,
     projects: 0
   })
-  
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -511,16 +510,9 @@ export default function HomePage() {
         return
       }
       
-      // Validate file size (max 5MB for Python FastAPI service)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrorMessage('File size must be less than 5MB for resume scoring.')
-        return
-      }
-      
-      // Validate file name contains "cv" or "resume"
-      const fileName = file.name.toLowerCase()
-      if (!fileName.includes('cv') && !fileName.includes('resume')) {
-        setErrorMessage('Cannot get the score. Try naming your file as "resume" or "cv" (e.g., "resume.pdf" or "my_cv.docx").')
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setErrorMessage('File size must be less than 10MB.')
         return
       }
       
@@ -539,108 +531,36 @@ export default function HomePage() {
     setErrorMessage(null)
 
     try {
-      // Validate file before proceeding
-      if (!resumeFile) {
-        throw new Error('No file selected')
-      }
-      
-      
       // Create FormData for multipart/form-data upload
       const formData = new FormData()
       formData.append('file', resumeFile)
       
       // Call the real resume scoring API
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
-      
-      // Validate API URL
-      if (!apiUrl || apiUrl.trim() === '') {
-        throw new Error('API URL is not configured')
-      }
-      
-      // Additional validation for production
-      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-        if (!apiUrl.startsWith('https://') && !apiUrl.startsWith('http://')) {
-          throw new Error('Invalid API URL format')
-        }
-      }
-      
-      console.log('=== RESUME SCORING DEBUG (Python FastAPI) ===')
-      console.log('API URL:', apiUrl)
-      console.log('Environment:', process.env.NODE_ENV)
-      console.log('Current domain:', typeof window !== 'undefined' ? window.location.origin : 'SSR')
-      console.log('File name:', resumeFile.name)
-      console.log('File size:', resumeFile.size)
-      console.log('File type:', resumeFile.type)
-      console.log('Full API endpoint:', `${apiUrl}/v1/parser/resume/score`)
-      console.log('Service: Python FastAPI (no authentication required)')
-      
-      // Test if the API URL is reachable
-      try {
-        const testUrl = new URL(`${apiUrl}/v1/parser/resume/score`)
-        console.log('API URL is valid:', testUrl.href)
-      } catch (urlError) {
-        console.error('Invalid API URL format:', urlError)
-        throw new Error('Invalid API URL format')
-      }
-      
-      // Create AbortController for timeout
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => {
-        console.log('Request timeout - aborting')
-        controller.abort()
-      }, 30000) // 30 second timeout
+      console.log('Calling resume scoring API:', `${apiUrl}/v1/parser/resume/score`)
       
       const response = await fetch(`${apiUrl}/v1/parser/resume/score`, {
         method: 'POST',
         body: formData,
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-        },
       })
       
-      clearTimeout(timeoutId)
-      
-      console.log('Response status:', response.status)
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+      console.log('Resume scoring response status:', response.status)
 
       if (!response.ok) {
         // Try to get the specific error message from the response
-        let errorMessage = `Server error: ${response.status} ${response.statusText}`
         try {
           const errorData = await response.json()
-          console.log('Error response data:', errorData)
-          errorMessage = errorData.error || errorData.message || errorMessage
+          throw new Error(errorData.error || `Server error: ${response.status}`)
         } catch (parseError) {
-          console.log('Could not parse error response as JSON:', parseError)
-          // Try to get text response
-          try {
-            const errorText = await response.text()
-            console.log('Error response text:', errorText)
-            errorMessage = errorText || errorMessage
-          } catch (textError) {
-            console.log('Could not get error response as text:', textError)
-          }
+          throw new Error(`Server error: ${response.status}`)
         }
-        throw new Error(errorMessage)
       }
 
-      let result
-      try {
-        result = await response.json()
-        console.log('Resume scoring API response:', result)
-      } catch (parseError) {
-        console.error('Failed to parse JSON response:', parseError)
-        throw new Error('Invalid response format from server - not valid JSON')
-      }
+      const result = await response.json()
+      console.log('Resume scoring API response:', result)
       
-      // Validate response structure
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format from server')
-      }
-      
-      // Map the Python FastAPI response to our component's expected format
-      // The Python backend returns overall_score and components with different structure
+      // Map the API response to our component's expected format
+      // The backend returns overall_score and component breakdowns
       const scores = {
         overall: Math.round(result.overall_score || 0),
         experience: Math.round(result.components?.experience || 0),
@@ -652,45 +572,10 @@ export default function HomePage() {
       console.log('Mapped scores:', scores)
       setResumeScore(scores)
       setShowScore(true)
-      console.log('=== RESUME SCORING SUCCESS ===')
       
     } catch (error) {
-      console.error('=== RESUME SCORING ERROR ===')
-      console.error('Error type:', typeof error)
-      
-      // Type-safe error handling
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      const errorName = error instanceof Error ? error.name : 'Unknown'
-      
-      console.error('Error message:', errorMessage)
-      console.error('Error name:', errorName)
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-      console.error('Full error object:', error)
-      
-      // Provide more specific error messages based on error type
-      let userMessage = 'Failed to analyze resume. Please try again.'
-      
-      if (errorName === 'AbortError' || errorMessage.includes('timeout')) {
-        userMessage = 'Request timed out. Please try again with a smaller file.'
-      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-        userMessage = 'Cannot connect to the resume scoring service. Please check your internet connection and try again.'
-      } else if (errorMessage.includes('CORS')) {
-        userMessage = 'Server configuration error. Please try again later.'
-      } else if (errorMessage.includes('413') || errorMessage.includes('Payload Too Large')) {
-        userMessage = 'File too large. Please upload a smaller file (max 5MB for resume scoring).'
-      } else if (errorMessage.includes('500')) {
-        userMessage = 'Resume scoring service error. Please try again with a different file format (PDF or DOCX).'
-      } else if (errorMessage.includes('404')) {
-        userMessage = 'Resume scoring service not available. Please try again later.'
-      } else if (errorMessage.includes('Invalid API URL')) {
-        userMessage = 'API configuration error. Please contact support.'
-      } else if (errorMessage.includes('Invalid response format')) {
-        userMessage = 'Resume scoring service returned unexpected data. Please try again.'
-      } else if (errorMessage) {
-        userMessage = `Error: ${errorMessage}`
-      }
-      
-      setErrorMessage(userMessage)
+      console.error('Error analyzing resume:', error)
+      setErrorMessage('Failed to analyze resume. Please check your connection and try again.')
     } finally {
       setIsAnalyzing(false)
     }
@@ -2206,7 +2091,7 @@ export default function HomePage() {
               <div className="space-y-8">
                   <div>
                   <h3 className="text-2xl font-bold text-white mb-4">Upload Your Resume</h3>
-                  <p className="text-zinc-300 mb-8">Get your personalized score using our AI-powered resume analyzer and see how you stack up against students at your dream university.</p>
+                  <p className="text-zinc-300 mb-8">Get your personalized score and see how you stack up against students at your dream university.</p>
                 </div>
                 
                   {/* File Upload Area */}
@@ -2352,6 +2237,22 @@ export default function HomePage() {
                 </div>
                 
                 
+                {/* Recommended Challenges */}
+                <div className="bg-zinc-800/30 rounded-2xl p-6 border border-zinc-700/30">
+                  <h4 className="text-white font-bold mb-4">Recommended Challenges</h4>
+                  <div className="space-y-3">
+                    {[
+                      "Complete 3 technical projects this month",
+                      "Learn 2 new programming languages", 
+                      "Attend 5 networking events",
+                      "Earn a professional certification"
+                    ].map((challenge, index) => (
+                      <div key={index} className="bg-zinc-700/50 rounded-lg p-3 text-sm text-zinc-300">
+                        {challenge}
+                </div>
+                    ))}
+              </div>
+            </div>
               </div>
             )}
           </motion.div>
