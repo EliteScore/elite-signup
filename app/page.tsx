@@ -433,51 +433,6 @@ export default function HomePage() {
     projects: 0
   })
   
-  // JWT authentication state
-  const [jwtToken, setJwtToken] = useState<string | null>(null)
-  const [isAuthenticating, setIsAuthenticating] = useState(false)
-
-  // JWT Authentication function
-  const authenticateWithBackend = async () => {
-    if (jwtToken) return jwtToken // Return existing token if available
-    
-    setIsAuthenticating(true)
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
-      
-      // Try to login with a default user or get a guest token
-      // This is a temporary solution - you may need to adjust based on your backend
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: 'guest@elitescore.com',
-          password: 'guest123' // You may need to adjust this
-        })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        const token = data.token || data.accessToken || data.jwt
-        if (token) {
-          setJwtToken(token)
-          return token
-        }
-      }
-      
-      // If login fails, try to get a guest token or create a temporary one
-      console.log('Login failed, trying alternative authentication...')
-      return null
-      
-    } catch (error) {
-      console.error('Authentication error:', error)
-      return null
-    } finally {
-      setIsAuthenticating(false)
-    }
-  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -556,9 +511,9 @@ export default function HomePage() {
         return
       }
       
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setErrorMessage('File size must be less than 10MB.')
+      // Validate file size (max 5MB for Python FastAPI service)
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorMessage('File size must be less than 5MB for resume scoring.')
         return
       }
       
@@ -589,13 +544,6 @@ export default function HomePage() {
         throw new Error('No file selected')
       }
       
-      // Authenticate and get JWT token
-      console.log('Authenticating with backend...')
-      const token = await authenticateWithBackend()
-      
-      if (!token) {
-        throw new Error('Authentication failed. Please try again.')
-      }
       
       // Create FormData for multipart/form-data upload
       const formData = new FormData()
@@ -616,15 +564,15 @@ export default function HomePage() {
         }
       }
       
-      console.log('=== RESUME SCORING DEBUG ===')
+      console.log('=== RESUME SCORING DEBUG (Python FastAPI) ===')
       console.log('API URL:', apiUrl)
-      console.log('JWT Token available:', !!token)
       console.log('Environment:', process.env.NODE_ENV)
       console.log('Current domain:', typeof window !== 'undefined' ? window.location.origin : 'SSR')
       console.log('File name:', resumeFile.name)
       console.log('File size:', resumeFile.size)
       console.log('File type:', resumeFile.type)
       console.log('Full API endpoint:', `${apiUrl}/v1/parser/resume/score`)
+      console.log('Service: Python FastAPI (no authentication required)')
       
       // Test if the API URL is reachable
       try {
@@ -648,7 +596,6 @@ export default function HomePage() {
         signal: controller.signal,
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`, // Add JWT token
         },
       })
       
@@ -692,8 +639,8 @@ export default function HomePage() {
         throw new Error('Invalid response format from server')
       }
       
-      // Map the API response to our component's expected format
-      // The backend returns overall_score and component breakdowns
+      // Map the Python FastAPI response to our component's expected format
+      // The Python backend returns overall_score and components with different structure
       const scores = {
         overall: Math.round(result.overall_score || 0),
         experience: Math.round(result.components?.experience || 0),
@@ -726,17 +673,19 @@ export default function HomePage() {
       if (errorName === 'AbortError' || errorMessage.includes('timeout')) {
         userMessage = 'Request timed out. Please try again with a smaller file.'
       } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-        userMessage = 'Cannot connect to the server. Please check your internet connection and ensure the API is running. If the problem persists, contact support.'
+        userMessage = 'Cannot connect to the resume scoring service. Please check your internet connection and try again.'
       } else if (errorMessage.includes('CORS')) {
         userMessage = 'Server configuration error. Please try again later.'
       } else if (errorMessage.includes('413') || errorMessage.includes('Payload Too Large')) {
-        userMessage = 'File too large. Please upload a smaller file (max 10MB).'
+        userMessage = 'File too large. Please upload a smaller file (max 5MB for resume scoring).'
       } else if (errorMessage.includes('500')) {
-        userMessage = 'Server error. Please try again later.'
+        userMessage = 'Resume scoring service error. Please try again with a different file format (PDF or DOCX).'
       } else if (errorMessage.includes('404')) {
-        userMessage = 'API endpoint not found. Please contact support.'
+        userMessage = 'Resume scoring service not available. Please try again later.'
       } else if (errorMessage.includes('Invalid API URL')) {
         userMessage = 'API configuration error. Please contact support.'
+      } else if (errorMessage.includes('Invalid response format')) {
+        userMessage = 'Resume scoring service returned unexpected data. Please try again.'
       } else if (errorMessage) {
         userMessage = `Error: ${errorMessage}`
       }
@@ -2257,7 +2206,7 @@ export default function HomePage() {
               <div className="space-y-8">
                   <div>
                   <h3 className="text-2xl font-bold text-white mb-4">Upload Your Resume</h3>
-                  <p className="text-zinc-300 mb-8">Get your personalized score and see how you stack up against students at your dream university.</p>
+                  <p className="text-zinc-300 mb-8">Get your personalized score using our AI-powered resume analyzer and see how you stack up against students at your dream university.</p>
                 </div>
                 
                   {/* File Upload Area */}
@@ -2315,9 +2264,7 @@ export default function HomePage() {
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         />
-                        <span>
-                          {isAuthenticating ? 'Authenticating...' : 'Analyzing your resume...'}
-                        </span>
+                        <span>Analyzing your resume...</span>
                       </div>
                     ) : (
                       'Get My Score'

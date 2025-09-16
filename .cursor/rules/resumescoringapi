@@ -1,3 +1,4 @@
+_ XP and Challenges Service_
 Auth & Security
 Auth: Authorization: Bearer <JWT> issued by the Java service.
 Python uses a verify-only JWT service to decode & validate (sub = user id).
@@ -196,3 +197,339 @@ Web: FastAPI + Uvicorn
 Heuristics & lexicons: this repo’s data/ files (editable)
 Benchmarks & tuning
 The heuristics are intentionally transparent. If you want different behavior per job family, add richer lexicons (skills, tools, certifications) and extend archetypes.txt. The explain section helps you debug which rules triggered and why.
+
+Challenges Service (EliteScore)
+The Challenges module powers daily/monthly challenge assignment, verification, replacement, and XP awards. It’s designed for privacy-preserving verification (no proof storage), simple pack generation, and a clean student-oriented workflow.
+
+Base path used below: /v1/challenges (if you mount the router with prefix="/v1/challenges").
+If you mount differently, adjust the examples accordingly.
+
+Table of contents
+Auth & Security
+Concepts
+Data Model (overview)
+Pack Generation Rules
+Verification Types
+Endpoints
+GET /get_daily
+GET /get_monthly
+POST /verify/text/{uc_id}
+POST /verify/link/{uc_id}
+POST /verify/photo/{uc_id}
+POST /replace/{uc_id}
+POST /refresh/daily
+POST /refresh/monthly
+Responses & Error Codes
+Environment Variables
+Notes & Best Practices
+Concepts
+Challenge: a task a user can complete. Has cadence (daily or monthly), difficulty (easy/medium/hard), XP, and tags/goals/activities.
+UserChallenge (UC): the assignment of a Challenge to a specific user for a specific period (day or month).
+Pack: a DailyPack (for a date) or MonthlyPack (for a month) that groups a user’s assigned UserChallenges.
+Data Model (overview)
+(SQLAlchemy 2.x models; trimmed for docs.)
+
+Challenge: id, title, description, goals[], activities[], tags[], cadence, difficulty, est_minutes, base_xp, active.
+UserChallenge: id, user_id, challenge_id, period_start, period_end, status, progress_pct, personalized_xp, due_at, verified_at, submission_sha256, verifier, proof_signature.
+DailyPack / DailyPackItem: one per user per day; items link to UserChallenges.
+MonthlyPack / MonthlyPackItem: one per user per month; items link to UserChallenges.
+XpLedger: XP journal (delta, reason, ref_uc_id, created_at).
+Pack Generation Rules
+The first call to GET /get_daily or GET /get_monthly for a period creates the pack if missing.
+Packs are topped up to the configured size (no removal). Existing items remain (even if in_progress, failed, or skipped).
+Selection excludes:
+any challenge the user has ever verified,
+any challenge already in the current pack.
+Selection is random for beta (ORDER BY random()).
+Replace swaps a single unverified UC for a new one of the same cadence, also excluding verified/history/current-pack.
+Verification Types
+Text (text-log): user submits a written reflection/journal/checklist (minimum length check). We hash the text.
+Link (link-check): user submits a URL. We HEAD/GET for 2xx/3xx and hash the URL string (not page content).
+Photo (photo-proof): user uploads an image/screenshot. We hash the bytes; optional EXIF timestamp read.
+On success, the UC is marked verified, XP is added to XpLedger, and an attestation signature is stored.
+
+Endpoints
+GET /get_daily
+Return (and if needed create/top-up) today’s daily pack for the caller.
+
+Headers
+
+Authorization: Bearer
+
+Response 200 OK — UCOut[]
+
+[
+  {
+    "uc_id": 123,
+    "challenge_id": 45,
+    "title": "20-minute focused study",
+    "description": "…",
+    "goals": ["Academics"],
+    "activities": ["Deep Work"],
+    "tags": ["focus","pomodoro"],
+    "cadence": "daily",
+    "difficulty": "easy",
+    "est_minutes": 20,
+    "base_xp": 50,
+    "status": "assigned",
+    "progress_pct": 0,
+    "due_at": "2025-08-24T23:59:59Z"
+  }
+]
+GET /get_monthly
+Return (and if needed create/top-up) the current month’s pack.
+
+Headers
+
+Authorization: Bearer
+
+Response 200 OK — UCOut[] (same shape as daily)
+
+POST /verify/text/{uc_id}
+Verify a UC by text (journal/reflection).
+
+Headers
+
+Authorization: Bearer Content-Type: application/json
+
+Body
+
+{ "text": "Three takeaways from today's practice: … (>= 50 chars)" }
+
+Responses
+
+
+400 Bad Request → too short, etc.
+
+404 Not Found → UC doesn’t belong to caller.
+POST /verify/link/{uc_id}
+Verify a UC by URL (deployment, repo, slides, cert verification page, sheet, etc).
+Headers
+
+Authorization: Bearer
+
+Content-Type: application/json
+
+Body
+
+{ "url": "https://example.com/my-demo" }
+
+Responses
+
+
+400 Bad Request → URL not reachable (non 2xx/3xx).
+
+404 Not Found → UC doesn’t belong to caller.
+POST /verify/photo/{uc_id}
+Verify a UC by photo/screenshot.
+
+Headers
+
+Authorization: Bearer
+
+Content-Type: multipart/form-data
+
+Form fields
+
+file → image file bytes (JPG/PNG/etc.)
+
+Responses
+
+
+400 Bad Request → empty file.
+
+404 Not Found → UC doesn’t belong to caller.
+POST /replace/{uc_id}
+Replace an unverified UC with a new random one of the same cadence.
+
+Marks the old UC as skipped. Picks a new candidate (never verified by this user, not already in pack), creates a new UC for the same period, and keeps the same pack position.
+
+Headers
+
+Authorization: Bearer
+
+Response
+
+Errors
+
+400 if the old UC is already verified.
+
+404 if the UC doesn’t belong to the caller.
+
+409 if no replacement candidates are available.
+POST /refresh/daily
+Top-up today’s daily pack to the configured size. (Does not clear existing items.)
+
+Headers
+
+Authorization: Bearer
+
+Response
+
+{ "ok": true, "pack_id": 77, "count": 5 }
+
+POST /refresh/monthly
+Top-up this month’s monthly pack to the configured size. (Does not clear existing items.)
+
+Headers
+
+Authorization: Bearer
+
+Response
+
+{ "ok": true, "pack_id": 88, "count": 6 }
+
+Responses & Error Codes
+
+
+400 — Bad request (e.g., too short text / unreachable link / empty file / replace verified).
+
+401 — Missing/invalid JWT.
+
+403 — Latest verification code requirement not met (if middleware is enabled).
+
+404 — UC not found for the caller.
+
+409 — No replacement candidates available.
+All error responses include a small JSON object with error or detail.
+
+Environment Variables
+
+MONTHLY_PACK_SIZE — default 6.
+
+JWT_SIGNING_KEY_BASE64 — must match Java’s Base64 secret.
+
+DB vars (see db.py):
+
+DATABASE_URL or (DB_URL, DB_USER, DB_PASS).
+(Windows) If you use psycopg3 without binary wheels, ensure libpq.dll is on PATH, or install psycopg[binary] or switch to psycopg2.
+
+Notes & Best Practices
+Idempotent verify: re-verifying an already verified UC is a no-op (no duplicate XP).
+
+No proof retention: only SHA-256 digests + metadata are stored. Clients can delete artifacts after success.
+
+Packs vs. refresh: get_* will create/top-up if needed; refresh/* explicitly top-ups. Neither removes items. For a hard rebuild, add a ?rebuild=true flag and clear items first.
+
+Performance: ORDER BY random() is fine for beta; consider weighted sampling or precomputed pools for large datasets.
+
+Verification sub-types: you can extend link-check into kaggle-link, figma-link, cert-verify-link, etc., with specific validators.
+
+Curl examples
+Get daily pack
+curl -H "Authorization: Bearer "
+https://api.example.com/v1/challenges/get_daily
+
+Verify by text
+curl -X POST -H "Authorization: Bearer " -H "Content-Type: application/json"
+-d '{"text":"Today I completed … (>= 50 chars)"}'
+https://api.example.com/v1/challenges/verify/text/123
+
+Verify by link
+curl -X POST -H "Authorization: Bearer " -H "Content-Type: application/json"
+-d '{"url":"https://myapp.example.com/health"}'
+https://api.example.com/v1/challenges/verify/link/123
+
+Verify by photo
+curl -X POST -H "Authorization: Bearer " -F "file=@/path/to/proof.jpg"
+https://api.example.com/v1/challenges/verify/photo/123
+
+Replace a challenge
+curl -X POST -H "Authorization: Bearer "
+https://api.example.com/v1/challenges/replace/123
+
+Refresh monthly pack
+curl -X POST -H "Authorization: Bearer "
+https://api.example.com/v1/challenges/refresh/monthly
+
+Tasks & XP API
+Endpoints Overview
+Aggregated XP
+GET xp/get_xp
+Combines tasks XP and challenges XP:
+
+total_xp = get_users_tasks(db, user_id) * 10
+total_xp += get_users_challenges_xp(db, user_id)
+Response:
+
+{ "user_id": 1, "total_xp": 120 }
+Tasks
+All endpoints in routers/tasks.py expect request.state.user_id to be set by JWT middleware.
+
+GET /tasks/get_tasks_xp
+Returns XP from tasks only (completed_count * 10).
+
+Response:
+
+{ "user_id": 1, "total_tasks_xp": 50 }
+GET /tasks/get_tasks_count
+Returns the number of completed tasks.
+
+Response:
+
+{ "user_id": 1, "total_tasks": 5 }
+GET /tasks/get_tasks (response_model = List[TaskOut])
+Returns all tasks owned by the user.
+
+POST /tasks/create_task (response_model = TaskOut)
+Creates a task for the authenticated user.
+
+PATCH /tasks/update_task/{task_id} (response_model = TaskOut)
+Updates an existing task; only the owner can update.
+
+PATCH /tasks/solve_task/{task_id} (response_model = TaskOut)
+Marks a task as solved by setting completedAt to the current UTC time.
+
+DELETE /tasks/delete_task/{task_id}
+Deletes a task; only the owner can delete. Returns {"deleted": true} on success.
+
+Data Contracts
+TaskDTO (request body for create/update)
+{
+  "title": "First Task",
+  "notes": "This is the first task",
+  "urgency": "low",
+  "dueAt": "2025-08-31 23:59:59.999999+03"
+}
+The code currently treats dueAt as a string. If you prefer strict typing, parse to datetime in the route or switch the model to use datetime and let Pydantic handle it.
+
+TaskOut (response model)
+Fields returned by TaskOut include:
+
+id: integer
+user_id: integer
+title: string
+notes: string or null
+urgency: string (low, medium, high as per your check constraint)
+dueAt: string or datetime depending on your schema serialization
+createdAt: string or datetime
+completedAt: string, datetime, or null
+Make sure your Pydantic configuration uses model_config = ConfigDict(from_attributes=True) so ORM rows serialize correctly.
+
+Sample Requests
+Assuming the app runs on http://127.0.0.1:8000 and your auth middleware injects user_id:
+
+Create a Task
+curl -X POST "http://127.0.0.1:8000/tasks/create_task"  -H "Authorization: Bearer <JWT>" -H "Content-Type: application/json"   -d '{
+    "title": "First Task",
+    "notes": "This is the first task",
+    "urgency": "low",
+    "dueAt": "2025-08-31 23:59:59.999999+03"
+  }'
+List Tasks
+curl "http://127.0.0.1:8000/tasks/get_tasks"
+Update a Task
+curl -X PATCH "http://127.0.0.1:8000/tasks/update_task/1"  -H "Authorization: Bearer <JWT>" -H "Content-Type: application/json"   -d '{
+    "title": "Updated Task",
+    "notes": "Changed notes",
+    "urgency": "medium",
+    "dueAt": "2025-09-01 18:00:00+03"
+  }'
+Mark as Solved
+curl -X PATCH "http://127.0.0.1:8000/tasks/solve_task/1" -H "Authorization: Bearer <JWT>"
+Delete a Task
+curl -X DELETE "http://127.0.0.1:8000/tasks/delete_task/1" -H "Authorization: Bearer <JWT>"
+Get Tasks XP
+curl "http://127.0.0.1:8000/tasks/get_tasks_xp" -H "Authorization: Bearer <JWT>"
+Get Aggregated XP (Tasks + Challenges)
+curl "http://127.0.0.1:8000/xp/get_xp" -H "Authorization: Bearer <JWT>"
