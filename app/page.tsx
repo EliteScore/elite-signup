@@ -564,16 +564,28 @@ export default function HomePage() {
       const result = await response.json()
       console.log('Resume scoring API response:', result)
       
-      // Map the API response to our component's expected format
+      // Validate the API response structure
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response format from scoring API')
+      }
+      
+      // Map the API response to our component's expected format with robust parsing
       const scores = {
-        overall: Math.round(result.overall_score || 0),
-        experience: Math.round(result.components?.experience || 0),
-        skills: Math.round(result.components?.skills || 0), 
-        education: Math.round(result.components?.education || 0),
-        projects: Math.round(result.components?.ai_signal || 0) // ai_signal maps to projects in our UI
+        overall: Math.max(0, Math.min(100, Math.round(Number(result.overall_score) || 0))),
+        experience: Math.max(0, Math.min(100, Math.round(Number(result.components?.experience) || 0))),
+        skills: Math.max(0, Math.min(100, Math.round(Number(result.components?.skills) || 0))), 
+        education: Math.max(0, Math.min(100, Math.round(Number(result.components?.education) || 0))),
+        projects: Math.max(0, Math.min(100, Math.round(Number(result.components?.ai_signal) || 0))) // ai_signal maps to projects in our UI
       }
       
       console.log('Mapped scores:', scores)
+      
+      // Validate that we have at least some valid scores
+      const hasValidScores = Object.values(scores).some(score => score > 0)
+      if (!hasValidScores) {
+        throw new Error('No valid scores received from the API')
+      }
+      
       setResumeScore(scores)
       setShowScore(true)
       
@@ -777,18 +789,33 @@ export default function HomePage() {
                     ease: [0.2, 0.8, 0.2, 1]
                   }}
                 >
-                  <motion.path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M4 6h16M4 12h16M4 18h16"
-                    animate={{
-                      d: isMobileMenuOpen 
-                        ? "M6 18L18 6M6 6l12 12" 
-                        : "M4 6h16M4 12h16M4 18h16"
-                    }}
-                    transition={{ duration: 0.3 }}
-                  />
+                  {isMobileMenuOpen ? (
+                    <motion.g
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </motion.g>
+                  ) : (
+                    <motion.g
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 6h16M4 12h16M4 18h16"
+                      />
+                    </motion.g>
+                  )}
                 </motion.svg>
               </motion.button>
             </div>
@@ -2178,7 +2205,7 @@ export default function HomePage() {
                   >
                     <span className="text-white">Your </span>
                     <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
-                      EliteScore: {resumeScore.overall}
+                      EliteScore: {Number(resumeScore.overall) || 0}
                     </span>
                   </motion.h2>
                   <motion.p 
@@ -2214,7 +2241,7 @@ export default function HomePage() {
                           <h4 className="text-lg font-semibold text-white">{item.label}</h4>
                           <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-bold bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] bg-clip-text text-transparent">
-                              {item.score}
+                              {Number(item.score) || 0}
                             </span>
                             <span className="text-zinc-500 text-sm">/100</span>
                           </div>
@@ -2224,7 +2251,7 @@ export default function HomePage() {
                           <motion.div 
                             className="bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] h-2 rounded-full"
                             initial={{ width: 0 }}
-                            animate={{ width: `${item.score}%` }}
+                            animate={{ width: `${Math.max(0, Math.min(100, Number(item.score) || 0))}%` }}
                             transition={{ 
                               delay: isMobile ? index * 0.05 + 0.5 : index * 0.1 + 1, 
                               duration: isMobile ? 0.5 : 1, 
