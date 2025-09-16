@@ -436,13 +436,9 @@ export default function HomePage() {
     setIsSubmitting(true)
 
     try {
-      // Call the backend API (same as old working code)
-      // Use Next.js API routes in production, Express server in development
-      const isProduction = process.env.NODE_ENV === 'production'
-      const apiUrl = isProduction ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081')
-      const endpoint = isProduction ? '/api/auth/pre-signup' : '/v1/auth/pre-signup'
-      
-      const response = await fetch(`${apiUrl}${endpoint}`, {
+      // Call the backend API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      const response = await fetch(`${apiUrl}/v1/auth/pre-signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
