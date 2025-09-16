@@ -432,6 +432,52 @@ export default function HomePage() {
     education: 0,
     projects: 0
   })
+  
+  // JWT authentication state
+  const [jwtToken, setJwtToken] = useState<string | null>(null)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
+
+  // JWT Authentication function
+  const authenticateWithBackend = async () => {
+    if (jwtToken) return jwtToken // Return existing token if available
+    
+    setIsAuthenticating(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      
+      // Try to login with a default user or get a guest token
+      // This is a temporary solution - you may need to adjust based on your backend
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'guest@elitescore.com',
+          password: 'guest123' // You may need to adjust this
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        const token = data.token || data.accessToken || data.jwt
+        if (token) {
+          setJwtToken(token)
+          return token
+        }
+      }
+      
+      // If login fails, try to get a guest token or create a temporary one
+      console.log('Login failed, trying alternative authentication...')
+      return null
+      
+    } catch (error) {
+      console.error('Authentication error:', error)
+      return null
+    } finally {
+      setIsAuthenticating(false)
+    }
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -543,6 +589,14 @@ export default function HomePage() {
         throw new Error('No file selected')
       }
       
+      // Authenticate and get JWT token
+      console.log('Authenticating with backend...')
+      const token = await authenticateWithBackend()
+      
+      if (!token) {
+        throw new Error('Authentication failed. Please try again.')
+      }
+      
       // Create FormData for multipart/form-data upload
       const formData = new FormData()
       formData.append('file', resumeFile)
@@ -564,6 +618,7 @@ export default function HomePage() {
       
       console.log('=== RESUME SCORING DEBUG ===')
       console.log('API URL:', apiUrl)
+      console.log('JWT Token available:', !!token)
       console.log('Environment:', process.env.NODE_ENV)
       console.log('Current domain:', typeof window !== 'undefined' ? window.location.origin : 'SSR')
       console.log('File name:', resumeFile.name)
@@ -593,6 +648,7 @@ export default function HomePage() {
         signal: controller.signal,
         headers: {
           'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`, // Add JWT token
         },
       })
       
@@ -2259,7 +2315,9 @@ export default function HomePage() {
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         />
-                        <span>Analyzing your resume...</span>
+                        <span>
+                          {isAuthenticating ? 'Authenticating...' : 'Analyzing your resume...'}
+                        </span>
                       </div>
                     ) : (
                       'Get My Score'
