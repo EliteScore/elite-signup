@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { motion, useScroll, useTransform, useSpring, useInView, useAnimation, AnimatePresence, useMotionValue, useVelocity } from "framer-motion"
 
 // Hook to detect mobile devices and reduce motion
@@ -404,6 +404,108 @@ export default function HomePage() {
     education: 0,
     projects: 0
   })
+  const scoreCardRef = useRef<HTMLDivElement | null>(null)
+  const [isDownloadingCard, setIsDownloadingCard] = useState(false)
+  const [cardDownloadError, setCardDownloadError] = useState<string | null>(null)
+
+  const normalizeScore = useCallback((value: number) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return 0
+    }
+
+    return Math.max(0, Math.min(100, value))
+  }, [])
+
+  const scoreBreakdown = [
+    {
+      key: 'experience',
+      label: 'Experience',
+      score: resumeScore.experience,
+      description: 'Your work experience and professional background'
+    },
+    {
+      key: 'skills',
+      label: 'Skills',
+      score: resumeScore.skills,
+      description: 'Technical and soft skills assessment'
+    },
+    {
+      key: 'education',
+      label: 'Education',
+      score: resumeScore.education,
+      description: 'Educational background and achievements'
+    },
+    {
+      key: 'projects',
+      label: 'Projects',
+      score: resumeScore.projects,
+      description: 'Project portfolio and practical experience'
+    }
+  ] as const
+
+  const barGradients = [
+    'from-[#6366F1] via-[#7C3AED] to-[#EC4899]',
+    'from-[#22D3EE] via-[#6366F1] to-[#A855F7]',
+    'from-[#34D399] via-[#22D3EE] to-[#6366F1]',
+    'from-[#F472B6] via-[#A855F7] to-[#6366F1]'
+  ]
+
+  const handleDownloadScoreCard = useCallback(async () => {
+    if (!scoreCardRef.current) {
+      setCardDownloadError('Score card is still loading. Please try again in a moment.')
+      return
+    }
+
+    setIsDownloadingCard(true)
+    setCardDownloadError(null)
+
+    try {
+      const { toPng } = await import('html-to-image')
+
+      const pixelRatio = (() => {
+        if (typeof window === 'undefined') return 2
+        const ratio = window.devicePixelRatio || 1
+        return Math.min(3, Math.max(2, ratio))
+      })()
+
+      const dataUrl = await toPng(scoreCardRef.current, {
+        cacheBust: true,
+        pixelRatio,
+        backgroundColor: '#080313'
+      })
+
+      const filename = `elite-score-${Math.round(normalizeScore(resumeScore.overall))}.png`
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      const isTouchMac = typeof window !== 'undefined' && 'ontouchstart' in window && userAgent.includes('Mac')
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent) || isTouchMac
+
+      if (isIOS) {
+        const newWindow = window.open('', '_blank')
+
+        if (newWindow) {
+          newWindow.document.write(
+            `<html><head><title>${filename}</title></head><body style="margin:0;background:#080313;display:flex;align-items:center;justify-content:center;"><img src="${dataUrl}" alt="EliteScore card" style="width:100%;height:auto;max-width:768px;" /></body></html>`
+          )
+          newWindow.document.close()
+        } else {
+          const link = document.createElement('a')
+          link.download = filename
+          link.href = dataUrl
+          link.click()
+        }
+      } else {
+        const link = document.createElement('a')
+        link.download = filename
+        link.href = dataUrl
+        link.click()
+      }
+    } catch (error) {
+      console.error('Failed to download score card', error)
+      setCardDownloadError("We couldn't generate the image. Please try again.")
+    } finally {
+      setIsDownloadingCard(false)
+    }
+  }, [normalizeScore, resumeScore.overall])
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -580,6 +682,7 @@ export default function HomePage() {
     setShowScore(false)
     setResumeScore({ overall: 0, experience: 0, skills: 0, education: 0, projects: 0 })
     setErrorMessage(null)
+    setCardDownloadError(null)
   }
 
   return (
@@ -2055,13 +2158,13 @@ export default function HomePage() {
             ) : (
               /* Score Results */
               <div className="space-y-8">
-                <motion.div 
+                <motion.div
                   className="text-center mb-16"
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8 }}
                 >
-                  <motion.h2 
+                  <motion.h2
                     className="text-[clamp(48px,5vw,72px)] font-[900] leading-[1.1] tracking-[-0.02em] mb-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -2069,10 +2172,10 @@ export default function HomePage() {
                   >
                     <span className="text-white">Your </span>
                     <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
-                      EliteScore: {Number(resumeScore.overall) || 0}
+                      EliteScore
                     </span>
                   </motion.h2>
-                  <motion.p 
+                  <motion.p
                     className="text-[clamp(18px,2vw,20px)] text-zinc-300 max-w-2xl mx-auto"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -2082,51 +2185,131 @@ export default function HomePage() {
                   </motion.p>
                 </motion.div>
 
-                {/* Score Breakdown */}
-                <div className="max-w-4xl mx-auto mb-12">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { key: 'experience', label: 'Experience', score: resumeScore.experience, description: 'Your work experience and professional background' },
-                      { key: 'skills', label: 'Skills', score: resumeScore.skills, description: 'Technical and soft skills assessment' },
-                      { key: 'education', label: 'Education', score: resumeScore.education, description: 'Educational background and achievements' },
-                      { key: 'projects', label: 'Projects', score: resumeScore.projects, description: 'Project portfolio and practical experience' }
-                    ].map((item, index) => (
-                      <motion.div
-                        key={item.key}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ 
-                          delay: isMobile ? index * 0.05 + 0.3 : index * 0.1 + 0.6, 
-                          duration: isMobile ? 0.3 : 0.6 
-                        }}
-                        className="bg-zinc-900/30 backdrop-blur-sm rounded-xl p-5 border border-zinc-800/40 hover:border-zinc-700/60 transition-all duration-300"
-                      >
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="text-lg font-semibold text-white">{item.label}</h4>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] bg-clip-text text-transparent">
-                              {Number(item.score) || 0}
-                            </span>
-                            <span className="text-zinc-500 text-sm">/100</span>
+                {/* Score Card & Breakdown */}
+                <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start mb-12">
+                  <div className="w-full lg:max-w-sm xl:max-w-md mx-auto lg:mx-0">
+                    <motion.div
+                      ref={scoreCardRef}
+                      className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#080313] px-8 py-10 sm:px-10 sm:py-12 shadow-[0px_25px_80px_rgba(79,70,229,0.45)]"
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.4 }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#120B2A] via-[#0B0317] to-[#05000F]" />
+                      <div className="absolute -top-24 -right-20 h-64 w-64 rounded-full bg-[#7C3AED]/30 blur-3xl" />
+                      <div className="absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-[#3B82F6]/25 blur-[120px]" />
+
+                      <div className="relative z-10 flex flex-col gap-8 text-white">
+                        <div className="text-center space-y-3">
+                          <span className="text-[10px] uppercase tracking-[0.4em] text-white/60">Your EliteScore</span>
+                          <div className="text-[72px] sm:text-[88px] font-black leading-none">
+                            {Math.round(normalizeScore(resumeScore.overall))}
                           </div>
+                          <p className="text-sm font-medium text-white/70">www.elite-score.com</p>
                         </div>
-                        
-                        <div className="w-full bg-zinc-800/60 rounded-full h-2 mb-3">
-                          <motion.div 
-                            className="bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] h-2 rounded-full"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.max(0, Math.min(100, Number(item.score) || 0))}%` }}
-                            transition={{ 
-                              delay: isMobile ? index * 0.05 + 0.5 : index * 0.1 + 1, 
-                              duration: isMobile ? 0.5 : 1, 
-                              ease: "easeOut" 
+
+                        <div className="space-y-4">
+                          {scoreBreakdown.map((item, index) => {
+                            const normalized = normalizeScore(item.score)
+
+                            return (
+                              <div key={item.key} className="space-y-2">
+                                <div className="flex items-center justify-between text-sm font-medium text-white/80">
+                                  <span>{item.label}</span>
+                                  <span>{Math.round(normalized)}</span>
+                                </div>
+                                <div className="h-3 w-full overflow-hidden rounded-full bg-white/10">
+                                  <div
+                                    className={cn(
+                                      'h-full rounded-full bg-gradient-to-r',
+                                      barGradients[index % barGradients.length]
+                                    )}
+                                    style={{ width: `${normalized}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-center">
+                          <p className="text-lg font-semibold">I challenge you to beat my score!</p>
+                          <p className="mt-2 text-sm text-white/70">Nominate 3 friends to try EliteScore. Can you beat my score?</p>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+                      <button
+                        onClick={handleDownloadScoreCard}
+                        className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] px-6 py-3 text-sm font-semibold text-white shadow-lg transition-transform duration-200 hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+                        disabled={isDownloadingCard}
+                      >
+                        {isDownloadingCard ? (
+                          <>
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            Preparing card...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="h-4 w-4" />
+                            Download score card
+                          </>
+                        )}
+                      </button>
+                      <p className="text-xs text-zinc-400 text-center sm:text-left">
+                        Tip: On phones, tap download and long-press the image to save.
+                      </p>
+                    </div>
+                    {cardDownloadError && (
+                      <p className="mt-2 text-sm text-red-400 text-center sm:text-left">{cardDownloadError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex-1 w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {scoreBreakdown.map((item, index) => {
+                        const normalized = normalizeScore(item.score)
+
+                        return (
+                          <motion.div
+                            key={item.key}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              delay: isMobile ? index * 0.05 + 0.3 : index * 0.1 + 0.6,
+                              duration: isMobile ? 0.3 : 0.6
                             }}
-                          />
-                        </div>
-                        
-                        <p className="text-sm text-zinc-400 leading-relaxed">{item.description}</p>
-                      </motion.div>
-                    ))}
+                            className="bg-zinc-900/30 backdrop-blur-sm rounded-xl p-5 border border-zinc-800/40 hover:border-zinc-700/60 transition-all duration-300"
+                          >
+                            <div className="flex justify-between items-center mb-3">
+                              <h4 className="text-lg font-semibold text-white">{item.label}</h4>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-bold bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] bg-clip-text text-transparent">
+                                  {Math.round(normalized)}
+                                </span>
+                                <span className="text-zinc-500 text-sm">/100</span>
+                              </div>
+                            </div>
+
+                            <div className="w-full bg-zinc-800/60 rounded-full h-2 mb-3">
+                              <motion.div
+                                className="bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] h-2 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${normalized}%` }}
+                                transition={{
+                                  delay: isMobile ? index * 0.05 + 0.5 : index * 0.1 + 1,
+                                  duration: isMobile ? 0.5 : 1,
+                                  ease: "easeOut"
+                                }}
+                              />
+                            </div>
+
+                            <p className="text-sm text-zinc-400 leading-relaxed">{item.description}</p>
+                          </motion.div>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
 
