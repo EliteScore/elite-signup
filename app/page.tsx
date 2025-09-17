@@ -460,48 +460,143 @@ export default function HomePage() {
     setCardDownloadError(null)
 
     try {
+      // @ts-ignore - html-to-image doesn't have official types
       const { toPng } = await import('html-to-image')
 
+      // Better mobile detection
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent)
+      const isAndroid = /Android/.test(userAgent)
+      const isMobile = isIOS || isAndroid || (typeof window !== 'undefined' && window.innerWidth < 768)
+      
+      // Optimize pixel ratio for mobile devices
       const pixelRatio = (() => {
         if (typeof window === 'undefined') return 2
         const ratio = window.devicePixelRatio || 1
-        return Math.min(3, Math.max(2, ratio))
+        // Use lower pixel ratio on mobile to reduce memory usage and improve performance
+        return isMobile ? Math.min(2, Math.max(1.5, ratio)) : Math.min(3, Math.max(2, ratio))
       })()
 
       const dataUrl = await toPng(scoreCardRef.current, {
         cacheBust: true,
         pixelRatio,
-        backgroundColor: '#080313'
+        backgroundColor: '#080313',
+        // Add quality settings for better mobile performance
+        quality: isMobile ? 0.8 : 1.0,
+        // Ensure proper sizing for mobile
+        width: isMobile ? Math.min(400, scoreCardRef.current.offsetWidth) : undefined,
+        height: isMobile ? undefined : undefined
       })
 
       const filename = `elite-score-${Math.round(normalizeScore(resumeScore.overall))}.png`
-      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-      const isTouchMac = typeof window !== 'undefined' && 'ontouchstart' in window && userAgent.includes('Mac')
-      const isIOS = /iPad|iPhone|iPod/.test(userAgent) || isTouchMac
-
+      
+      // Enhanced mobile download handling
       if (isIOS) {
-        const newWindow = window.open('', '_blank')
-
-        if (newWindow) {
-          newWindow.document.write(
-            `<html><head><title>${filename}</title></head><body style="margin:0;background:#080313;display:flex;align-items:center;justify-content:center;"><img src="${dataUrl}" alt="EliteScore card" style="width:100%;height:auto;max-width:768px;" /></body></html>`
-          )
-          newWindow.document.close()
-        } else {
+        // For iOS, try multiple methods
+        try {
+          // Method 1: Open in new tab with download instructions
+          const newWindow = window.open('', '_blank')
+          if (newWindow) {
+            newWindow.document.write(`
+              <html>
+                <head>
+                  <title>${filename}</title>
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <style>
+                    body { 
+                      margin: 0; 
+                      background: #080313; 
+                      display: flex; 
+                      flex-direction: column;
+                      align-items: center; 
+                      justify-content: center; 
+                      min-height: 100vh;
+                      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                      color: white;
+                      padding: 20px;
+                      box-sizing: border-box;
+                    }
+                    img { 
+                      width: 100%; 
+                      height: auto; 
+                      max-width: 400px; 
+                      border-radius: 16px;
+                      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                    }
+                    .instructions {
+                      margin-top: 20px;
+                      text-align: center;
+                      background: rgba(255,255,255,0.1);
+                      padding: 15px;
+                      border-radius: 10px;
+                      max-width: 300px;
+                    }
+                    .instructions h3 {
+                      margin: 0 0 10px 0;
+                      font-size: 16px;
+                    }
+                    .instructions p {
+                      margin: 5px 0;
+                      font-size: 14px;
+                      opacity: 0.8;
+                    }
+                  </style>
+                </head>
+                <body>
+                  <img src="${dataUrl}" alt="EliteScore card" />
+                  <div class="instructions">
+                    <h3>Save to Photos</h3>
+                    <p>1. Long press the image above</p>
+                    <p>2. Tap "Add to Photos"</p>
+                    <p>3. Your score card will be saved!</p>
+                  </div>
+                </body>
+              </html>
+            `)
+            newWindow.document.close()
+          } else {
+            throw new Error('Popup blocked')
+          }
+        } catch (popupError) {
+          // Method 2: Fallback - try direct download
           const link = document.createElement('a')
           link.download = filename
           link.href = dataUrl
+          link.style.display = 'none'
+          document.body.appendChild(link)
           link.click()
+          document.body.removeChild(link)
+        }
+      } else if (isAndroid) {
+        // For Android, try direct download first
+        try {
+          const link = document.createElement('a')
+          link.download = filename
+          link.href = dataUrl
+          link.style.display = 'none'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        } catch (androidError) {
+          // Fallback: Open in new tab
+          const newWindow = window.open(dataUrl, '_blank')
+          if (!newWindow) {
+            throw new Error('Unable to open download')
+          }
         }
       } else {
+        // Desktop and other browsers
         const link = document.createElement('a')
         link.download = filename
         link.href = dataUrl
+        link.style.display = 'none'
+        document.body.appendChild(link)
         link.click()
+        document.body.removeChild(link)
       }
     } catch (error) {
       console.error('Failed to download score card', error)
-      setCardDownloadError("We couldn't generate the image. Please try again.")
+      setCardDownloadError("We couldn't generate the image. Please try again or try refreshing the page.")
     } finally {
       setIsDownloadingCard(false)
     }
@@ -587,6 +682,13 @@ export default function HomePage() {
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setErrorMessage('File size must be less than 10MB.')
+        return
+      }
+      
+      // Validate filename contains "resume" or "cv"
+      const fileName = file.name.toLowerCase()
+      if (!fileName.includes('resume') && !fileName.includes('cv')) {
+        setErrorMessage('Please upload your resume or CV. Try renaming your file to include "resume" or "cv" in the filename.')
         return
       }
       
@@ -2172,7 +2274,7 @@ export default function HomePage() {
                   >
                     <span className="text-white">Your </span>
                     <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
-                      EliteScore: {Math.round(normalizeScore(resumeScore.overall))}
+                      Resume Score: {Math.round(normalizeScore(resumeScore.overall))}
                     </span>
                   </motion.h2>
                   <motion.p 
@@ -2186,14 +2288,19 @@ export default function HomePage() {
                 </motion.div>
 
                 {/* Score Card & Breakdown */}
-                <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start mb-12">
-                  <div className="w-full lg:max-w-sm xl:max-w-md mx-auto lg:mx-0">
+                <div className="flex justify-center mb-12">
+                  <div className="w-full max-w-sm mx-auto">
                     <motion.div
                       ref={scoreCardRef}
-                      className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#080313] px-8 py-10 sm:px-10 sm:py-12 shadow-[0px_25px_80px_rgba(79,70,229,0.45)]"
+                      className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#080313] px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12 shadow-[0px_25px_80px_rgba(79,70,229,0.45)] w-full"
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.4 }}
+                      style={{
+                        // Ensure consistent sizing for mobile downloads
+                        minWidth: isMobile ? '320px' : 'auto',
+                        maxWidth: isMobile ? '400px' : 'none'
+                      }}
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-[#120B2A] via-[#0B0317] to-[#05000F]" />
                       <div className="absolute -top-24 -right-20 h-64 w-64 rounded-full bg-[#7C3AED]/30 blur-3xl" />
@@ -2201,11 +2308,11 @@ export default function HomePage() {
 
                       <div className="relative z-10 flex flex-col gap-8 text-white">
                         <div className="text-center space-y-3">
-                          <span className="text-[10px] uppercase tracking-[0.4em] text-white/60">Your EliteScore</span>
-                          <div className="text-[72px] sm:text-[88px] font-black leading-none">
+                          <span className="text-[10px] uppercase tracking-[0.4em] text-white/60">Your Resume Score</span>
+                          <div className="text-[64px] sm:text-[72px] lg:text-[88px] font-black leading-none">
                             {Math.round(normalizeScore(resumeScore.overall))}
                           </div>
-                          <p className="text-sm font-medium text-white/70">www.elitescore.gg</p>
+                          <p className="text-xs sm:text-sm font-medium text-white/70">www.elite-score.com</p>
                         </div>
 
                         <div className="space-y-4">
@@ -2232,9 +2339,9 @@ export default function HomePage() {
                           })}
                         </div>
 
-                        <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-center">
-                          <p className="text-lg font-semibold">I challenge you to beat my score!</p>
-                          <p className="mt-2 text-sm text-white/70">Nominate 3 friends to try EliteScore. Can you beat my score?</p>
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 sm:px-6 sm:py-5 text-center">
+                          <p className="text-base sm:text-lg font-semibold">I challenge you to beat my score!</p>
+                          <p className="mt-2 text-xs sm:text-sm text-white/70">Nominate 3 friends to try their resume score. Can you beat my score?</p>
                         </div>
                       </div>
                     </motion.div>
@@ -2257,60 +2364,16 @@ export default function HomePage() {
                           </>
                         )}
                       </button>
-                      <p className="text-xs text-zinc-400 text-center sm:text-left">
-                        Tip: On phones, tap download and long-press the image to save.
-                      </p>
+                      <div className="text-xs text-zinc-400 text-center sm:text-left space-y-1">
+                        <p>📱 <strong>Share it on your story</strong> and let the world see your score!</p>
+                        <p>💻 <strong>Compete with friends</strong> and show off your achievements</p>
+                      </div>
                     </div>
                     {cardDownloadError && (
                       <p className="mt-2 text-sm text-red-400 text-center sm:text-left">{cardDownloadError}</p>
                     )}
                   </div>
 
-                  <div className="flex-1 w-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {scoreBreakdown.map((item, index) => {
-                        const normalized = normalizeScore(item.score)
-
-                        return (
-                          <motion.div
-                            key={item.key}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{
-                              delay: isMobile ? index * 0.05 + 0.3 : index * 0.1 + 0.6,
-                              duration: isMobile ? 0.3 : 0.6
-                            }}
-                            className="bg-zinc-900/30 backdrop-blur-sm rounded-xl p-5 border border-zinc-800/40 hover:border-zinc-700/60 transition-all duration-300"
-                          >
-                            <div className="flex justify-between items-center mb-3">
-                              <h4 className="text-lg font-semibold text-white">{item.label}</h4>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-bold bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] bg-clip-text text-transparent">
-                                  {Math.round(normalized)}
-                                </span>
-                                <span className="text-zinc-500 text-sm">/100</span>
-                              </div>
-                            </div>
-
-                            <div className="w-full bg-zinc-800/60 rounded-full h-2 mb-3">
-                              <motion.div
-                                className="bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] h-2 rounded-full"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${normalized}%` }}
-                                transition={{
-                                  delay: isMobile ? index * 0.05 + 0.5 : index * 0.1 + 1,
-                                  duration: isMobile ? 0.5 : 1,
-                                  ease: "easeOut"
-                                }}
-                              />
-                            </div>
-
-                            <p className="text-sm text-zinc-400 leading-relaxed">{item.description}</p>
-                          </motion.div>
-                        )
-                      })}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Reset Button */}
