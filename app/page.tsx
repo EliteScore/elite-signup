@@ -2185,7 +2185,7 @@ export default function HomePage() {
           </motion.div>
 
           <motion.div 
-            className="bg-zinc-900/30 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-zinc-800/30 relative overflow-hidden"
+            className="bg-zinc-900/30 backdrop-blur-sm rounded-3xl p-4 sm:p-8 md:p-12 border border-zinc-800/30 relative overflow-hidden"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -2198,6 +2198,17 @@ export default function HomePage() {
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-4">Upload Your Resume</h3>
                     <p className="text-zinc-300 mb-8">Get your personalized score and see how you stack up against students at your dream university.</p>
+                  </div>
+                  
+                  {/* Don't have resume button */}
+                  <div className="text-center">
+                    <p className="text-zinc-400 text-sm mb-3">Don't have a resume yet?</p>
+                    <button
+                      onClick={() => document.getElementById('beta-signup')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="text-[#3B82F6] hover:text-[#7C3AED] font-medium text-sm transition-colors duration-200 hover:underline"
+                    >
+                      Sign up to get started →
+                    </button>
                   </div>
                 
                   {/* File Upload Area */}
@@ -2288,18 +2299,18 @@ export default function HomePage() {
                 </motion.div>
 
                 {/* Score Card & Breakdown */}
-                <div className="flex justify-center mb-12">
+                <div className="flex justify-center mb-12 px-4">
                   <div className="w-full max-w-sm mx-auto">
                     <motion.div
                       ref={scoreCardRef}
-                      className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#080313] px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12 shadow-[0px_25px_80px_rgba(79,70,229,0.45)] w-full"
+                      className="relative overflow-hidden rounded-[32px] border border-white/5 bg-[#080313] px-4 py-6 sm:px-8 sm:py-10 lg:px-10 lg:py-12 shadow-[0px_25px_80px_rgba(79,70,229,0.45)] w-full mx-auto"
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.4 }}
                       style={{
                         // Ensure consistent sizing for mobile downloads
-                        minWidth: isMobile ? '320px' : 'auto',
-                        maxWidth: isMobile ? '400px' : 'none'
+                        minWidth: isMobile ? '280px' : 'auto',
+                        maxWidth: isMobile ? '350px' : 'none'
                       }}
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-[#120B2A] via-[#0B0317] to-[#05000F]" />
@@ -2364,7 +2375,7 @@ export default function HomePage() {
                           </>
                         )}
                       </button>
-                      <div className="text-xs text-zinc-400 text-center sm:text-left space-y-1">
+                      <div className="text-xs text-zinc-400 text-center sm:text-left space-y-1 px-2">
                         <p>📱 <strong>Share it on your story</strong> and let the world see your score!</p>
                         <p>💻 <strong>Compete with friends</strong> and show off your achievements</p>
                       </div>
