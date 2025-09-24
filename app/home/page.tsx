@@ -44,14 +44,6 @@ import { XPNotification } from "@/components/xp-notification"
 import AnimatedCounter from "@/components/ui/animated-counter"
 import { AnimatedProgress } from "@/components/ui/animated-progress"
 import { AnimatedSection } from "@/components/ui/animated-section"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 
 // Mock data for professional posts
 const posts = [
@@ -221,7 +213,6 @@ export default function HomePage() {
   const [likedPosts, setLikedPosts] = useState<number[]>(posts.filter((p) => p.liked).map((p) => p.id))
   const [savedPosts, setSavedPosts] = useState<number[]>(posts.filter((p) => p.saved).map((p) => p.id))
   const [showXpNotification, setShowXpNotification] = useState(false)
-  const [showChatDialog, setShowChatDialog] = useState(false)
   const [postText, setPostText] = useState("")
   const [completedTasks, setCompletedTasks] = useState<number[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -983,58 +974,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Chat Button */}
-      <div className="fixed bottom-16 sm:bottom-20 right-4 z-50">
-        <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
-          <DialogTrigger asChild>
-            <EnhancedButton
-              className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-[0_0_24px_0_rgba(80,0,255,0.4)] hover:shadow-[0_0_32px_0_rgba(80,0,255,0.6)]"
-              size="icon"
-              animation="pulse"
-            >
-              <MessageSquare className="h-5 w-5" />
-            </EnhancedButton>
-          </DialogTrigger>
-          <DialogContent className="bg-zinc-900/95 border border-blue-700/40 text-white sm:max-w-md shadow-[0_0_32px_0_rgba(80,0,255,0.3)]">
-            <DialogHeader>
-              <DialogTitle className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">Messages</DialogTitle>
-              <DialogDescription className="text-zinc-400">Chat with your connections</DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto py-4">
-              {/* Chat List */}
-              <div className="space-y-2">
-                {networkSuggestions.map((person) => (
-                  <div
-                    key={person.id}
-                    className="flex items-center p-2 hover:bg-zinc-800/60 hover:border hover:border-blue-700/40 rounded-lg cursor-pointer transition-all duration-300"
-                  >
-                    <Avatar className="h-10 w-10 mr-3">
-                      <AvatarImage src={person.image} />
-                      <AvatarFallback className="bg-zinc-800">{person.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-sm text-white">{person.name}</h4>
-                      <p className="text-xs text-zinc-400">Online</p>
-                    </div>
-                    <div className="h-2 w-2 bg-green-400 rounded-full relative">
-                      <span className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-75"></span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <Input
-                placeholder="Type a message..."
-                className="bg-zinc-800/80 border-blue-700/40 text-white focus:border-blue-500 focus:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] transition-all duration-300"
-              />
-              <EnhancedButton size="icon" variant="gradient" rounded="full" className="bg-gradient-to-r from-blue-500 to-purple-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)]">
-                <Send className="h-4 w-4" />
-              </EnhancedButton>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
 
       {/* XP Notification */}
       {showXpNotification && (

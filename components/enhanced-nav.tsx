@@ -97,10 +97,11 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
                 variant="ghost"
                 size="icon"
                 className="rounded-full text-muted-foreground hover:text-white hover:bg-muted relative"
+                onClick={() => router.push("/chat")}
               >
                 <MessageCircle className="h-5 w-5" />
                 {messageCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-primary text-white text-xs">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs">
                     {messageCount}
                   </Badge>
                 )}
