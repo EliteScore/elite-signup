@@ -774,8 +774,8 @@ export default function HomePage() {
       
       console.log('Result keys:', Object.keys(result))
       
-      // Extract from new API structure: result.parsed.components and result.parsed.overall_score
-      const overallScore = result.parsed?.overall_score || result.score || 0
+      // Extract from new API structure: use the main score field
+      const overallScore = result.score || result.parsed?.overall_score || 0
       const components = result.parsed?.components || {}
       
       console.log('Extracted overall score:', overallScore)
