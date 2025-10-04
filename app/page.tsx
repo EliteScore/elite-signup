@@ -28,6 +28,7 @@ import { ArrowRight, CheckCircle, Trophy, Users, BarChart2, Zap, Star, User, Gra
 
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { TermsAndPrivacyModal } from "@/components/terms-privacy-modal"
 
 import { cn } from "@/lib/utils"
 
@@ -404,9 +405,20 @@ export default function HomePage() {
     education: 0,
     projects: 0
   })
+  const [resumeInsights, setResumeInsights] = useState<{
+    highlights: string[]
+    strengths: string[]
+    weaknesses: string[]
+  }>({
+    highlights: [],
+    strengths: [],
+    weaknesses: []
+  })
   const scoreCardRef = useRef<HTMLDivElement | null>(null)
   const [isDownloadingCard, setIsDownloadingCard] = useState(false)
   const [cardDownloadError, setCardDownloadError] = useState<string | null>(null)
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false)
 
   const normalizeScore = useCallback((value: number) => {
     if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -703,16 +715,31 @@ export default function HomePage() {
       return
     }
 
+    // Check if terms have been accepted
+    if (!hasAcceptedTerms) {
+      setShowTermsModal(true)
+      return
+    }
+
+    // If terms are accepted, proceed with analysis
+    await analyzeResume()
+  }
+
+  const analyzeResume = async () => {
     setIsAnalyzing(true)
     setErrorMessage(null)
 
     try {
       // Create FormData for multipart/form-data upload
       const formData = new FormData()
-      formData.append('file', resumeFile)
+      if (resumeFile) {
+        formData.append('file', resumeFile)
+      } else {
+        throw new Error('No resume file found')
+      }
       
       // Use the Heroku CV scoring API
-      const apiUrl = 'https://elite-score-cv-rating-only-a1143431be59.herokuapp.com/v1/parser/resume/score'
+      const apiUrl = 'https://elite-chal-xp-tasks-fea8332d31e3.herokuapp.com/v2/parser/resume/score'
       
       console.log('Calling resume scoring API:', apiUrl)
 
@@ -747,9 +774,9 @@ export default function HomePage() {
       
       console.log('Result keys:', Object.keys(result))
       
-      // Direct mapping with explicit property access
-      const overallScore = result['overall_score'] || result.overall_score || 0
-      const components = result['components'] || result.components || {}
+      // Extract from new API structure: result.parsed.components and result.parsed.overall_score
+      const overallScore = result.parsed?.overall_score || result.score || 0
+      const components = result.parsed?.components || {}
       
       console.log('Extracted overall score:', overallScore)
       console.log('Extracted components:', components)
@@ -759,16 +786,27 @@ export default function HomePage() {
         experience: Math.round(components.experience || 0),
         skills: Math.round(components.skills || 0), 
         education: Math.round(components.education || 0),
-        projects: Math.round(components.ai_signal || 0)
+        projects: Math.round(components.projects || 0)
+      }
+      
+      // Extract insights from explanation
+      const explanation = result.parsed?.explanation || {}
+      const insights = {
+        highlights: explanation.highlights || [],
+        strengths: explanation.notes?.strengths || [],
+        weaknesses: explanation.notes?.weaknesses || []
       }
       
       console.log('Computed scores before setState:', scores)
+      console.log('Extracted insights:', insights)
       
       // Use setTimeout to ensure state update happens after current execution
       setTimeout(() => {
         setResumeScore(scores)
+        setResumeInsights(insights)
         setShowScore(true)
         console.log('State updated with scores:', scores)
+        console.log('State updated with insights:', insights)
       }, 100)
       
     } catch (error) {
@@ -783,6 +821,8 @@ export default function HomePage() {
     setResumeFile(null)
     setShowScore(false)
     setResumeScore({ overall: 0, experience: 0, skills: 0, education: 0, projects: 0 })
+    setResumeInsights({ highlights: [], strengths: [], weaknesses: [] })
+    setHasAcceptedTerms(false) // Reset terms acceptance
     setErrorMessage(null)
     setCardDownloadError(null)
   }
@@ -2260,7 +2300,10 @@ export default function HomePage() {
                     {isAnalyzing ? (
                       <div className="flex items-center justify-center gap-3">
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Analyzing your resume...</span>
+                        <div className="text-center">
+                          <div>Analyzing your resume...</div>
+                          <div className="text-sm opacity-80">This might take up to one minute</div>
+                        </div>
                       </div>
                     ) : (
                       'Get My Score'
@@ -2387,8 +2430,100 @@ export default function HomePage() {
 
                 </div>
 
+                {/* Insights Section - Highlights, Strengths, Weaknesses */}
+                {(resumeInsights.highlights.length > 0 || resumeInsights.strengths.length > 0 || resumeInsights.weaknesses.length > 0) && (
+                  <motion.div 
+                    className="max-w-4xl mx-auto mt-12 space-y-8"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.6 }}
+                  >
+                    <div className="text-center mb-8">
+                      <h3 className="text-3xl font-bold text-white mb-2">Your Resume Insights</h3>
+                      <p className="text-zinc-400">Here's what stands out in your profile</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Highlights */}
+                      {resumeInsights.highlights.length > 0 && (
+                        <motion.div
+                          className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.7 }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                              <Star className="h-5 w-5 text-white" />
+                            </div>
+                            <h4 className="text-xl font-bold text-white">Highlights</h4>
+                          </div>
+                          <ul className="space-y-3">
+                            {resumeInsights.highlights.map((highlight, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-zinc-300">
+                                <span className="text-blue-400 mt-1">✨</span>
+                                <span>{highlight}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </motion.div>
+                      )}
+
+                      {/* Strengths */}
+                      {resumeInsights.strengths.length > 0 && (
+                        <motion.div
+                          className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 backdrop-blur-sm rounded-2xl p-6 border border-green-500/20"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.8 }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                              <CheckCircle className="h-5 w-5 text-white" />
+                            </div>
+                            <h4 className="text-xl font-bold text-white">Strengths</h4>
+                          </div>
+                          <ul className="space-y-3">
+                            {resumeInsights.strengths.map((strength, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-zinc-300">
+                                <span className="text-green-400 mt-1">✓</span>
+                                <span>{strength}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </motion.div>
+                      )}
+
+                      {/* Weaknesses */}
+                      {resumeInsights.weaknesses.length > 0 && (
+                        <motion.div
+                          className="bg-gradient-to-br from-orange-900/20 to-red-900/20 backdrop-blur-sm rounded-2xl p-6 border border-orange-500/20"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.9 }}
+                        >
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
+                              <TrendingUp className="h-5 w-5 text-white" />
+                            </div>
+                            <h4 className="text-xl font-bold text-white">Areas to Improve</h4>
+                          </div>
+                          <ul className="space-y-3">
+                            {resumeInsights.weaknesses.map((weakness, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-zinc-300">
+                                <span className="text-orange-400 mt-1">→</span>
+                                <span>{weakness}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </motion.div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* Reset Button */}
-                <div className="text-center">
+                <div className="text-center mt-12">
                   <button
                     onClick={resetResumeAnalysis}
                     className="bg-zinc-800/50 hover:bg-zinc-700/50 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 hover:scale-105 active:scale-95"
@@ -2712,6 +2847,24 @@ export default function HomePage() {
       </section>
 
       {/* Footer - Cluely Style */}
+
+      {/* Terms and Privacy Modal */}
+      <TermsAndPrivacyModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => {
+          setHasAcceptedTerms(true)
+          setShowTermsModal(false)
+          // Start analysis immediately after accepting terms
+          setIsAnalyzing(true)
+          setErrorMessage(null)
+          
+          // Trigger the actual analysis
+          setTimeout(() => {
+            analyzeResume()
+          }, 100)
+        }}
+      />
 
       </div>
     </>
