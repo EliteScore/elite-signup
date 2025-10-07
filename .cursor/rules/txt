@@ -1,0 +1,90 @@
+Overview
+EliteScore Backend is a Jakarta EE (JAX-RS) application that provides authentication, user management, profile handling, and status tracking functionalities. It is built with Jetty, Jersey, PostgreSQL, Redis, and Argon2 for secure password hashing. The backend exposes RESTful APIs that power the EliteScore platform.
+
+The project is structured into logical layers: resources (API endpoints), handlers (business logic and database operations), models (entities and enums), utilities, encryption, and schedulers.
+
+Features
+Authentication: Registration, login, password reset, JWT-based sessions.
+User Profiles: Profile creation, updates, and visibility control.
+Follow System: Follow and unfollow other users.
+Status API: Service health and system status checks.
+Password Security: Argon2 hashing for safe credential storage.
+Token Management: JWT signing, validation, and revocation.
+CORS and Filters: Configurable filters for secure API access.
+Database & Caching: PostgreSQL with HikariCP and Redis for performance.
+Scheduled Tasks: Clean-up jobs for expired tokens or unused data.
+Tech Stack
+Language: Java 17
+Frameworks: Jakarta EE, Jersey (JAX-RS)
+Server: Jetty
+Database: PostgreSQL (HikariCP connection pool)
+Security: Argon2, JWT (jjwt)
+Cache: Redis (Jedis client)
+Build Tool: Maven (Shade plugin for fat JAR packaging)
+Project Structure
+src/main/java/com/example/elitescorebackend
+ ├── encryption/       # Argon2 password hashing
+ ├── handlers/         # Database and business logic handlers
+ ├── models/           # Entities, DTOs, and enums
+ ├── res/              # REST resources (API endpoints)
+ ├── response/         # Unified API response wrapper
+ ├── schedulers/       # Scheduled background tasks
+ ├── util/             # Utilities (DB connection, JWT, filters, app root)
+ └── Main.java         # Application entrypoint
+Setup & Installation
+Prerequisites
+Java 17
+Maven 3.8+
+PostgreSQL instance
+Redis instance
+Clone and Build
+git clone https://github.com/your-org/elitescore-backend.git
+cd elitescore-backend
+mvn clean package
+This generates a shaded JAR under target/elitescore-backend-1.0.0.jar.
+
+Run
+java -jar target/elitescore-backend-1.0.0.jar
+The server will start on the configured Jetty port (default: 8080).
+
+Environment Variables
+The application expects certain environment variables:
+
+DB_URL – JDBC URL for PostgreSQL (e.g. jdbc:postgresql://localhost:5432/elitescore)
+DB_USER – database username
+DB_PASSWORD – database password
+JWT_SECRET – secret key for signing JWTs
+REDIS_URL – Redis connection URL
+PEPPER_KEY – optional pepper key for password hashing
+API Endpoints
+Auth (/auth)
+POST /auth/register – Register new user
+POST /auth/login – Authenticate and receive JWT
+POST /auth/logout – Invalidate token
+POST /auth/forgot-password – Request password reset
+POST /auth/reset-password – Reset password with token
+Profile (/profile)
+GET /profile/{id} – Get user profile by ID
+PUT /profile/{id} – Update profile
+GET /profile/me – Get current user’s profile
+Follow (/follow)
+POST /follow/{id} – Follow a user
+DELETE /follow/{id} – Unfollow a user
+GET /follow/{id} – List followers/following
+Status (/status)
+GET /status/health – Check service health
+GET /status/info – Get system metadata
+Testing
+Run unit tests with:
+
+mvn test
+Deployment
+You can deploy the fat JAR directly on any Java 17 runtime, or integrate with containerized environments such as Docker and Kubernetes. Alternatively, you can deploy on an application server supporting Jakarta EE.
+
+Example Docker run:
+
+docker build -t elitescore-backend .
+docker run -p 8080:8080 --env-file .env elitescore-backend
+License
+This project is licensed under the MIT License. See LICENSE for details.
+

@@ -137,13 +137,54 @@ export default function SignupPage() {
   async function onSubmit(data: SignupFormValues) {
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      // Call the actual registration API
+      const response = await fetch('https://elite-score-a31a0334b58d.herokuapp.com/v1/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: data.name,
+          email: data.email,
+          password: data.password,
+        }),
+      })
 
-    console.log(data)
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type')
+      const isJson = contentType?.includes('application/json')
 
-    // Redirect to home page
-    router.push("/home")
+      if (!response.ok) {
+        // Handle different error status codes
+        if (response.status === 404) {
+          alert('Registration endpoint not found. The API might not be deployed correctly.')
+        } else if (response.status === 405) {
+          alert('Registration method not allowed. The API endpoint might be incorrect.')
+        } else if (isJson) {
+          const result = await response.json()
+          alert(result.message || 'Registration failed. Please try again.')
+        } else {
+          const text = await response.text()
+          console.error('Server error:', text)
+          alert(`Server error (${response.status}). Please try again later.`)
+        }
+        setIsLoading(false)
+        return
+      }
+
+      // Parse successful response
+      const result = isJson ? await response.json() : { success: true }
+      console.log('Registration successful:', result)
+      
+      // Redirect to home page on success
+      router.push("/home")
+      
+    } catch (error) {
+      console.error('Error during registration:', error)
+      alert('Failed to connect to the server. Please check your internet connection and try again.')
+      setIsLoading(false)
+    }
   }
 
   // Handle next step
@@ -380,7 +421,7 @@ export default function SignupPage() {
                 <Button
                   className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] text-white shadow-lg hover:scale-[1.02] transition-transform"
                   onClick={handleNextStep}
-                  disabled={!form.formState.isValid || isLoading}
+                  disabled={isLoading}
                 >
                   Continue <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
