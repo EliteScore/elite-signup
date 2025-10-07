@@ -74,14 +74,75 @@ export default function LoginPage() {
     setIsLoading(true)
     setLoginError(null)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      // Prepare login payload - exactly matching JSON structure
+      const loginPayload = {
+        username: data.email,
+        password: data.password,
+      }
+      
+      console.log('Login request payload:', JSON.stringify(loginPayload, null, 2))
+      
+      // Call the actual login API
+      const response = await fetch('https://elite-score-a31a0334b58d.herokuapp.com/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(loginPayload),
+      })
+      
+      console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
 
-    // For demo purposes, always succeed
-    console.log(data)
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type')
+      const isJson = contentType?.includes('application/json')
 
-    // Redirect to home page
-    router.push("/home")
+      if (!response.ok) {
+        // Try to get the actual error message from the API
+        let errorMessage = 'Login failed. Please try again.'
+        
+        if (isJson) {
+          try {
+            const result = await response.json()
+            console.log('API Error Response:', result)
+            errorMessage = result.message || result.error || errorMessage
+          } catch (e) {
+            console.error('Failed to parse error response:', e)
+          }
+        } else {
+          const text = await response.text()
+          console.error('Server error response:', text)
+        }
+        
+        // Handle different error status codes
+        if (response.status === 404) {
+          setLoginError('Login endpoint not found. The API might not be deployed correctly.')
+        } else if (response.status === 405) {
+          setLoginError('Login method not allowed. The API endpoint might be incorrect.')
+        } else if (response.status === 401) {
+          setLoginError(errorMessage || 'Invalid email or password. Please try again.')
+        } else {
+          setLoginError(errorMessage || `Server error (${response.status}). Please try again later.`)
+        }
+        setIsLoading(false)
+        return
+      }
+
+      // Parse successful response
+      const result = isJson ? await response.json() : { success: true }
+      console.log('Login successful:', result)
+      
+      // Redirect to home page on success
+      router.push("/home")
+      
+    } catch (error) {
+      console.error('Error during login:', error)
+      setLoginError('Failed to connect to the server. Please check your internet connection and try again.')
+      setIsLoading(false)
+    }
   }
 
   return (
