@@ -75,9 +75,10 @@ export default function LoginPage() {
     setLoginError(null)
 
     try {
-      // Prepare login payload - exactly matching JSON structure
+      // Prepare login payload - try both username and email fields
       const loginPayload = {
         username: data.email,
+        email: data.email,
         password: data.password,
       }
       
