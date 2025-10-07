@@ -240,9 +240,9 @@ export default function SignupPage() {
                         name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white text-sm">Full Name</FormLabel>
+                            <FormLabel className="text-white text-sm">User Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="John Doe" className="py-3 text-base" {...field} />
+                              <Input placeholder="JohnDoe123" className="py-3 text-base" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
