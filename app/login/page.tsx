@@ -75,14 +75,12 @@ export default function LoginPage() {
     setLoginError(null)
 
     try {
-      // Prepare login payload - try both username and email fields
+      // Prepare login payload
       const loginPayload = {
         username: data.email,
         email: data.email,
         password: data.password,
       }
-      
-      console.log('Login request payload:', JSON.stringify(loginPayload, null, 2))
       
       // Call the actual login API
       const response = await fetch('https://elite-score-a31a0334b58d.herokuapp.com/v1/auth/login', {
@@ -93,9 +91,6 @@ export default function LoginPage() {
         },
         body: JSON.stringify(loginPayload),
       })
-      
-      console.log('Response status:', response.status)
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
 
       // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type')
@@ -108,14 +103,10 @@ export default function LoginPage() {
         if (isJson) {
           try {
             const result = await response.json()
-            console.log('API Error Response:', result)
             errorMessage = result.message || result.error || errorMessage
           } catch (e) {
-            console.error('Failed to parse error response:', e)
+            // Silent error handling
           }
-        } else {
-          const text = await response.text()
-          console.error('Server error response:', text)
         }
         
         // Handle different error status codes
@@ -134,13 +125,11 @@ export default function LoginPage() {
 
       // Parse successful response
       const result = isJson ? await response.json() : { success: true }
-      console.log('Login successful:', result)
       
       // Redirect to home page on success
       router.push("/home")
       
     } catch (error) {
-      console.error('Error during login:', error)
       setLoginError('Failed to connect to the server. Please check your internet connection and try again.')
       setIsLoading(false)
     }
