@@ -45,7 +45,7 @@ import AnimatedCounter from "@/components/ui/animated-counter"
 import { AnimatedProgress } from "@/components/ui/animated-progress"
 import { AnimatedSection } from "@/components/ui/animated-section"
 
-// Mock data for professional posts
+// Mock data for achievement posts (auto-generated from user activities)
 const posts = [
   {
     id: 1,
@@ -55,12 +55,15 @@ const posts = [
       username: "alex_improvement",
       image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces",
       verified: true,
+      level: 8,
+      xp: 2450,
     },
     content: {
-      text: "Just completed the Advanced System Design course! 🚀 Excited to apply these new architectural patterns to our current project. #SystemDesign #ProfessionalDevelopment",
-      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&h=400&fit=crop",
-      type: "achievement",
-      achievement: "Completed Advanced System Design Course",
+      text: "🎉 Level Up! Just reached Level 8 after completing the Advanced System Design course! Gained 500 XP and unlocked the 'System Architect' badge. Ready to tackle distributed systems challenges! #LevelUp #SystemDesign",
+      type: "level_up",
+      achievement: "Reached Level 8 - System Architect",
+      xpGained: 500,
+      badgeUnlocked: "System Architect",
     },
     timestamp: "2 hours ago",
     likes: 243,
@@ -76,11 +79,15 @@ const posts = [
       username: "mindful_sarah",
       image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces",
       verified: true,
+      level: 12,
+      xp: 4200,
     },
     content: {
-      text: "Proud to announce that our team's project was selected for the company-wide innovation showcase! This was the result of 3 months of hard work and collaboration. Looking forward to presenting next week! #Innovation #Leadership",
-      type: "milestone",
-      milestone: "Project selected for innovation showcase",
+      text: "🏆 Achievement Unlocked! 'Innovation Leader' badge earned after our team's project was selected for the company-wide showcase! This milestone pushed me to Level 12. The grind never stops! #Achievement #Leadership",
+      type: "achievement",
+      achievement: "Innovation Leader Badge Earned",
+      xpGained: 750,
+      badgeUnlocked: "Innovation Leader",
     },
     timestamp: "5 hours ago",
     likes: 512,
@@ -96,11 +103,17 @@ const posts = [
       username: "productivity_mike",
       image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=faces",
       verified: false,
+      level: 6,
+      xp: 1800,
     },
     content: {
-      text: "Just published my research paper on 'Optimizing Machine Learning Models for Production Environments' in the IEEE Journal. It's been a long journey, but so rewarding to see it finally published! Link to the paper in comments. #MachineLearning #Research",
-      type: "publication",
-      publication: "Research paper published in IEEE Journal",
+      text: "📊 Resume Score Update! Just boosted my EliteScore from 78 to 84 after adding my AWS certification and recent project! Climbed 12 spots on the Data Science leaderboard. Every skill counts! #ResumeBoost #DataScience",
+      type: "resume_score",
+      achievement: "Resume Score Improved",
+      xpGained: 150,
+      badgeUnlocked: "Score Booster",
+      scoreChange: "+6",
+      leaderboardChange: "+12 spots",
     },
     timestamp: "Yesterday",
     likes: 189,
@@ -116,18 +129,179 @@ const posts = [
       username: "design_emily",
       image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=faces",
       verified: true,
+      level: 9,
+      xp: 2800,
     },
     content: {
-      text: "Just completed my 30-day UI challenge! I designed a new interface component every day for a month. Swipe to see some of my favorite designs. This experience really pushed my creativity and technical skills. #UIDesign #30DayChallenge",
+      text: "🎨 Challenge Complete! Finished my 30-day UI design challenge and earned the 'Design Master' badge! Gained 400 XP and moved up 3 spots on the design leaderboard. Consistency pays off! #DesignChallenge #UIUX",
       image: "https://images.unsplash.com/photo-1545235617-9465d2a55698?w=600&h=400&fit=crop",
       type: "challenge",
-      challenge: "Completed 30-day UI design challenge",
+      achievement: "Design Master Badge Earned",
+      xpGained: 400,
+      badgeUnlocked: "Design Master",
     },
     timestamp: "2 days ago",
     likes: 345,
     comments: 31,
     liked: false,
     saved: false,
+  },
+  {
+    id: 5,
+    user: {
+      name: "David Kim",
+      title: "Frontend Developer at Netflix",
+      username: "frontend_david",
+      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 7,
+      xp: 2100,
+    },
+    content: {
+      text: "⚡ Streak Achievement! Maintained a 15-day learning streak and unlocked the 'Consistency Champion' badge! Earned 200 XP and climbed to #3 on the weekly leaderboard. Small daily actions lead to big wins! #Streak #Consistency",
+      type: "streak",
+      achievement: "Consistency Champion Badge",
+      xpGained: 200,
+      badgeUnlocked: "Consistency Champion",
+    },
+    timestamp: "3 days ago",
+    likes: 156,
+    comments: 12,
+    liked: false,
+    saved: false,
+  },
+  {
+    id: 6,
+    user: {
+      name: "Jessica Park",
+      title: "Software Engineer at Meta",
+      username: "jessica_codes",
+      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 11,
+      xp: 3800,
+    },
+    content: {
+      text: "🏅 Leaderboard Update! Just broke into the TOP 100 on the Engineering Leaderboard! Currently ranked #87 - my goal is to reach top 50 by end of month. The competition is fierce but I'm grinding! #Leaderboard #Top100",
+      type: "leaderboard",
+      achievement: "Top 100 Engineering Leaderboard",
+      xpGained: 300,
+      badgeUnlocked: "Top 100 Elite",
+      rank: "#87",
+      category: "Engineering",
+    },
+    timestamp: "4 hours ago",
+    likes: 428,
+    comments: 35,
+    liked: false,
+    saved: false,
+  },
+  {
+    id: 7,
+    user: {
+      name: "Marcus Thompson",
+      title: "Product Manager at Stripe",
+      username: "marcus_pm",
+      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 10,
+      xp: 3200,
+    },
+    content: {
+      text: "🔥 Weekly Highlight! This week I completed 5 skill assessments, maintained my 20-day streak, and earned 3 new badges! My EliteScore jumped from 82 to 86. Feeling unstoppable! #WeeklyHighlight #Growth",
+      type: "weekly_highlight",
+      achievement: "Incredible Week Progress",
+      xpGained: 250,
+      badgeUnlocked: "Weekly Warrior",
+      weeklyStats: {
+        assessments: 5,
+        streak: 20,
+        badges: 3,
+        scoreIncrease: "+4"
+      },
+    },
+    timestamp: "6 hours ago",
+    likes: 312,
+    comments: 28,
+    liked: true,
+    saved: false,
+  },
+  {
+    id: 8,
+    user: {
+      name: "Lisa Wang",
+      title: "Data Scientist at Tesla",
+      username: "data_lisa",
+      image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 13,
+      xp: 4800,
+    },
+    content: {
+      text: "💎 Rare Badge Unlocked! Just earned the 'Machine Learning Pioneer' badge after completing advanced ML coursework and publishing research. Only 47 people have this badge! Feeling honored to be part of this elite group! #RareBadge #MachineLearning",
+      type: "rare_badge",
+      achievement: "Machine Learning Pioneer Badge",
+      xpGained: 600,
+      badgeUnlocked: "ML Pioneer",
+      rarity: "Only 47 people have this badge",
+    },
+    timestamp: "1 day ago",
+    likes: 567,
+    comments: 52,
+    liked: false,
+    saved: true,
+  },
+  {
+    id: 9,
+    user: {
+      name: "Community Team",
+      title: "EliteScore Community",
+      username: "elitescore_community",
+      image: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 99,
+      xp: 50000,
+    },
+    content: {
+      text: "🌟 Community Spotlight! This week's most inspiring story comes from @alex_improvement who went from Level 3 to Level 8 in just 2 weeks! His dedication to learning system design paid off. Who's your inspiration this week? #CommunitySpotlight #Inspiration",
+      type: "community_spotlight",
+      achievement: "Community Spotlight",
+      xpGained: 100,
+      badgeUnlocked: "Community Member",
+      featuredUser: "@alex_improvement",
+      highlight: "Level 3 to Level 8 in 2 weeks",
+    },
+    timestamp: "2 hours ago",
+    likes: 234,
+    comments: 41,
+    liked: false,
+    saved: false,
+  },
+  {
+    id: 10,
+    user: {
+      name: "Ryan Martinez",
+      title: "Full Stack Developer at Shopify",
+      username: "ryan_dev",
+      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 8,
+      xp: 2600,
+    },
+    content: {
+      text: "📈 Resume Score Breakthrough! Just hit 90+ on my EliteScore after adding my open-source contributions and technical blog! This puts me in the top 5% of developers. Ready to crush those interviews! #ResumeBoost #OpenSource",
+      type: "resume_milestone",
+      achievement: "90+ EliteScore Milestone",
+      xpGained: 400,
+      badgeUnlocked: "Elite Performer",
+      score: "90+",
+      percentile: "Top 5%",
+    },
+    timestamp: "8 hours ago",
+    likes: 445,
+    comments: 38,
+    liked: true,
+    saved: true,
   },
 ]
 
@@ -179,6 +353,8 @@ const networkSuggestions = [
     title: "Frontend Developer at Netflix",
     image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=faces",
     mutualConnections: 12,
+    level: 10,
+    xp: 3200,
   },
   {
     id: 2,
@@ -186,6 +362,8 @@ const networkSuggestions = [
     title: "Product Manager at Spotify",
     image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=faces",
     mutualConnections: 8,
+    level: 11,
+    xp: 3800,
   },
   {
     id: 3,
@@ -193,6 +371,45 @@ const networkSuggestions = [
     title: "Data Engineer at Airbnb",
     image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=faces",
     mutualConnections: 5,
+    level: 9,
+    xp: 2600,
+  },
+]
+
+// Mock data for suggestions and progress cards that appear in feed
+const suggestionCards = [
+  {
+    id: "suggestion-1",
+    type: "network_suggestion",
+    title: "Connect with High Achievers",
+    subtitle: "People you may know",
+    suggestions: networkSuggestions.slice(0, 2),
+  },
+  {
+    id: "progress-1",
+    type: "progress_update",
+    title: "Your Progress This Week",
+    subtitle: "Keep up the momentum!",
+    stats: {
+      xpGained: 450,
+      tasksCompleted: 8,
+      streakDays: 12,
+      levelProgress: 75,
+      nextLevel: 6,
+    },
+  },
+  {
+    id: "challenge-1",
+    type: "challenge_suggestion",
+    title: "Weekly Challenge",
+    subtitle: "Earn bonus XP",
+    challenge: {
+      title: "Complete 3 Skill Assessments",
+      description: "Take assessments in your chosen field to earn 200 XP",
+      xpReward: 200,
+      deadline: "3 days left",
+      participants: 1247,
+    },
   },
 ]
 
@@ -274,12 +491,57 @@ export default function HomePage() {
     setShowOnboarding(false)
   }
 
+  // Mix posts with suggestion cards for natural feed integration
+  const createMixedFeed = () => {
+    const mixedFeed = []
+    let postIndex = 0
+    let suggestionIndex = 0
+    
+    // Insert suggestion cards at strategic positions
+    const suggestionPositions = [1, 3, 5] // After 1st, 3rd, and 5th posts
+    
+    for (let i = 0; i < posts.length + suggestionCards.length; i++) {
+      if (suggestionPositions.includes(i) && suggestionIndex < suggestionCards.length) {
+        mixedFeed.push({
+          type: 'suggestion',
+          data: suggestionCards[suggestionIndex],
+          id: `suggestion-${suggestionIndex}`,
+        })
+        suggestionIndex++
+      } else if (postIndex < posts.length) {
+        mixedFeed.push({
+          type: 'post',
+          data: posts[postIndex],
+          id: `post-${posts[postIndex].id}`,
+        })
+        postIndex++
+      }
+    }
+    
+    return mixedFeed
+  }
+
+  const mixedFeed = createMixedFeed()
+
   // Calculate progress percentage
   const progressPercentage = (userStats.xp / userStats.nextLevelXp) * 100
   const taskCompletionPercentage = (completedTasks.length / upcomingTasks.length) * 100
 
   return (
     <DashboardLayout>
+      {/* Logo */}
+      <div className="absolute top-4 left-4 z-20">
+        <div className="flex items-center">
+          <div className="relative">
+            <img 
+              src="/logo.png" 
+              alt="EliteScore Logo" 
+              className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Onboarding Tutorial */}
       <AnimatePresence>
         {showOnboarding && (
@@ -377,298 +639,11 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left Column - User Profile & Stats */}
           <div className="lg:col-span-1 space-y-4 sm:space-y-6">
-            {/* User Profile Card */}
-            <AnimatedSection delay={0.1}>
-              <EnhancedCard variant="gradient" hover="lift" className="overflow-hidden bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]">
-                <EnhancedCardContent className="p-0">
-                  <div className="bg-gradient-to-r from-blue-600/40 to-purple-600/40 h-24 rounded-t-lg relative overflow-hidden">
-                    <motion.div
-                      className="absolute inset-0 bg-[url('/placeholder.svg?height=400&width=1200')] bg-cover bg-center opacity-20"
-                      initial={{ scale: 1.1 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 1 }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/30 to-fuchsia-500/20" />
-                  </div>
-                  <div className="px-4 pb-4 relative">
-                    <Avatar className="h-16 w-16 border-4 border-black -mt-8 ring-2 ring-blue-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] interactive">
-                      <AvatarImage src="/placeholder.svg?height=150&width=150" />
-                      <AvatarFallback className="bg-zinc-800">U</AvatarFallback>
-                    </Avatar>
-                    <div className="mt-2 flex justify-between items-start">
-                      <div>
-                        <h3 className="font-extrabold text-lg bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">Alex Morgan</h3>
-                        <p className="text-sm text-zinc-400">Software Engineer</p>
-                      </div>
-                      <EnhancedButton
-                        variant="outline"
-                        size="sm"
-                        rounded="full"
-                        className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)]"
-                        onClick={() => router.push("/profile")}
-                      >
-                        View Profile
-                      </EnhancedButton>
-                    </div>
 
-                    {/* Divider */}
-                    <div className="my-3 h-px bg-gradient-to-r from-transparent via-blue-700/50 to-transparent" />
-
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between mb-1 text-sm">
-                          <span className="text-blue-300 font-medium">Level {userStats.level}</span>
-                          <span className="text-zinc-400">
-                            {userStats.xp}/{userStats.nextLevelXp} XP
-                          </span>
-                        </div>
-                        <AnimatedProgress
-                          value={userStats.xp}
-                          max={userStats.nextLevelXp}
-                          className="h-2 bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:via-purple-500 [&>div]:to-fuchsia-500 [&>div]:shadow-[0_0_8px_0_rgba(80,0,255,0.5)]"
-                          delay={0.3}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-zinc-800/60 border border-blue-700/30 rounded-lg p-3 shadow-[0_0_8px_0_rgba(80,0,255,0.2)]">
-                          <div className="flex items-center gap-2">
-                            <Zap className="h-4 w-4 text-blue-400" />
-                            <span className="text-xs text-zinc-400">Streak</span>
-                          </div>
-                          <div className="font-bold mt-1 text-white">
-                            <AnimatedCounter from={0} to={userStats.streak} duration={1} delay={0.4} /> days
-                          </div>
-                        </div>
-                        <div className="bg-zinc-800/60 border border-purple-700/30 rounded-lg p-3 shadow-[0_0_8px_0_rgba(147,51,234,0.2)]">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-purple-400" />
-                            <span className="text-xs text-zinc-400">Tasks</span>
-                          </div>
-                          <div className="font-bold mt-1 text-white">
-                            <AnimatedCounter from={0} to={userStats.tasksCompleted} duration={1} delay={0.5} />/
-                            {userStats.tasksTotal}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </EnhancedCardContent>
-              </EnhancedCard>
-            </AnimatedSection>
-
-            {/* Stats Card */}
-            <AnimatedSection delay={0.2}>
-              <EnhancedCard variant="default" hover="glow" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]">
-                <EnhancedCardHeader className="pb-2">
-                  <EnhancedCardTitle className="text-lg flex items-center">
-                    <BarChart2 className="h-5 w-5 mr-2 text-blue-400" />
-                    <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">Your Progress</span>
-                  </EnhancedCardTitle>
-                </EnhancedCardHeader>
-                <EnhancedCardContent className="p-4 pt-0">
-                  <div className="space-y-4">
-                    <div className="bg-zinc-800/60 border border-blue-700/30 rounded-lg p-3 shadow-[0_0_8px_0_rgba(80,0,255,0.2)]">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-white">Weekly Goal Progress</span>
-                        <span className="text-xs text-zinc-400">{Math.round(taskCompletionPercentage)}%</span>
-                      </div>
-                      <AnimatedProgress 
-                        value={completedTasks.length} 
-                        max={upcomingTasks.length} 
-                        className="[&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:via-purple-500 [&>div]:to-fuchsia-500 [&>div]:shadow-[0_0_8px_0_rgba(80,0,255,0.5)]"
-                        delay={0.6} 
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-3 shadow-[0_0_8px_0_rgba(34,197,94,0.2)]">
-                        <div className="text-xs text-zinc-400 mb-1">Network Growth</div>
-                        <div className="flex items-end gap-1">
-                          <span className="text-lg font-bold text-green-400">+</span>
-                          <AnimatedCounter
-                            from={0}
-                            to={userStats.connectionsGrowth}
-                            className="text-lg font-bold text-white"
-                            delay={0.7}
-                          />
-                        </div>
-                      </div>
-                      <div className="bg-zinc-800/60 border border-fuchsia-700/30 rounded-lg p-3 shadow-[0_0_8px_0_rgba(217,70,239,0.2)]">
-                        <div className="text-xs text-zinc-400 mb-1">Skills Improved</div>
-                        <div className="flex items-end gap-1">
-                          <AnimatedCounter
-                            from={0}
-                            to={userStats.skillsImproved}
-                            className="text-lg font-bold text-white"
-                            delay={0.8}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </EnhancedCardContent>
-              </EnhancedCard>
-            </AnimatedSection>
-
-            {/* Upcoming Tasks */}
-            <AnimatedSection delay={0.3}>
-              <EnhancedCard variant="default" hover="glow" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]">
-                <EnhancedCardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <EnhancedCardTitle className="text-lg flex items-center">
-                      <Calendar className="h-5 w-5 mr-2 text-blue-400" />
-                      <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">Upcoming Tasks</span>
-                    </EnhancedCardTitle>
-                    <EnhancedButton
-                      variant="ghost"
-                      size="sm"
-                      rounded="full"
-                      className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent hover:border-blue-700/40"
-                      onClick={() => router.push("/goals")}
-                    >
-                      View All
-                    </EnhancedButton>
-                  </div>
-                </EnhancedCardHeader>
-                <EnhancedCardContent className="p-4 pt-0">
-                  <div className="space-y-3">
-                    {upcomingTasks.slice(0, 3).map((task) => (
-                      <div
-                        key={task.id}
-                        className={cn(
-                          "flex items-start p-3 rounded-lg transition-all duration-300 border",
-                          completedTasks.includes(task.id)
-                            ? "bg-blue-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]"
-                            : "bg-zinc-800/60 border-zinc-700/50 hover:bg-zinc-800 hover:border-blue-700/40 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.2)]",
-                        )}
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={cn(
-                                "w-3 h-3 rounded-full flex-shrink-0",
-                                task.priority === "High"
-                                  ? "bg-red-500"
-                                  : task.priority === "Medium"
-                                    ? "bg-yellow-500"
-                                    : "bg-green-500",
-                              )}
-                            />
-                            <h4
-                              className={cn(
-                                "text-sm font-medium text-white",
-                                completedTasks.includes(task.id) && "line-through text-zinc-500",
-                              )}
-                            >
-                              {task.title}
-                            </h4>
-                          </div>
-                          <div className="flex items-center gap-3 mt-1 ml-5">
-                            <div className="flex items-center text-xs text-zinc-500">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {task.dueDate}
-                            </div>
-                            <div className="flex items-center text-xs text-zinc-500">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {task.dueTime}
-                            </div>
-                          </div>
-                        </div>
-                        <EnhancedButton
-                          variant={completedTasks.includes(task.id) ? "outline" : "default"}
-                          size="sm"
-                          rounded="full"
-                          className={cn(
-                            "h-7 px-2 text-xs",
-                            completedTasks.includes(task.id)
-                              ? "bg-zinc-800 hover:bg-zinc-700 border-blue-700/40 text-white"
-                              : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-[0_0_8px_0_rgba(80,0,255,0.4)]",
-                          )}
-                          onClick={() => toggleTaskCompletion(task.id)}
-                        >
-                          {completedTasks.includes(task.id) ? (
-                            <div className="flex items-center">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Done
-                            </div>
-                          ) : (
-                            "Complete"
-                          )}
-                        </EnhancedButton>
-                      </div>
-                    ))}
-                  </div>
-                </EnhancedCardContent>
-              </EnhancedCard>
-            </AnimatedSection>
           </div>
 
           {/* Middle Column - Feed */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Create Post */}
-            <AnimatedSection delay={0.2}>
-              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]">
-                <EnhancedCardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 interactive">
-                      <AvatarImage src="/placeholder.svg?height=150&width=150" />
-                      <AvatarFallback className="bg-zinc-800">A</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Share an achievement or update..."
-                        className="bg-zinc-800/80 border-blue-700/40 text-white focus:border-blue-500 transition-all duration-300 focus:shadow-[0_0_8px_0_rgba(80,0,255,0.3)]"
-                        value={postText}
-                        onChange={(e) => setPostText(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row justify-between mt-4 gap-3">
-                    <div className="flex gap-2 flex-wrap">
-                      <EnhancedButton
-                        variant="outline"
-                        size="sm"
-                        rounded="full"
-                        className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:border-blue-500/50 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] text-xs sm:text-sm"
-                        leftIcon={<Image className="h-3 w-3 sm:h-4 sm:w-4" />}
-                      >
-                        Photo
-                      </EnhancedButton>
-                      <EnhancedButton
-                        variant="outline"
-                        size="sm"
-                        rounded="full"
-                        className="bg-zinc-800/80 border-purple-700/40 text-white hover:bg-zinc-700 hover:border-purple-500/50 hover:shadow-[0_0_8px_0_rgba(147,51,234,0.3)] text-xs sm:text-sm"
-                        leftIcon={<Award className="h-3 w-3 sm:h-4 sm:w-4" />}
-                      >
-                        Achievement
-                      </EnhancedButton>
-                      <EnhancedButton
-                        variant="outline"
-                        size="sm"
-                        rounded="full"
-                        className="bg-zinc-800/80 border-fuchsia-700/40 text-white hover:bg-zinc-700 hover:border-fuchsia-500/50 hover:shadow-[0_0_8px_0_rgba(217,70,239,0.3)] text-xs sm:text-sm"
-                        leftIcon={<Link2 className="h-3 w-3 sm:h-4 sm:w-4" />}
-                      >
-                        Link
-                      </EnhancedButton>
-                    </div>
-                    <EnhancedButton
-                      size="sm"
-                      rounded="full"
-                      variant="gradient"
-                      animation="shimmer"
-                      className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
-                      onClick={handleCreatePost}
-                      disabled={!postText.trim()}
-                    >
-                      Post
-                    </EnhancedButton>
-                  </div>
-                </EnhancedCardContent>
-              </EnhancedCard>
-            </AnimatedSection>
 
             {/* Feed Tabs */}
             <Tabs defaultValue="feed" className="w-full">
@@ -694,155 +669,372 @@ export default function HomePage() {
               </TabsList>
 
               <TabsContent value="feed" className="space-y-4">
-                {/* Posts */}
-                {posts.map((post, index) => (
-                  <AnimatedSection key={post.id} delay={0.2 + index * 0.1}>
-                    <EnhancedCard
-                      variant="default"
-                      hover="lift"
-                      className="bg-zinc-900/80 border border-blue-700/40 overflow-hidden shadow-[0_0_24px_0_rgba(80,0,255,0.2)] hover:shadow-[0_0_32px_0_rgba(80,0,255,0.4)]"
-                    >
-                      <EnhancedCardHeader className="p-3 sm:p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="h-10 w-10 interactive">
-                              <AvatarImage src={post.user.image} />
-                              <AvatarFallback className="bg-zinc-800">{post.user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="flex items-center">
-                                <span className="font-bold text-white">{post.user.name}</span>
-                                {post.user.verified && (
-                                  <svg className="h-4 w-4 ml-1 text-blue-400 fill-current" viewBox="0 0 24 24">
-                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                                  </svg>
-                                )}
-                              </div>
-                              <div className="text-xs text-zinc-400">{post.user.title}</div>
-                              <div className="text-xs text-zinc-500">{post.timestamp}</div>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-zinc-400 rounded-full hover:bg-zinc-800/50 hover:text-white"
-                          >
-                            <MoreHorizontal className="h-5 w-5" />
-                          </Button>
-                        </div>
-                      </EnhancedCardHeader>
-                      <EnhancedCardContent className="px-3 sm:px-4 pb-2">
-                        <p className="text-sm mb-3 text-white leading-relaxed">{post.content.text}</p>
-
-                        {/* Achievement/Milestone Badge */}
-                        {post.content.type && (
-                          <div
-                            className={cn(
-                              "p-3 rounded-lg mb-3 transition-all duration-300 hover:shadow-md border",
-                              post.content.type === "achievement"
-                                ? "bg-blue-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
-                                : post.content.type === "milestone"
-                                  ? "bg-purple-900/20 border-purple-800/40 shadow-[0_0_8px_0_rgba(147,51,234,0.2)]"
-                                  : post.content.type === "publication"
-                                    ? "bg-green-900/20 border-green-800/40 shadow-[0_0_8px_0_rgba(34,197,94,0.2)]"
-                                    : "bg-fuchsia-900/20 border-fuchsia-800/40 shadow-[0_0_8px_0_rgba(217,70,239,0.2)]",
-                            )}
-                          >
-                            <div className="flex items-center">
-                              {post.content.type === "achievement" && (
-                                <Award className="h-5 w-5 mr-2 text-blue-400" />
-                              )}
-                              {post.content.type === "milestone" && (
-                                <Trophy className="h-5 w-5 mr-2 text-purple-400" />
-                              )}
-                              {post.content.type === "publication" && (
-                                <FileText className="h-5 w-5 mr-2 text-green-400" />
-                              )}
-                              {post.content.type === "challenge" && (
-                                <Award className="h-5 w-5 mr-2 text-fuchsia-400" />
-                              )}
+                {/* Mixed Feed - Posts and Suggestions */}
+                {mixedFeed.map((item, index) => (
+                  <AnimatedSection key={item.id} delay={0.2 + index * 0.1}>
+                    {item.type === 'post' ? (
+                      // Achievement Post
+                      <EnhancedCard
+                        variant="default"
+                        hover="lift"
+                        className="bg-zinc-900/80 border border-blue-700/40 overflow-hidden shadow-[0_0_24px_0_rgba(80,0,255,0.2)] hover:shadow-[0_0_32px_0_rgba(80,0,255,0.4)]"
+                      >
+                        <EnhancedCardHeader className="p-3 sm:p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="h-10 w-10 interactive">
+                                <AvatarImage src={item.data.user.image} />
+                                <AvatarFallback className="bg-zinc-800">{item.data.user.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
                               <div>
-                                <p className="font-bold text-sm text-white">
-                                  {post.content.achievement ||
-                                    post.content.milestone ||
-                                    post.content.publication ||
-                                    post.content.challenge}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-white">{item.data.user.name}</span>
+                                  {item.data.user.verified && (
+                                    <svg className="h-4 w-4 text-blue-400 fill-current" viewBox="0 0 24 24">
+                                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                                    </svg>
+                                  )}
+                                  <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
+                                    Level {item.data.user.level}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs text-zinc-400">{item.data.user.title}</div>
+                                <div className="text-xs text-zinc-500">{item.data.timestamp}</div>
                               </div>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-zinc-400 rounded-full hover:bg-zinc-800/50 hover:text-white"
+                            >
+                              <MoreHorizontal className="h-5 w-5" />
+                            </Button>
                           </div>
-                        )}
+                        </EnhancedCardHeader>
+                        <EnhancedCardContent className="px-3 sm:px-4 pb-2">
+                          <p className="text-sm mb-3 text-white leading-relaxed">{item.data.content.text}</p>
 
-                        {post.content.image && (
-                          <div className="rounded-lg overflow-hidden mb-3 transition-all duration-300 hover:shadow-lg border border-zinc-700/50">
-                            <img
-                              src={post.content.image || "/placeholder.svg"}
-                              alt="Post content"
-                              className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
-                            />
-                          </div>
-                        )}
-                      </EnhancedCardContent>
-                      <EnhancedCardFooter className="p-3 sm:p-4 pt-0">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center space-x-4">
+                          {/* Achievement Badge with XP */}
+                          {item.data.content.type && (
+                            <div
+                              className={cn(
+                                "p-3 rounded-lg mb-3 transition-all duration-300 hover:shadow-md border",
+                                item.data.content.type === "level_up"
+                                  ? "bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
+                                  : item.data.content.type === "achievement"
+                                    ? "bg-blue-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
+                                  : item.data.content.type === "resume_score"
+                                    ? "bg-emerald-900/20 border-emerald-800/40 shadow-[0_0_8px_0_rgba(16,185,129,0.2)]"
+                                  : item.data.content.type === "challenge"
+                                    ? "bg-fuchsia-900/20 border-fuchsia-800/40 shadow-[0_0_8px_0_rgba(217,70,239,0.2)]"
+                                  : item.data.content.type === "streak"
+                                    ? "bg-yellow-900/20 border-yellow-800/40 shadow-[0_0_8px_0_rgba(234,179,8,0.2)]"
+                                  : item.data.content.type === "leaderboard"
+                                    ? "bg-orange-900/20 border-orange-800/40 shadow-[0_0_8px_0_rgba(249,115,22,0.2)]"
+                                  : item.data.content.type === "weekly_highlight"
+                                    ? "bg-violet-900/20 border-violet-800/40 shadow-[0_0_8px_0_rgba(139,92,246,0.2)]"
+                                  : item.data.content.type === "rare_badge"
+                                    ? "bg-pink-900/20 border-pink-800/40 shadow-[0_0_8px_0_rgba(236,72,153,0.2)]"
+                                  : item.data.content.type === "community_spotlight"
+                                    ? "bg-cyan-900/20 border-cyan-800/40 shadow-[0_0_8px_0_rgba(6,182,212,0.2)]"
+                                  : item.data.content.type === "resume_milestone"
+                                    ? "bg-indigo-900/20 border-indigo-800/40 shadow-[0_0_8px_0_rgba(99,102,241,0.2)]"
+                                  : "bg-green-900/20 border-green-800/40 shadow-[0_0_8px_0_rgba(34,197,94,0.2)]",
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  {item.data.content.type === "level_up" && (
+                                    <Trophy className="h-5 w-5 mr-2 text-blue-400" />
+                                  )}
+                                  {item.data.content.type === "achievement" && (
+                                    <Award className="h-5 w-5 mr-2 text-blue-400" />
+                                  )}
+                                  {item.data.content.type === "resume_score" && (
+                                    <BarChart2 className="h-5 w-5 mr-2 text-emerald-400" />
+                                  )}
+                                  {item.data.content.type === "challenge" && (
+                                    <Award className="h-5 w-5 mr-2 text-fuchsia-400" />
+                                  )}
+                                  {item.data.content.type === "streak" && (
+                                    <Zap className="h-5 w-5 mr-2 text-yellow-400" />
+                                  )}
+                                  {item.data.content.type === "leaderboard" && (
+                                    <Trophy className="h-5 w-5 mr-2 text-orange-400" />
+                                  )}
+                                  {item.data.content.type === "weekly_highlight" && (
+                                    <Calendar className="h-5 w-5 mr-2 text-violet-400" />
+                                  )}
+                                  {item.data.content.type === "rare_badge" && (
+                                    <Award className="h-5 w-5 mr-2 text-pink-400" />
+                                  )}
+                                  {item.data.content.type === "community_spotlight" && (
+                                    <Users className="h-5 w-5 mr-2 text-cyan-400" />
+                                  )}
+                                  {item.data.content.type === "resume_milestone" && (
+                                    <BarChart2 className="h-5 w-5 mr-2 text-indigo-400" />
+                                  )}
+                                  <div>
+                                    <p className="font-bold text-sm text-white">
+                                      {item.data.content.achievement}
+                                    </p>
+                                    <p className="text-xs text-zinc-400">{item.data.content.badgeUnlocked}</p>
+                                    {/* Additional info for specific types */}
+                                    {item.data.content.type === "resume_score" && (
+                                      <div className="flex gap-2 mt-1">
+                                        <span className="text-xs text-emerald-300 font-medium">
+                                          Score: {item.data.content.scoreChange}
+                                        </span>
+                                        <span className="text-xs text-blue-300">
+                                          {item.data.content.leaderboardChange}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {item.data.content.type === "leaderboard" && (
+                                      <div className="flex gap-2 mt-1">
+                                        <span className="text-xs text-orange-300 font-medium">
+                                          Rank: {item.data.content.rank}
+                                        </span>
+                                        <span className="text-xs text-zinc-400">
+                                          {item.data.content.category}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {item.data.content.type === "weekly_highlight" && (
+                                      <div className="flex gap-2 mt-1">
+                                        <span className="text-xs text-violet-300">
+                                          {item.data.content.weeklyStats.assessments} assessments
+                                        </span>
+                                        <span className="text-xs text-yellow-300">
+                                          {item.data.content.weeklyStats.streak} day streak
+                                        </span>
+                                        <span className="text-xs text-emerald-300">
+                                          {item.data.content.weeklyStats.scoreIncrease} score
+                                        </span>
+                                      </div>
+                                    )}
+                                    {item.data.content.type === "rare_badge" && (
+                                      <p className="text-xs text-pink-300 mt-1">
+                                        {item.data.content.rarity}
+                                      </p>
+                                    )}
+                                    {item.data.content.type === "community_spotlight" && (
+                                      <div className="mt-1">
+                                        <p className="text-xs text-cyan-300">
+                                          Featured: {item.data.content.featuredUser}
+                                        </p>
+                                        <p className="text-xs text-zinc-400">
+                                          {item.data.content.highlight}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {item.data.content.type === "resume_milestone" && (
+                                      <div className="flex gap-2 mt-1">
+                                        <span className="text-xs text-indigo-300 font-medium">
+                                          Score: {item.data.content.score}
+                                        </span>
+                                        <span className="text-xs text-purple-300">
+                                          {item.data.content.percentile}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <Badge className="bg-green-900/50 text-green-300 border-green-800 text-[10px]">
+                                  +{item.data.content.xpGained} XP
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+
+                          {item.data.content.image && (
+                            <div className="rounded-lg overflow-hidden mb-3 transition-all duration-300 hover:shadow-lg border border-zinc-700/50">
+                              <img
+                                src={item.data.content.image || "/placeholder.svg"}
+                                alt="Post content"
+                                className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
+                              />
+                            </div>
+                          )}
+                        </EnhancedCardContent>
+                        <EnhancedCardFooter className="p-3 sm:p-4 pt-0">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center space-x-4">
+                              <EnhancedButton
+                                variant="ghost"
+                                size="sm"
+                                rounded="full"
+                                className={cn(
+                                  "transition-all duration-300",
+                                  likedPosts.includes(item.data.id) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
+                                )}
+                                onClick={() => toggleLike(item.data.id)}
+                              >
+                                <ThumbsUp
+                                  className={cn("h-4 w-4 mr-1", likedPosts.includes(item.data.id) && "fill-current")}
+                                />
+                                <span className="text-xs">{item.data.likes}</span>
+                              </EnhancedButton>
+                              <EnhancedButton
+                                variant="ghost"
+                                size="sm"
+                                rounded="full"
+                                className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
+                                onClick={() => {
+                                  console.log(`View comments for post ${item.data.id}`)
+                                }}
+                              >
+                                <MessageCircle className="h-4 w-4 mr-1" />
+                                <span className="text-xs">{item.data.comments}</span>
+                              </EnhancedButton>
+                              <EnhancedButton
+                                variant="ghost"
+                                size="sm"
+                                rounded="full"
+                                className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
+                                onClick={() => {
+                                  console.log(`Share post ${item.data.id}`)
+                                }}
+                              >
+                                <Share2 className="h-4 w-4 mr-1" />
+                                <span className="text-xs">Share</span>
+                              </EnhancedButton>
+                            </div>
                             <EnhancedButton
                               variant="ghost"
                               size="sm"
                               rounded="full"
                               className={cn(
                                 "transition-all duration-300",
-                                likedPosts.includes(post.id) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
+                                savedPosts.includes(item.data.id) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
                               )}
-                              onClick={() => toggleLike(post.id)}
+                              onClick={() => toggleSave(item.data.id)}
                             >
-                              <ThumbsUp
-                                className={cn("h-4 w-4 mr-1", likedPosts.includes(post.id) && "fill-current")}
-                              />
-                              <span className="text-xs">{post.likes}</span>
-                            </EnhancedButton>
-                            <EnhancedButton
-                              variant="ghost"
-                              size="sm"
-                              rounded="full"
-                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
-                              onClick={() => {
-                                // In a real app, this would open the comments
-                                console.log(`View comments for post ${post.id}`)
-                              }}
-                            >
-                              <MessageCircle className="h-4 w-4 mr-1" />
-                              <span className="text-xs">{post.comments}</span>
-                            </EnhancedButton>
-                            <EnhancedButton
-                              variant="ghost"
-                              size="sm"
-                              rounded="full"
-                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
-                              onClick={() => {
-                                // In a real app, this would open the share dialog
-                                console.log(`Share post ${post.id}`)
-                              }}
-                            >
-                              <Share2 className="h-4 w-4 mr-1" />
-                              <span className="text-xs">Share</span>
+                              <Bookmark className={cn("h-4 w-4", savedPosts.includes(item.data.id) && "fill-current")} />
                             </EnhancedButton>
                           </div>
-                          <EnhancedButton
-                            variant="ghost"
-                            size="sm"
-                            rounded="full"
-                            className={cn(
-                              "transition-all duration-300",
-                              savedPosts.includes(post.id) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
+                        </EnhancedCardFooter>
+                      </EnhancedCard>
+                    ) : (
+                      // Suggestion Card
+                      <EnhancedCard
+                        variant="gradient"
+                        hover="lift"
+                        className="bg-gradient-to-br from-zinc-900/90 to-blue-900/20 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]"
+                      >
+                        <EnhancedCardHeader className="pb-3">
+                          <EnhancedCardTitle className="text-lg flex items-center">
+                            {item.data.type === "network_suggestion" && (
+                              <Users className="h-5 w-5 mr-2 text-blue-400" />
                             )}
-                            onClick={() => toggleSave(post.id)}
-                          >
-                            <Bookmark className={cn("h-4 w-4", savedPosts.includes(post.id) && "fill-current")} />
-                          </EnhancedButton>
-                        </div>
-                      </EnhancedCardFooter>
-                    </EnhancedCard>
+                            {item.data.type === "progress_update" && (
+                              <BarChart2 className="h-5 w-5 mr-2 text-green-400" />
+                            )}
+                            {item.data.type === "challenge_suggestion" && (
+                              <Trophy className="h-5 w-5 mr-2 text-fuchsia-400" />
+                            )}
+                            <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">
+                              {item.data.title}
+                            </span>
+                          </EnhancedCardTitle>
+                          <p className="text-sm text-zinc-400">{item.data.subtitle}</p>
+                        </EnhancedCardHeader>
+                        <EnhancedCardContent className="p-4 pt-0">
+                          {item.data.type === "network_suggestion" && (
+                            <div className="space-y-3">
+                              {item.data.suggestions.map((person: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-zinc-800/60 border border-blue-700/30 rounded-lg">
+                                  <div className="flex items-center">
+                                    <Avatar className="h-10 w-10 mr-3">
+                                      <AvatarImage src={person.image} />
+                                      <AvatarFallback className="bg-zinc-700">{person.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="font-bold text-white">{person.name}</h4>
+                                        <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
+                                          Level {person.level}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-sm text-zinc-400">{person.title}</p>
+                                      <p className="text-xs text-zinc-500">{person.mutualConnections} mutual connections</p>
+                                    </div>
+                                  </div>
+                                  <EnhancedButton
+                                    size="sm"
+                                    rounded="full"
+                                    variant="gradient"
+                                    animation="shimmer"
+                                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)]"
+                                    leftIcon={<Plus className="h-3.5 w-3.5" />}
+                                  >
+                                    Connect
+                                  </EnhancedButton>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {item.data.type === "progress_update" && (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-3">
+                                  <div className="text-xs text-zinc-400 mb-1">XP Gained</div>
+                                  <div className="text-lg font-bold text-green-400">+{item.data.stats.xpGained}</div>
+                                </div>
+                                <div className="bg-zinc-800/60 border border-blue-700/30 rounded-lg p-3">
+                                  <div className="text-xs text-zinc-400 mb-1">Tasks Done</div>
+                                  <div className="text-lg font-bold text-blue-400">{item.data.stats.tasksCompleted}</div>
+                                </div>
+                              </div>
+                              <div className="bg-zinc-800/60 border border-yellow-700/30 rounded-lg p-3">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium text-white">Level Progress</span>
+                                  <span className="text-xs text-zinc-400">{item.data.stats.levelProgress}%</span>
+                                </div>
+                                <AnimatedProgress 
+                                  value={item.data.stats.levelProgress} 
+                                  max={100} 
+                                  className="[&>div]:bg-gradient-to-r [&>div]:from-yellow-500 [&>div]:to-orange-500"
+                                />
+                                <p className="text-xs text-zinc-500 mt-1">Next: Level {item.data.stats.nextLevel}</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {item.data.type === "challenge_suggestion" && (
+                            <div className="space-y-3">
+                              <div className="bg-zinc-800/60 border border-fuchsia-700/30 rounded-lg p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <h3 className="font-bold text-white">{item.data.challenge.title}</h3>
+                                  <Badge className="bg-fuchsia-900/50 text-fuchsia-300 border-fuchsia-800 text-[10px]">
+                                    +{item.data.challenge.xpReward} XP
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-zinc-400 mb-3">{item.data.challenge.description}</p>
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xs text-zinc-500">
+                                    {item.data.challenge.participants.toLocaleString()} participants
+                                  </div>
+                                  <div className="text-xs text-red-400 font-medium">
+                                    {item.data.challenge.deadline}
+                                  </div>
+                                </div>
+                              </div>
+                              <EnhancedButton
+                                size="sm"
+                                rounded="full"
+                                variant="gradient"
+                                animation="shimmer"
+                                className="w-full bg-gradient-to-r from-fuchsia-500 via-purple-500 to-blue-500 shadow-[0_0_8px_0_rgba(217,70,239,0.4)]"
+                              >
+                                Join Challenge
+                              </EnhancedButton>
+                            </div>
+                          )}
+                        </EnhancedCardContent>
+                      </EnhancedCard>
+                    )}
                   </AnimatedSection>
                 ))}
               </TabsContent>
@@ -859,7 +1051,12 @@ export default function HomePage() {
                             <AvatarFallback className="bg-zinc-800">{person.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <h4 className="font-bold text-white">{person.name}</h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-white">{person.name}</h4>
+                              <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
+                                Level {person.level}
+                              </Badge>
+                            </div>
                             <p className="text-sm text-zinc-400">{person.title}</p>
                             <p className="text-xs text-zinc-500 mt-1">{person.mutualConnections} mutual connections</p>
                           </div>
