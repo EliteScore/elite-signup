@@ -56,7 +56,7 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-800 bg-black/90 backdrop-blur-lg overflow-x-hidden">
+    <header className="sticky top-0 z-50 w-full border-b border-zinc-800/50 bg-black backdrop-blur-xl overflow-x-hidden">
       <div className="container h-16 flex items-center justify-between px-4">
         {/* Logo */}
         <Link href={isLoggedIn ? "/home" : "/"} className="flex items-center gap-2">
@@ -69,7 +69,7 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
             <img src="/Annotation 2025-07-18 034118.png" alt="ELITESCORE logo" className="h-8 w-8 object-contain" />
           </motion.div>
           <motion.span
-            className="text-xl font-bold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent hidden sm:inline-block"
+            className="text-lg sm:text-xl font-bold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}

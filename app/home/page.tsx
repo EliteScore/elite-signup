@@ -59,13 +59,13 @@ const posts = [
       xp: 2450,
     },
     content: {
-      text: "🎉 Level Up! Just reached Level 8 after completing the Advanced System Design course! Gained 500 XP and unlocked the 'System Architect' badge. Ready to tackle distributed systems challenges! #LevelUp #SystemDesign",
+      text: "Just hit Level 8! Been grinding system design every night after work. No shortcuts, just pure dedication. Ready to crush those distributed systems interviews! 💪",
       type: "level_up",
       achievement: "Reached Level 8 - System Architect",
       xpGained: 500,
       badgeUnlocked: "System Architect",
     },
-    timestamp: "2 hours ago",
+    timestamp: "Posted at 11:23 PM",
     likes: 243,
     comments: 18,
     liked: false,
@@ -83,13 +83,13 @@ const posts = [
       xp: 4200,
     },
     content: {
-      text: "🏆 Achievement Unlocked! 'Innovation Leader' badge earned after our team's project was selected for the company-wide showcase! This milestone pushed me to Level 12. The grind never stops! #Achievement #Leadership",
+      text: "Team project got picked for company showcase! Been pushing boundaries every day. Innovation Leader badge unlocked and hit Level 12. Small wins lead to big victories! 🔥",
       type: "achievement",
       achievement: "Innovation Leader Badge Earned",
       xpGained: 750,
       badgeUnlocked: "Innovation Leader",
     },
-    timestamp: "5 hours ago",
+    timestamp: "Late night session",
     likes: 512,
     comments: 42,
     liked: true,
@@ -107,7 +107,7 @@ const posts = [
       xp: 1800,
     },
     content: {
-      text: "📊 Resume Score Update! Just boosted my EliteScore from 78 to 84 after adding my AWS certification and recent project! Climbed 12 spots on the Data Science leaderboard. Every skill counts! #ResumeBoost #DataScience",
+      text: "Resume score jumped from 78 to 84! Added AWS cert and my latest ML project. Moved up 12 spots on the leaderboard. Every skill I add gets me closer to that dream job! 📈",
       type: "resume_score",
       achievement: "Resume Score Improved",
       xpGained: 150,
@@ -115,7 +115,7 @@ const posts = [
       scoreChange: "+6",
       leaderboardChange: "+12 spots",
     },
-    timestamp: "Yesterday",
+    timestamp: "Day 47 of the journey",
     likes: 189,
     comments: 27,
     liked: false,
@@ -508,11 +508,12 @@ export default function HomePage() {
           id: `suggestion-${suggestionIndex}`,
         })
         suggestionIndex++
-      } else if (postIndex < posts.length) {
+      } else if (postIndex < posts.length && posts[postIndex]) {
+        const post = posts[postIndex]!
         mixedFeed.push({
           type: 'post',
-          data: posts[postIndex],
-          id: `post-${posts[postIndex].id}`,
+          data: post,
+          id: `post-${post.id}`,
         })
         postIndex++
       }
@@ -628,41 +629,38 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* Background Elements */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-radial from-blue-500/20 via-purple-700/15 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-1/2 -left-24 w-72 h-72 bg-gradient-radial from-purple-700/20 via-pink-600/15 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/3 w-80 h-80 bg-gradient-radial from-fuchsia-500/15 via-blue-600/10 to-transparent rounded-full blur-3xl" />
-      </div>
+      <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 overflow-x-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Spacer */}
+          <div className="lg:col-span-2"></div>
 
-      <div className="container mx-auto px-4 py-4 sm:py-6 relative z-10 overflow-x-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Left Column - User Profile & Stats */}
-          <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+          {/* Main Feed */}
+          <div className="lg:col-span-8 space-y-4 sm:space-y-6">
 
-          </div>
-
-          {/* Middle Column - Feed */}
-          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            {/* Motivational Header */}
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Keep pushing. Your future self will thank you.</h2>
+              <p className="text-sm text-zinc-300">Every post is someone getting better. Your turn.</p>
+            </div>
 
             {/* Feed Tabs */}
             <Tabs defaultValue="feed" className="w-full">
-              <TabsList className="bg-zinc-900/80 border border-blue-700/40 rounded-lg p-1 mb-4 shadow-[0_0_16px_0_rgba(80,0,255,0.2)]">
+              <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-4">
                 <TabsTrigger
                   value="feed"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white data-[state=active]:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
                 >
                   Feed
                 </TabsTrigger>
                 <TabsTrigger
                   value="network"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white data-[state=active]:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
                 >
                   Network
                 </TabsTrigger>
                 <TabsTrigger
                   value="achievements"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white data-[state=active]:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
                 >
                   Achievements
                 </TabsTrigger>
@@ -672,57 +670,57 @@ export default function HomePage() {
                 {/* Mixed Feed - Posts and Suggestions */}
                 {mixedFeed.map((item, index) => (
                   <AnimatedSection key={item.id} delay={0.2 + index * 0.1}>
-                    {item.type === 'post' ? (
+                    {item.type === 'post' && item.data && 'user' in item.data ? (
                       // Achievement Post
-                      <EnhancedCard
-                        variant="default"
-                        hover="lift"
-                        className="bg-zinc-900/80 border border-blue-700/40 overflow-hidden shadow-[0_0_24px_0_rgba(80,0,255,0.2)] hover:shadow-[0_0_32px_0_rgba(80,0,255,0.4)]"
-                      >
-                        <EnhancedCardHeader className="p-3 sm:p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <Avatar className="h-10 w-10 interactive">
+                    <EnhancedCard
+                      variant="default"
+                      hover="lift"
+                      className="bg-zinc-900 border border-zinc-800 overflow-hidden"
+                    >
+                      <EnhancedCardHeader className="p-3 sm:p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="h-10 w-10 interactive">
                                 <AvatarImage src={item.data.user.image} />
                                 <AvatarFallback className="bg-zinc-800">{item.data.user.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
+                            </Avatar>
+                            <div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-white">{item.data.user.name}</span>
                                   {item.data.user.verified && (
                                     <svg className="h-4 w-4 text-blue-400 fill-current" viewBox="0 0 24 24">
-                                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                                    </svg>
-                                  )}
-                                  <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                                  </svg>
+                                )}
+                                  <Badge className="bg-blue-950 text-blue-300 border-blue-800 text-[10px]">
                                     Level {item.data.user.level}
                                   </Badge>
-                                </div>
+                              </div>
                                 <div className="text-xs text-zinc-400">{item.data.user.title}</div>
                                 <div className="text-xs text-zinc-500">{item.data.timestamp}</div>
-                              </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-zinc-400 rounded-full hover:bg-zinc-800/50 hover:text-white"
-                            >
-                              <MoreHorizontal className="h-5 w-5" />
-                            </Button>
                           </div>
-                        </EnhancedCardHeader>
-                        <EnhancedCardContent className="px-3 sm:px-4 pb-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-zinc-400 rounded-full hover:bg-zinc-800/50 hover:text-white"
+                          >
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      </EnhancedCardHeader>
+                      <EnhancedCardContent className="px-3 sm:px-4 pb-2">
                           <p className="text-sm mb-3 text-white leading-relaxed">{item.data.content.text}</p>
 
                           {/* Achievement Badge with XP */}
                           {item.data.content.type && (
-                            <div
-                              className={cn(
-                                "p-3 rounded-lg mb-3 transition-all duration-300 hover:shadow-md border",
+                          <div
+                            className={cn(
+                              "p-3 rounded-lg mb-3 transition-all duration-300 hover:shadow-md border",
                                 item.data.content.type === "level_up"
                                   ? "bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
                                   : item.data.content.type === "achievement"
-                                    ? "bg-blue-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
+                                ? "bg-blue-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
                                   : item.data.content.type === "resume_score"
                                     ? "bg-emerald-900/20 border-emerald-800/40 shadow-[0_0_8px_0_rgba(16,185,129,0.2)]"
                                   : item.data.content.type === "challenge"
@@ -743,19 +741,19 @@ export default function HomePage() {
                               )}
                             >
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center">
+                            <div className="flex items-center">
                                   {item.data.content.type === "level_up" && (
                                     <Trophy className="h-5 w-5 mr-2 text-blue-400" />
                                   )}
                                   {item.data.content.type === "achievement" && (
-                                    <Award className="h-5 w-5 mr-2 text-blue-400" />
-                                  )}
+                                <Award className="h-5 w-5 mr-2 text-blue-400" />
+                              )}
                                   {item.data.content.type === "resume_score" && (
                                     <BarChart2 className="h-5 w-5 mr-2 text-emerald-400" />
-                                  )}
+                              )}
                                   {item.data.content.type === "challenge" && (
-                                    <Award className="h-5 w-5 mr-2 text-fuchsia-400" />
-                                  )}
+                                <Award className="h-5 w-5 mr-2 text-fuchsia-400" />
+                              )}
                                   {item.data.content.type === "streak" && (
                                     <Zap className="h-5 w-5 mr-2 text-yellow-400" />
                                   )}
@@ -773,9 +771,9 @@ export default function HomePage() {
                                   )}
                                   {item.data.content.type === "resume_milestone" && (
                                     <BarChart2 className="h-5 w-5 mr-2 text-indigo-400" />
-                                  )}
-                                  <div>
-                                    <p className="font-bold text-sm text-white">
+                              )}
+                              <div>
+                                <p className="font-bold text-sm text-white">
                                       {item.data.content.achievement}
                                     </p>
                                     <p className="text-xs text-zinc-400">{item.data.content.badgeUnlocked}</p>
@@ -788,7 +786,7 @@ export default function HomePage() {
                                         <span className="text-xs text-blue-300">
                                           {item.data.content.leaderboardChange}
                                         </span>
-                                      </div>
+                              </div>
                                     )}
                                     {item.data.content.type === "leaderboard" && (
                                       <div className="flex gap-2 mt-1">
@@ -800,7 +798,7 @@ export default function HomePage() {
                                         </span>
                                       </div>
                                     )}
-                                    {item.data.content.type === "weekly_highlight" && (
+                                    {item.data.content.type === "weekly_highlight" && item.data.content.weeklyStats && (
                                       <div className="flex gap-2 mt-1">
                                         <span className="text-xs text-violet-300">
                                           {item.data.content.weeklyStats.assessments} assessments
@@ -843,94 +841,94 @@ export default function HomePage() {
                                 <Badge className="bg-green-900/50 text-green-300 border-green-800 text-[10px]">
                                   +{item.data.content.xpGained} XP
                                 </Badge>
-                              </div>
                             </div>
-                          )}
+                          </div>
+                        )}
 
                           {item.data.content.image && (
-                            <div className="rounded-lg overflow-hidden mb-3 transition-all duration-300 hover:shadow-lg border border-zinc-700/50">
-                              <img
+                          <div className="rounded-lg overflow-hidden mb-3 transition-all duration-300 hover:shadow-lg border border-zinc-700/50">
+                            <img
                                 src={item.data.content.image || "/placeholder.svg"}
-                                alt="Post content"
-                                className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
-                              />
-                            </div>
-                          )}
-                        </EnhancedCardContent>
-                        <EnhancedCardFooter className="p-3 sm:p-4 pt-0">
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center space-x-4">
-                              <EnhancedButton
-                                variant="ghost"
-                                size="sm"
-                                rounded="full"
-                                className={cn(
-                                  "transition-all duration-300",
-                                  likedPosts.includes(item.data.id) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
-                                )}
-                                onClick={() => toggleLike(item.data.id)}
-                              >
-                                <ThumbsUp
-                                  className={cn("h-4 w-4 mr-1", likedPosts.includes(item.data.id) && "fill-current")}
-                                />
-                                <span className="text-xs">{item.data.likes}</span>
-                              </EnhancedButton>
-                              <EnhancedButton
-                                variant="ghost"
-                                size="sm"
-                                rounded="full"
-                                className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
-                                onClick={() => {
-                                  console.log(`View comments for post ${item.data.id}`)
-                                }}
-                              >
-                                <MessageCircle className="h-4 w-4 mr-1" />
-                                <span className="text-xs">{item.data.comments}</span>
-                              </EnhancedButton>
-                              <EnhancedButton
-                                variant="ghost"
-                                size="sm"
-                                rounded="full"
-                                className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
-                                onClick={() => {
-                                  console.log(`Share post ${item.data.id}`)
-                                }}
-                              >
-                                <Share2 className="h-4 w-4 mr-1" />
-                                <span className="text-xs">Share</span>
-                              </EnhancedButton>
-                            </div>
+                              alt="Post content"
+                              className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
+                            />
+                          </div>
+                        )}
+                      </EnhancedCardContent>
+                      <EnhancedCardFooter className="p-3 sm:p-4 pt-0">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center space-x-4">
                             <EnhancedButton
                               variant="ghost"
                               size="sm"
                               rounded="full"
                               className={cn(
                                 "transition-all duration-300",
-                                savedPosts.includes(item.data.id) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
+                                  likedPosts.includes(Number(item.data.id)) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
                               )}
-                              onClick={() => toggleSave(item.data.id)}
+                                onClick={() => item.data && toggleLike(Number(item.data.id))}
                             >
-                              <Bookmark className={cn("h-4 w-4", savedPosts.includes(item.data.id) && "fill-current")} />
+                              <ThumbsUp
+                                  className={cn("h-4 w-4 mr-1", likedPosts.includes(Number(item.data.id)) && "fill-current")}
+                              />
+                                <span className="text-xs">{item.data.likes}</span>
+                            </EnhancedButton>
+                            <EnhancedButton
+                              variant="ghost"
+                              size="sm"
+                              rounded="full"
+                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
+                              onClick={() => {
+                                  item.data && console.log(`View comments for post ${Number(item.data.id)}`)
+                              }}
+                            >
+                              <MessageCircle className="h-4 w-4 mr-1" />
+                                <span className="text-xs">{item.data.comments}</span>
+                            </EnhancedButton>
+                            <EnhancedButton
+                              variant="ghost"
+                              size="sm"
+                              rounded="full"
+                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
+                              onClick={() => {
+                                  item.data && console.log(`Share post ${Number(item.data.id)}`)
+                              }}
+                            >
+                              <Share2 className="h-4 w-4 mr-1" />
+                              <span className="text-xs">Share</span>
                             </EnhancedButton>
                           </div>
-                        </EnhancedCardFooter>
-                      </EnhancedCard>
-                    ) : (
+                          <EnhancedButton
+                            variant="ghost"
+                            size="sm"
+                            rounded="full"
+                            className={cn(
+                              "transition-all duration-300",
+                                savedPosts.includes(Number(item.data.id)) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
+                            )}
+                              onClick={() => item.data && toggleSave(Number(item.data.id))}
+                          >
+                              <Bookmark className={cn("h-4 w-4", savedPosts.includes(Number(item.data.id)) && "fill-current")} />
+                          </EnhancedButton>
+                        </div>
+                      </EnhancedCardFooter>
+                    </EnhancedCard>
+                    ) : item.type === 'suggestion' && item.data && 'title' in item.data ? (
                       // Suggestion Card
                       <EnhancedCard
                         variant="gradient"
                         hover="lift"
-                        className="bg-gradient-to-br from-zinc-900/90 to-blue-900/20 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]"
+                        className="bg-zinc-900 border border-zinc-800"
                       >
                         <EnhancedCardHeader className="pb-3">
                           <EnhancedCardTitle className="text-lg flex items-center">
-                            {item.data.type === "network_suggestion" && (
+                            {'type' in item.data && item.data.type === "network_suggestion" && (
                               <Users className="h-5 w-5 mr-2 text-blue-400" />
                             )}
-                            {item.data.type === "progress_update" && (
+                            {'type' in item.data && item.data.type === "progress_update" && (
                               <BarChart2 className="h-5 w-5 mr-2 text-green-400" />
                             )}
-                            {item.data.type === "challenge_suggestion" && (
+                            {'type' in item.data && item.data.type === "challenge_suggestion" && (
                               <Trophy className="h-5 w-5 mr-2 text-fuchsia-400" />
                             )}
                             <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">
@@ -940,7 +938,7 @@ export default function HomePage() {
                           <p className="text-sm text-zinc-400">{item.data.subtitle}</p>
                         </EnhancedCardHeader>
                         <EnhancedCardContent className="p-4 pt-0">
-                          {item.data.type === "network_suggestion" && (
+                          {'type' in item.data && item.data.type === "network_suggestion" && 'suggestions' in item.data && item.data.suggestions && (
                             <div className="space-y-3">
                               {item.data.suggestions.map((person: any, idx: number) => (
                                 <div key={idx} className="flex items-center justify-between p-3 bg-zinc-800/60 border border-blue-700/30 rounded-lg">
@@ -975,7 +973,7 @@ export default function HomePage() {
                             </div>
                           )}
                           
-                          {item.data.type === "progress_update" && (
+                          {'type' in item.data && item.data.type === "progress_update" && 'stats' in item.data && item.data.stats && (
                             <div className="space-y-4">
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-3">
@@ -1002,7 +1000,7 @@ export default function HomePage() {
                             </div>
                           )}
                           
-                          {item.data.type === "challenge_suggestion" && (
+                          {'type' in item.data && item.data.type === "challenge_suggestion" && 'challenge' in item.data && item.data.challenge && (
                             <div className="space-y-3">
                               <div className="bg-zinc-800/60 border border-fuchsia-700/30 rounded-lg p-4">
                                 <div className="flex items-start justify-between mb-2">
@@ -1034,7 +1032,7 @@ export default function HomePage() {
                           )}
                         </EnhancedCardContent>
                       </EnhancedCard>
-                    )}
+                    ) : null}
                   </AnimatedSection>
                 ))}
               </TabsContent>
@@ -1043,7 +1041,7 @@ export default function HomePage() {
                 <h3 className="text-lg font-extrabold mb-2 bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">People You May Know</h3>
                 {networkSuggestions.map((person, index) => (
                   <AnimatedSection key={person.id} delay={0.2 + index * 0.1}>
-                    <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_16px_0_rgba(80,0,255,0.2)] hover:shadow-[0_0_24px_0_rgba(80,0,255,0.4)]">
+                    <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800">
                       <EnhancedCardContent className="p-4">
                         <div className="flex items-center">
                           <Avatar className="h-12 w-12 mr-3 interactive">
@@ -1052,7 +1050,7 @@ export default function HomePage() {
                           </Avatar>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <h4 className="font-bold text-white">{person.name}</h4>
+                            <h4 className="font-bold text-white">{person.name}</h4>
                               <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
                                 Level {person.level}
                               </Badge>
@@ -1093,10 +1091,10 @@ export default function HomePage() {
                     <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">Your Recent Achievements</span>
                   </h3>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900/80 border border-blue-800/40 shadow-[0_0_16px_0_rgba(59,130,246,0.3)]">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800">
                     <EnhancedCardContent className="p-3">
                       <div className="flex items-start">
-                        <div className="bg-blue-900/40 p-2 rounded-full mr-3 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]">
+                        <div className="bg-blue-950 p-2 rounded-md mr-3">
                           <Award className="h-5 w-5 text-blue-400" />
                         </div>
                         <div className="flex-1">
@@ -1113,10 +1111,10 @@ export default function HomePage() {
                     </EnhancedCardContent>
                   </EnhancedCard>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900/80 border border-purple-800/40 shadow-[0_0_16px_0_rgba(147,51,234,0.3)]">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800">
                     <EnhancedCardContent className="p-3">
                       <div className="flex items-start">
-                        <div className="bg-purple-900/40 p-2 rounded-full mr-3 shadow-[0_0_8px_0_rgba(147,51,234,0.3)]">
+                        <div className="bg-purple-950 p-2 rounded-md mr-3">
                           <Trophy className="h-5 w-5 text-purple-400" />
                         </div>
                         <div className="flex-1">
@@ -1133,10 +1131,10 @@ export default function HomePage() {
                     </EnhancedCardContent>
                   </EnhancedCard>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900/80 border border-green-800/40 shadow-[0_0_16px_0_rgba(34,197,94,0.3)]">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800">
                     <EnhancedCardContent className="p-3">
                       <div className="flex items-start">
-                        <div className="bg-green-900/40 p-2 rounded-full mr-3 shadow-[0_0_8px_0_rgba(34,197,94,0.3)]">
+                        <div className="bg-green-950 p-2 rounded-md mr-3">
                           <FileText className="h-5 w-5 text-green-400" />
                         </div>
                         <div className="flex-1">
@@ -1155,10 +1153,9 @@ export default function HomePage() {
 
                   <div className="text-center mt-4">
                     <EnhancedButton
-                      variant="gradient"
+                      variant="default"
                       rounded="full"
-                      animation="shimmer"
-                      className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                      className="bg-blue-600 hover:bg-blue-700"
                       onClick={() => router.push("/profile")}
                     >
                       View All Achievements
@@ -1168,6 +1165,9 @@ export default function HomePage() {
               </TabsContent>
             </Tabs>
           </div>
+
+          {/* Right Spacer */}
+          <div className="lg:col-span-2"></div>
         </div>
       </div>
 

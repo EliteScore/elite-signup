@@ -46,9 +46,21 @@
   }
   html {
     overflow-x: hidden;
+    overflow-y: auto;
   }
   #__next {
     overflow-x: hidden;
+  }
+  
+  /* Hide scrollbar for all browsers */
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+  
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 }
 
