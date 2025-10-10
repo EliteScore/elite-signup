@@ -517,7 +517,6 @@ export default function HomePage() {
         })
         postIndex++
       }
-      }
     }
     
     return mixedFeed
