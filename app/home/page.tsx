@@ -509,12 +509,15 @@ export default function HomePage() {
         })
         suggestionIndex++
       } else if (postIndex < posts.length) {
-        mixedFeed.push({
-          type: 'post',
-          data: posts[postIndex],
-          id: `post-${posts[postIndex].id}`,
-        })
-        postIndex++
+              const currentPost = posts[postIndex]
+        if (currentPost) {
+          mixedFeed.push({
+            type: 'post',
+            data: currentPost,
+            id: `post-${currentPost.id}`,
+          })
+          postIndex++
+        }
       }
     }
     
