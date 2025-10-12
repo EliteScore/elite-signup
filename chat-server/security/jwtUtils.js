@@ -107,7 +107,7 @@ async function getUserDetails(userId, dbPool) {
     let query = `
       SELECT ua.user_id, ua.username, ua.email, upi.first_name, upi.last_name
       FROM users_auth ua
-      LEFT JOIN user_profile_info upi ON ua.user_id = upi.user_id_serial
+      LEFT JOIN user_profile_info upi ON ua.user_id = upi.user_id
       WHERE ua.user_id = $1
     `;
     let result = await dbPool.query(query, [userId]);

@@ -1,40 +1,51 @@
 {
   "valid_tokens": [
     {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoidGVzdC1qd3QtMTIzIiwiaWF0IjoxNzU2OTUxMDQ2LCJleHAiOjE3NTcwMzc0NDZ9.v54an-SIOxFegl5rDx7NflCazxD7Igh5PTR0crB-G5U",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoidGVzdC1qd3QtMS0xNzYwMjc5OTIxNTA5IiwiaWF0IjoxNzYwMjc5OTIxLCJleHAiOjE3NjAzNjYzMjF9.YIxikcA_XmDmmGpAXH5iadks26UFumG2HBUPT6iUsfQ",
       "user": {
         "userId": 1,
         "username": "user1",
-        "name": "Test User 1"
+        "email": "calin.gamerul@gmail.com"
       },
-      "jti": "test-jwt-123"
+      "jti": "test-jwt-1-1760279921509"
     },
     {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwianRpIjoidGVzdC1qd3QtNDU2IiwiaWF0IjoxNzU2OTUxMDQ2LCJleHAiOjE3NTcwMzc0NDZ9.n1bkTrKxLpPHe02izkNg90NRJybztFjFyNJ_Xjo3z-w",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwianRpIjoidGVzdC1qd3QtMi0xNzYwMjc5OTIxNTE1IiwiaWF0IjoxNzYwMjc5OTIxLCJleHAiOjE3NjAzNjYzMjF9.LuL7nWENAm-I4So8Z6tnk6NygzfPaWQPRcfIMLZL4wA",
       "user": {
         "userId": 2,
         "username": "user2",
-        "name": "Test User 2"
+        "email": "user2@gmail.com"
       },
-      "jti": "test-jwt-456"
+      "jti": "test-jwt-2-1760279921515"
     },
     {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoidGVzdC1qd3QtNzg5IiwiaWF0IjoxNzU2OTUxMDQ2LCJleHAiOjE3NTcwMzc0NDZ9.ldzTzGJJfWVo0az65q0tNcCsibd3XNj-zSrAK1TyAkY",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoidGVzdC1qd3QtMy0xNzYwMjc5OTIxNTE2IiwiaWF0IjoxNzYwMjc5OTIxLCJleHAiOjE3NjAzNjYzMjF9.hJ4F8t1a8EpZJ7123_BYnHxwWxOrXYMAM2Mv3QLqcZA",
       "user": {
         "userId": 3,
         "username": "user3",
-        "name": "Test User 3"
+        "email": "user3@gmail.com"
       },
-      "jti": "test-jwt-789"
+      "jti": "test-jwt-3-1760279921516"
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoidGVzdC1qd3QtNC0xNzYwMjc5OTIxNTE4IiwiaWF0IjoxNzYwMjc5OTIxLCJleHAiOjE3NjAzNjYzMjF9.GdoCOvuEECquoCKawgPu0ADYbwRLRgx_2k6CrDvw2sM",
+      "user": {
+        "userId": 4,
+        "username": "user4",
+        "email": "user4@gmail.com"
+      },
+      "jti": "test-jwt-4-1760279921518"
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMCIsImp0aSI6InRlc3Qtand0LTMwLTE3NjAyNzk5MjE1MTkiLCJpYXQiOjE3NjAyNzk5MjEsImV4cCI6MTc2MDM2NjMyMX0.cLRiH6uZd8Xf29XxHixG33A0Yd4DYoBxwhQPUNzbWU0",
+      "user": {
+        "userId": 30,
+        "username": "testuser",
+        "email": "testuser@elitescore.com"
+      },
+      "jti": "test-jwt-30-1760279921519"
     }
   ],
-  "revoked_token": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoicmV2b2tlZC10b2tlbiIsImlhdCI6MTc1Njk1MTA0NiwiZXhwIjoxNzU3MDM3NDQ2fQ.IcV2sIuTOWh4CF8CM0h0iMiltLuVi8J-4EjnRS9RyA4",
-    "user": {
-      "userId": 4,
-      "username": "user4",
-      "name": "Revoked User"
-    },
-    "jti": "revoked-token"
-  }
+  "generated_at": "2025-10-12T14:38:41.521Z",
+  "note": "These tokens are valid for 24 hours and use the current JWT_SECRET"
 }

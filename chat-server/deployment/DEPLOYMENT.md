@@ -177,7 +177,7 @@ The app uses `cluster-server.js` for production, which:
 - ✅ **JWT Authentication**: Secure token-based auth
 - ✅ **Rate Limiting**: Prevents abuse and spam
 - ✅ **Input Validation**: Sanitizes all user input
-- ✅ **Content Moderation**: Filters inappropriate content
+- ✅ **Rate Limiting**: 30 messages per minute per user
 - ✅ **Encryption**: Messages encrypted in transit and storage
 
 ### Monitoring

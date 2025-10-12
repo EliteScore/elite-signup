@@ -3,7 +3,6 @@ const { handleMessage } = require('./messageRouter');
 const { broadcastToAll } = require('./messageHandlers');
 const SecurityUtils = require('../security/securityUtils');
 const InputValidator = require('../security/inputValidator');
-const { checkMessageModeration } = require('../security/contentModeration');
 const { getRedisClient, isRedisConnected } = require('../config/redis');
 
 // Performance configuration from environment
@@ -50,7 +49,7 @@ function checkRateLimit(userId, clientId, messageRateLimit, metrics) {
   return true;
 }
 
-async function handleWebSocketConnection(ws, req, clients, userConnections, conversations, ipConnections, messageRateLimit, sessions, metrics, rateLimiter) {
+async function handleWebSocketConnection(ws, req, clients, userConnections, conversations, groups, ipConnections, messageRateLimit, sessions, metrics, rateLimiter) {
   const clientId = crypto.randomUUID();
   const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   
@@ -198,7 +197,7 @@ async function handleWebSocketConnection(ws, req, clients, userConnections, conv
         return;
       }
       
-      await handleMessage(ws, message, clientId, clients, userConnections, conversations, sessions, metrics);
+      await handleMessage(ws, message, clientId, clients, userConnections, conversations, sessions, metrics, groups);
       
       // Update average response time
       const responseTime = Date.now() - startTime;

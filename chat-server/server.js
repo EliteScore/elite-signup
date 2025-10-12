@@ -70,6 +70,7 @@ const wss = new WebSocket.Server({
 const clients = new Map(); // clientId -> { ws, user, clientIp, lastActivity }
 const userConnections = new Map(); // userId -> clientId
 const conversations = new Map(); // conversationId -> { participants: Set, messages: [] }
+const groups = new Map(); // groupId -> { name, members: Set, messages: [] }
 const ipConnections = new Map(); // Track connections per IP
 const messageRateLimit = new Map(); // Rate limiting per user
 const sessions = new Map(); // In-memory session storage
@@ -118,6 +119,21 @@ initializeServices();
 // Setup HTTP endpoints with function to get current database status
 setupHttpEndpoints(server, wss, dbPool, getDbConnected, metrics);
 
+// Import cleanup function for deleted groups
+const { cleanupOldDeletedGroups } = require('./database/groupOperations');
+
+// Schedule cleanup of soft-deleted groups (runs daily)
+setInterval(async () => {
+  try {
+    const deletedCount = await cleanupOldDeletedGroups();
+    if (deletedCount > 0) {
+      logger.info(`Auto-cleanup: Permanently deleted ${deletedCount} groups older than 30 days`);
+    }
+  } catch (error) {
+    logger.error('Error in scheduled group cleanup:', error);
+  }
+}, 24 * 60 * 60 * 1000); // Run once per day (24 hours)
+
 // WebSocket connection handling
 wss.on('connection', (ws, req) => {
   handleWebSocketConnection(
@@ -125,7 +141,8 @@ wss.on('connection', (ws, req) => {
     req, 
     clients, 
     userConnections, 
-    conversations, 
+    conversations,
+    groups, 
     ipConnections, 
     messageRateLimit, 
     sessions, 
@@ -149,6 +166,13 @@ setInterval(() => {
     }
     
     // Don't remove conversations - users need access to them
+  }
+  
+  // Clean up group messages in memory
+  for (const [groupId, group] of groups.entries()) {
+    if (group.messages.length > maxInMemoryMessages) {
+      group.messages = group.messages.slice(-maxInMemoryMessages);
+    }
   }
   
   // Clean up inactive clients

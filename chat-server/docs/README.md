@@ -203,7 +203,7 @@ git push heroku main
 - **Typing Indicators**: Real-time typing status
 - **User Status**: Online/offline presence
 - **Message Search**: Full-text search capabilities
-- **Content Moderation**: Spam detection and filtering
+- **Rate Limiting**: 30 messages per minute per user
 
 ### **✅ Security Features**
 - **Message Encryption**: AES-256-CBC encryption
@@ -510,7 +510,7 @@ taskkill /F /IM node.exe
 ### **Security Considerations**
 - JWT tokens validated independently
 - IP address validation for verification codes
-- Message content moderation
+- Message rate limiting
 - Rate limiting and abuse prevention
 
 ---

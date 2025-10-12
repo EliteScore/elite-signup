@@ -1,9 +1,10 @@
 const crypto = require('crypto');
 const { verifyJWTWithBackend } = require('../security/jwtUtils');
 const { savePrivateMessageToDatabase, loadPrivateMessagesFromDatabase } = require('../database/messageOperations');
-const { checkMessageModeration } = require('../security/contentModeration');
 const InputValidator = require('../security/inputValidator');
 const { getRedisClient, isRedisConnected } = require('../config/redis');
+const { checkIfBlocked } = require('../security/blockingUtils');
+const { canMessageUser } = require('../security/followingUtils');
 
 // Generate conversation ID for two users
 function generateConversationId(userId1, userId2) {
@@ -144,8 +145,15 @@ async function handleGetOnlineUsers(ws, data, clientId, clients, userConnections
     return;
   }
   
+  // Get blocked users to filter them out
+  const { getBlockedUsers, getUsersWhoBlockedMe } = require('../security/blockingUtils');
+  const blockedByMe = await getBlockedUsers(client.user.userId);
+  const blockedMe = await getUsersWhoBlockedMe(client.user.userId);
+  const allBlockedUsers = new Set([...blockedByMe, ...blockedMe]);
+  
   const onlineUsers = Array.from(userConnections.keys())
     .filter(userId => userId !== client.user.userId) // Exclude self
+    .filter(userId => !allBlockedUsers.has(userId)) // Exclude blocked users
     .map(userId => {
       const userClient = clients.get(userConnections.get(userId));
       return {
@@ -180,6 +188,32 @@ async function handleStartConversation(ws, data, clientId, clients, userConnecti
       type: 'error',
       message: 'Recipient ID is required'
     }));
+    return;
+  }
+  
+  // Check if either user has blocked the other
+  const blockCheck = await checkIfBlocked(client.user.userId, recipientId);
+  if (blockCheck.isBlocked) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Cannot start conversation',
+      details: 'You cannot start a conversation with this user.',
+      code: 'USER_BLOCKED'
+    }));
+    console.log(`Conversation blocked between ${client.user.userId} and ${recipientId} due to block relationship`);
+    return;
+  }
+  
+  // Check if current user follows the recipient
+  const canMessage = await canMessageUser(client.user.userId, recipientId);
+  if (!canMessage) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Cannot start conversation',
+      details: 'You can only message users you follow.',
+      code: 'NOT_FOLLOWING'
+    }));
+    console.log(`Conversation blocked: ${client.user.userId} does not follow ${recipientId}`);
     return;
   }
   
@@ -256,18 +290,30 @@ async function handleSendPrivateMessage(ws, data, clientId, clients, userConnect
     return;
   }
   
-  // Content moderation check
-  const moderationResult = checkMessageModeration(content);
-  if (!moderationResult.isAppropriate) {
+  // Check if either user has blocked the other
+  const blockCheck = await checkIfBlocked(client.user.userId, recipientId);
+  if (blockCheck.isBlocked) {
     ws.send(JSON.stringify({
-      type: 'moderation_warning',
-      message: moderationResult.reason,
-      action: moderationResult.action
+      type: 'error',
+      message: 'Message blocked',
+      details: 'You cannot send messages to this user.',
+      code: 'USER_BLOCKED'
     }));
-    
-    if (moderationResult.action === 'DELETE') {
-      return; // Don't send the message
-    }
+    console.log(`Message blocked from ${client.user.userId} to ${recipientId} due to block relationship`);
+    return;
+  }
+  
+  // Check if current user follows the recipient
+  const canMessage = await canMessageUser(client.user.userId, recipientId);
+  if (!canMessage) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Message blocked',
+      details: 'You can only send messages to users you follow.',
+      code: 'NOT_FOLLOWING'
+    }));
+    console.log(`Message blocked: ${client.user.userId} does not follow ${recipientId}`);
+    return;
   }
   
   const convId = conversationId || generateConversationId(client.user.userId, recipientId);

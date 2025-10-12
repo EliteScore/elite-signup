@@ -23,10 +23,10 @@ class InputValidator {
     if (!message.recipientId) {
       errors.push('Recipient ID is required');
       field = 'recipientId';
-    } else if (typeof message.recipientId !== 'string') {
-      errors.push('Recipient ID must be a string');
+    } else if (typeof message.recipientId !== 'string' && typeof message.recipientId !== 'number') {
+      errors.push('Recipient ID must be a string or number');
       field = 'recipientId';
-    } else if (message.recipientId.trim().length === 0) {
+    } else if (typeof message.recipientId === 'string' && message.recipientId.trim().length === 0) {
       errors.push('Recipient ID cannot be empty');
       field = 'recipientId';
     }
@@ -118,4 +118,5 @@ class InputValidator {
 }
 
 module.exports = InputValidator;
+
 

@@ -28,7 +28,7 @@ chat-server/
 │   └── messageRouter.js            # Message routing
 │
 ├── 📁 security/                    # Security components
-│   ├── contentModeration.js        # Content filtering
+│   ├── contentModeration.js        # [REMOVED - No content filtering]
 │   ├── encryption.js               # Message encryption
 │   ├── inputValidator.js           # Input validation
 │   ├── jwtUtils.js                 # JWT token utilities
@@ -165,7 +165,7 @@ npm run deploy:heroku
 - **AES-256-CBC Encryption** for message security
 - **Rate Limiting** and abuse prevention
 - **Input Validation** and sanitization
-- **Content Moderation** and spam detection
+- **Rate Limiting** (30 messages per minute)
 - **Connection Limits** and IP-based restrictions
 
 ## 📈 **Scalability**
@@ -211,7 +211,7 @@ npm run redis:start    # Start local Redis server
 - ✅ **Conversation Deletion** (entire conversations)
 - ✅ **Typing Indicators** (real-time)
 - ✅ **User Status** (online/offline presence)
-- ✅ **Content Moderation** (spam detection)
+- ✅ **Rate Limiting** (30 messages/minute per user)
 - ✅ **Rate Limiting** (abuse prevention)
 - ✅ **Connection Pooling** (database optimization)
 - ✅ **Redis Caching** (performance optimization)
