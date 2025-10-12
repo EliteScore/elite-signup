@@ -62,6 +62,25 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Enhanced smooth scrolling for all elements */
+  * {
+    scroll-behavior: smooth;
+  }
+
+  /* Hide scrollbar for horizontal scroll containers */
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer components {

@@ -18,10 +18,12 @@ import {
   Trophy,
   Calendar,
   Clock,
-  CheckCircle,
   BarChart2,
   Zap,
   Users,
+  X,
+  Check,
+  ChevronRight,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -40,7 +42,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { XPNotification } from "@/components/xp-notification"
 import AnimatedCounter from "@/components/ui/animated-counter"
 import { AnimatedProgress } from "@/components/ui/animated-progress"
 import { AnimatedSection } from "@/components/ui/animated-section"
@@ -49,54 +50,6 @@ import { AnimatedSection } from "@/components/ui/animated-section"
 const posts = [
   {
     id: 1,
-    user: {
-      name: "Alex Johnson",
-      title: "Software Engineer at Google",
-      username: "alex_improvement",
-      image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces",
-      verified: true,
-      level: 8,
-      xp: 2450,
-    },
-    content: {
-      text: "Just hit Level 8! Been grinding system design every night after work. No shortcuts, just pure dedication. Ready to crush those distributed systems interviews! 💪",
-      type: "level_up",
-      achievement: "Reached Level 8 - System Architect",
-      xpGained: 500,
-      badgeUnlocked: "System Architect",
-    },
-    timestamp: "Posted at 11:23 PM",
-    likes: 243,
-    comments: 18,
-    liked: false,
-    saved: false,
-  },
-  {
-    id: 2,
-    user: {
-      name: "Sarah Williams",
-      title: "Product Manager at Microsoft",
-      username: "mindful_sarah",
-      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces",
-      verified: true,
-      level: 12,
-      xp: 4200,
-    },
-    content: {
-      text: "Team project got picked for company showcase! Been pushing boundaries every day. Innovation Leader badge unlocked and hit Level 12. Small wins lead to big victories! 🔥",
-      type: "achievement",
-      achievement: "Innovation Leader Badge Earned",
-      xpGained: 750,
-      badgeUnlocked: "Innovation Leader",
-    },
-    timestamp: "Late night session",
-    likes: 512,
-    comments: 42,
-    liked: true,
-    saved: true,
-  },
-  {
-    id: 3,
     user: {
       name: "Michael Chen",
       title: "Data Scientist at Amazon",
@@ -111,7 +64,6 @@ const posts = [
       type: "resume_score",
       achievement: "Resume Score Improved",
       xpGained: 150,
-      badgeUnlocked: "Score Booster",
       scoreChange: "+6",
       leaderboardChange: "+12 spots",
     },
@@ -122,7 +74,7 @@ const posts = [
     saved: false,
   },
   {
-    id: 4,
+    id: 2,
     user: {
       name: "Emily Rodriguez",
       title: "UX Designer at Adobe",
@@ -133,12 +85,10 @@ const posts = [
       xp: 2800,
     },
     content: {
-      text: "🎨 Challenge Complete! Finished my 30-day UI design challenge and earned the 'Design Master' badge! Gained 400 XP and moved up 3 spots on the design leaderboard. Consistency pays off! #DesignChallenge #UIUX",
-      image: "https://images.unsplash.com/photo-1545235617-9465d2a55698?w=600&h=400&fit=crop",
+      text: "Challenge Complete! Finished my 30-day UI design challenge! Gained 400 XP and moved up 3 spots on the design leaderboard. Consistency pays off! 💪",
       type: "challenge",
-      achievement: "Design Master Badge Earned",
+      achievement: "30-Day Challenge Completed",
       xpGained: 400,
-      badgeUnlocked: "Design Master",
     },
     timestamp: "2 days ago",
     likes: 345,
@@ -147,7 +97,7 @@ const posts = [
     saved: false,
   },
   {
-    id: 5,
+    id: 3,
     user: {
       name: "David Kim",
       title: "Frontend Developer at Netflix",
@@ -158,11 +108,11 @@ const posts = [
       xp: 2100,
     },
     content: {
-      text: "⚡ Streak Achievement! Maintained a 15-day learning streak and unlocked the 'Consistency Champion' badge! Earned 200 XP and climbed to #3 on the weekly leaderboard. Small daily actions lead to big wins! #Streak #Consistency",
+      text: "David has 15 days of streak! Maintained consistent learning every single day. Earned 200 XP and climbed to #3 on the weekly leaderboard. Small daily actions lead to big wins! ⚡",
       type: "streak",
-      achievement: "Consistency Champion Badge",
+      achievement: "15-Day Learning Streak",
       xpGained: 200,
-      badgeUnlocked: "Consistency Champion",
+      streakDays: 15,
     },
     timestamp: "3 days ago",
     likes: 156,
@@ -171,7 +121,7 @@ const posts = [
     saved: false,
   },
   {
-    id: 6,
+    id: 4,
     user: {
       name: "Jessica Park",
       title: "Software Engineer at Meta",
@@ -182,11 +132,10 @@ const posts = [
       xp: 3800,
     },
     content: {
-      text: "🏅 Leaderboard Update! Just broke into the TOP 100 on the Engineering Leaderboard! Currently ranked #87 - my goal is to reach top 50 by end of month. The competition is fierce but I'm grinding! #Leaderboard #Top100",
+      text: "Leaderboard Update! Just broke into the TOP 100 on the Engineering Leaderboard! Currently ranked #87 - my goal is to reach top 50 by end of month. The competition is fierce but I'm grinding! 🏅",
       type: "leaderboard",
       achievement: "Top 100 Engineering Leaderboard",
       xpGained: 300,
-      badgeUnlocked: "Top 100 Elite",
       rank: "#87",
       category: "Engineering",
     },
@@ -197,33 +146,75 @@ const posts = [
     saved: false,
   },
   {
-    id: 7,
+    id: 5,
     user: {
-      name: "Marcus Thompson",
-      title: "Product Manager at Stripe",
-      username: "marcus_pm",
-      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=faces",
+      name: "Ryan Martinez",
+      title: "Full Stack Developer at Shopify",
+      username: "ryan_dev",
+      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=faces",
       verified: true,
-      level: 10,
-      xp: 3200,
+      level: 8,
+      xp: 2600,
     },
     content: {
-      text: "🔥 Weekly Highlight! This week I completed 5 skill assessments, maintained my 20-day streak, and earned 3 new badges! My EliteScore jumped from 82 to 86. Feeling unstoppable! #WeeklyHighlight #Growth",
-      type: "weekly_highlight",
-      achievement: "Incredible Week Progress",
-      xpGained: 250,
-      badgeUnlocked: "Weekly Warrior",
-      weeklyStats: {
-        assessments: 5,
-        streak: 20,
-        badges: 3,
-        scoreIncrease: "+4"
-      },
+      text: "Resume Score Breakthrough! Just hit 90+ on my EliteScore after adding my open-source contributions and technical blog! This puts me in the top 5% of developers. Ready to crush those interviews! 📈",
+      type: "resume_milestone",
+      achievement: "90+ EliteScore Milestone",
+      xpGained: 400,
+      score: "90+",
+      percentile: "Top 5%",
     },
-    timestamp: "6 hours ago",
+    timestamp: "8 hours ago",
+    likes: 445,
+    comments: 38,
+    liked: true,
+    saved: true,
+  },
+  {
+    id: 6,
+    user: {
+      name: "Sarah Williams",
+      title: "Product Manager at Microsoft",
+      username: "mindful_sarah",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 12,
+      xp: 4200,
+    },
+    content: {
+      text: "Challenge Complete! Finished the 60-day Product Management challenge! Gained 600 XP and moved up 8 spots on the PM leaderboard. Daily consistency is key! 🎯",
+      type: "challenge",
+      achievement: "60-Day Challenge Completed",
+      xpGained: 600,
+    },
+    timestamp: "1 day ago",
     likes: 312,
     comments: 28,
     liked: true,
+    saved: false,
+  },
+  {
+    id: 7,
+    user: {
+      name: "Alex Johnson",
+      title: "Software Engineer at Google",
+      username: "alex_improvement",
+      image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 8,
+      xp: 2450,
+    },
+    content: {
+      text: "Alex has 25 days of streak! 25 days straight of coding challenges completed! Climbed to #15 on the weekly leaderboard. Consistency beats motivation every time! 🔥",
+      type: "streak",
+      achievement: "25-Day Coding Streak",
+      xpGained: 350,
+      streakDays: 25,
+    },
+    timestamp: "Posted at 11:23 PM",
+    likes: 243,
+    comments: 18,
+    liked: false,
     saved: false,
   },
   {
@@ -238,14 +229,14 @@ const posts = [
       xp: 4800,
     },
     content: {
-      text: "💎 Rare Badge Unlocked! Just earned the 'Machine Learning Pioneer' badge after completing advanced ML coursework and publishing research. Only 47 people have this badge! Feeling honored to be part of this elite group! #RareBadge #MachineLearning",
-      type: "rare_badge",
-      achievement: "Machine Learning Pioneer Badge",
-      xpGained: 600,
-      badgeUnlocked: "ML Pioneer",
-      rarity: "Only 47 people have this badge",
+      text: "Resume Score Boost! Jumped from 85 to 92 after adding my research publications and ML certifications! Now in the top 2% of data scientists. Every credential counts! 📊",
+      type: "resume_score",
+      achievement: "Resume Score Improved",
+      xpGained: 300,
+      scoreChange: "+7",
+      leaderboardChange: "+15 spots",
     },
-    timestamp: "1 day ago",
+    timestamp: "6 hours ago",
     likes: 567,
     comments: 52,
     liked: false,
@@ -254,54 +245,98 @@ const posts = [
   {
     id: 9,
     user: {
-      name: "Community Team",
-      title: "EliteScore Community",
-      username: "elitescore_community",
-      image: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=150&h=150&fit=crop&crop=faces",
+      name: "Marcus Thompson",
+      title: "Product Manager at Stripe",
+      username: "marcus_pm",
+      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=faces",
       verified: true,
-      level: 99,
-      xp: 50000,
+      level: 10,
+      xp: 3200,
     },
     content: {
-      text: "🌟 Community Spotlight! This week's most inspiring story comes from @alex_improvement who went from Level 3 to Level 8 in just 2 weeks! His dedication to learning system design paid off. Who's your inspiration this week? #CommunitySpotlight #Inspiration",
-      type: "community_spotlight",
-      achievement: "Community Spotlight",
-      xpGained: 100,
-      badgeUnlocked: "Community Member",
-      featuredUser: "@alex_improvement",
-      highlight: "Level 3 to Level 8 in 2 weeks",
+      text: "Leaderboard Climb! Just broke into the TOP 50 on the Product Management Leaderboard! Currently ranked #42 - my goal is top 25 by end of quarter. The grind never stops! 🚀",
+      type: "leaderboard",
+      achievement: "Top 50 Product Management Leaderboard",
+      xpGained: 250,
+      rank: "#42",
+      category: "Product Management",
     },
     timestamp: "2 hours ago",
+    likes: 312,
+    comments: 28,
+    liked: true,
+    saved: false,
+  },
+  {
+    id: 10,
+    user: {
+      name: "Priya Patel",
+      title: "Full Stack Developer at Airbnb",
+      username: "priya_codes",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 9,
+      xp: 2900,
+    },
+    content: {
+      text: "Priya has 8 days of streak! Been coding every single day for over a week now. The momentum is building and I can feel myself getting stronger! 💪",
+      type: "streak",
+      achievement: "8-Day Coding Streak",
+      xpGained: 180,
+      streakDays: 8,
+    },
+    timestamp: "5 hours ago",
     likes: 234,
     comments: 41,
     liked: false,
     saved: false,
   },
   {
-    id: 10,
+    id: 11,
     user: {
-      name: "Ryan Martinez",
-      title: "Full Stack Developer at Shopify",
-      username: "ryan_dev",
-      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=faces",
+      name: "James Wilson",
+      title: "Backend Developer at Uber",
+      username: "james_backend",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=faces",
       verified: true,
-      level: 8,
-      xp: 2600,
+      level: 7,
+      xp: 2200,
     },
     content: {
-      text: "📈 Resume Score Breakthrough! Just hit 90+ on my EliteScore after adding my open-source contributions and technical blog! This puts me in the top 5% of developers. Ready to crush those interviews! #ResumeBoost #OpenSource",
-      type: "resume_milestone",
-      achievement: "90+ EliteScore Milestone",
-      xpGained: 400,
-      badgeUnlocked: "Elite Performer",
-      score: "90+",
-      percentile: "Top 5%",
+      text: "Challenge Complete! Finished the 21-day System Design challenge! Learned so much about distributed systems. Gained 350 XP and feeling more confident for interviews! 🏗️",
+      type: "challenge",
+      achievement: "21-Day Challenge Completed",
+      xpGained: 350,
     },
-    timestamp: "8 hours ago",
-    likes: 445,
-    comments: 38,
+    timestamp: "1 hour ago",
+    likes: 198,
+    comments: 15,
+    liked: false,
+    saved: false,
+  },
+  {
+    id: 12,
+    user: {
+      name: "Maria Garcia",
+      title: "DevOps Engineer at Slack",
+      username: "maria_devops",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces",
+      verified: true,
+      level: 10,
+      xp: 3100,
+    },
+    content: {
+      text: "Maria has 12 days of streak! Learning Kubernetes and Docker every single day. The consistency is paying off - my infrastructure skills are getting solid! 🐳",
+      type: "streak",
+      achievement: "12-Day Learning Streak",
+      xpGained: 220,
+      streakDays: 12,
+    },
+    timestamp: "3 hours ago",
+    likes: 167,
+    comments: 23,
     liked: true,
-    saved: true,
+    saved: false,
   },
 ]
 
@@ -425,15 +460,45 @@ const userStats = {
   skillsImproved: 4,
 }
 
+// Mock user data (in real app, this would come from user profile/API)
+const userData = {
+  resumeScore: {
+    current: 87,
+    previous: 82,
+    improvements: ["Added AWS certification", "Completed 3 ML projects", "Updated skills section"],
+    lastUpdated: "2 days ago"
+  },
+  completedChallenges: [
+    { id: 1, name: "30-Day UI Design Challenge", completedDate: "Oct 10, 2025", xpEarned: 400 },
+    { id: 2, name: "21-Day System Design Challenge", completedDate: "Sep 28, 2025", xpEarned: 350 },
+    { id: 3, name: "60-Day Product Management Challenge", completedDate: "Sep 15, 2025", xpEarned: 600 },
+    { id: 4, name: "45-Day Full Stack Development Challenge", completedDate: "Aug 30, 2025", xpEarned: 500 }
+  ],
+  currentStreak: {
+    days: 15,
+    type: "Daily Coding Practice",
+    startDate: "Sep 28, 2025",
+    activities: ["LeetCode problems", "System design reading", "Open source contributions"]
+  },
+  leaderboardRankings: [
+    { category: "Engineering", currentRank: 87, previousRank: 95, totalParticipants: 5420 },
+    { category: "Frontend Development", currentRank: 42, previousRank: 58, totalParticipants: 3200 },
+    { category: "Data Science", currentRank: 156, previousRank: 178, totalParticipants: 4800 }
+  ]
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [likedPosts, setLikedPosts] = useState<number[]>(posts.filter((p) => p.liked).map((p) => p.id))
   const [savedPosts, setSavedPosts] = useState<number[]>(posts.filter((p) => p.saved).map((p) => p.id))
-  const [showXpNotification, setShowXpNotification] = useState(false)
   const [postText, setPostText] = useState("")
   const [completedTasks, setCompletedTasks] = useState<number[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(1)
+  const [activePostType, setActivePostType] = useState<string | null>(null)
+  const [selectedChallenge, setSelectedChallenge] = useState<number | null>(null)
+  const [selectedLeaderboard, setSelectedLeaderboard] = useState<number | null>(null)
+  const [postMessage, setPostMessage] = useState("")
 
   // Check if it's the user's first visit
   useEffect(() => {
@@ -449,7 +514,6 @@ export default function HomePage() {
       setLikedPosts(likedPosts.filter((id) => id !== postId))
     } else {
       setLikedPosts([...likedPosts, postId])
-      setShowXpNotification(true)
     }
   }
 
@@ -462,12 +526,39 @@ export default function HomePage() {
   }
 
   const handleCreatePost = () => {
-    if (postText.trim()) {
-      // In a real app, this would create a new post
-      console.log("Creating post:", postText)
-      setPostText("")
-      setShowXpNotification(true)
+    if (!activePostType) return
+
+    let postContent = ""
+    
+    switch (activePostType) {
+      case 'resume_score':
+        postContent = `Resume score jumped from ${userData.resumeScore.previous} to ${userData.resumeScore.current}! ${userData.resumeScore.improvements.join(", ")}. ${postMessage ? postMessage : "Every update gets me closer to my dream job!"} 📈`
+        break
+      case 'challenge':
+        if (!selectedChallenge) return
+        const challenge = userData.completedChallenges.find(c => c.id === selectedChallenge)
+        if (!challenge) return
+        postContent = `Challenge Complete! Finished the ${challenge.name}! Gained ${challenge.xpEarned} XP. ${postMessage ? postMessage : "Consistency pays off!"} 💪`
+        break
+      case 'streak':
+        postContent = `${userData.currentStreak.type} - ${userData.currentStreak.days} days of streak! ${userData.currentStreak.activities.join(", ")}. ${postMessage ? postMessage : "Small daily actions lead to big wins!"} ⚡`
+        break
+      case 'leaderboard':
+        if (!selectedLeaderboard) return
+        const ranking = userData.leaderboardRankings[selectedLeaderboard]
+        if (!ranking) return
+        postContent = `Leaderboard Update! Climbed from #${ranking.previousRank} to #${ranking.currentRank} on the ${ranking.category} Leaderboard! ${postMessage ? postMessage : "The grind never stops!"} 🏅`
+        break
     }
+    
+    // In a real app, this would create a new post and add it to the feed
+    console.log("Creating post:", { type: activePostType, content: postContent })
+    
+    // Reset form
+    setActivePostType(null)
+    setSelectedChallenge(null)
+    setSelectedLeaderboard(null)
+    setPostMessage("")
   }
 
   const toggleTaskCompletion = (taskId: number) => {
@@ -475,7 +566,6 @@ export default function HomePage() {
       setCompletedTasks(completedTasks.filter((id) => id !== taskId))
     } else {
       setCompletedTasks([...completedTasks, taskId])
-      setShowXpNotification(true)
     }
   }
 
@@ -629,7 +719,7 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 overflow-x-hidden">
+      <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 overflow-x-hidden scroll-smooth">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Spacer */}
           <div className="lg:col-span-2"></div>
@@ -643,24 +733,282 @@ export default function HomePage() {
               <p className="text-sm text-zinc-300">Every post is someone getting better. Your turn.</p>
             </div>
 
+            {/* Create Post - Minimized LinkedIn Style */}
+            {!activePostType ? (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4 transition-all duration-300 ease-in-out">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src="/placeholder.svg?height=40&width=40" />
+                    <AvatarFallback className="bg-zinc-800">U</AvatarFallback>
+                  </Avatar>
+                  <button
+                    onClick={() => setActivePostType('resume_score')}
+                    className="flex-1 text-left px-4 py-2.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-zinc-400 text-sm transition-colors"
+                  >
+                    Share your progress...
+                  </button>
+                </div>
+                <div className="flex items-center justify-around mt-3 pt-3 border-t border-zinc-800">
+                  <button
+                    onClick={() => setActivePostType('resume_score')}
+                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                  >
+                    <BarChart2 className="h-5 w-5 text-emerald-400" />
+                    <span className="text-xs sm:text-sm">Resume Score</span>
+                  </button>
+                  <button
+                    onClick={() => setActivePostType('challenge')}
+                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                  >
+                    <Award className="h-5 w-5 text-fuchsia-400" />
+                    <span className="text-xs sm:text-sm">Challenge</span>
+                  </button>
+                  <button
+                    onClick={() => setActivePostType('streak')}
+                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                  >
+                    <Zap className="h-5 w-5 text-yellow-400" />
+                    <span className="text-xs sm:text-sm">Streak</span>
+                  </button>
+                  <button
+                    onClick={() => setActivePostType('leaderboard')}
+                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                  >
+                    <Trophy className="h-5 w-5 text-orange-400" />
+                    <span className="text-xs sm:text-sm hidden sm:inline">Leaderboard</span>
+                    <span className="text-xs sm:hidden">Board</span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Post Creation Form */}
+            {activePostType && (
+              <AnimatedSection delay={0.1}>
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl mb-4 transition-all duration-300 ease-in-out">
+                  <div className="p-4 border-b border-zinc-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {activePostType === 'resume_score' && <BarChart2 className="h-5 w-5 text-emerald-400" />}
+                        {activePostType === 'challenge' && <Award className="h-5 w-5 text-fuchsia-400" />}
+                        {activePostType === 'streak' && <Zap className="h-5 w-5 text-yellow-400" />}
+                        {activePostType === 'leaderboard' && <Trophy className="h-5 w-5 text-orange-400" />}
+                        <h3 className="text-base font-semibold text-white">
+                          Share {activePostType === 'resume_score' ? 'Resume Score' : activePostType === 'challenge' ? 'Challenge' : activePostType === 'streak' ? 'Streak' : 'Leaderboard'}
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setActivePostType(null)
+                          setSelectedChallenge(null)
+                          setSelectedLeaderboard(null)
+                          setPostMessage("")
+                        }}
+                        className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      {activePostType === 'resume_score' && (
+                        <div>
+                          <div className="bg-zinc-800/30 rounded-lg p-4 border border-zinc-700/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-sm font-medium text-zinc-300">Your Resume Score</span>
+                              <span className="text-xs text-zinc-500">{userData.resumeScore.lastUpdated}</span>
+                            </div>
+                            <div className="flex items-center justify-center gap-6 mb-4">
+                              <div className="text-center">
+                                <div className="text-3xl font-bold text-zinc-400">{userData.resumeScore.previous}</div>
+                                <div className="text-xs text-zinc-500 mt-1">Previous</div>
+                              </div>
+                              <ChevronRight className="h-5 w-5 text-zinc-600 flex-shrink-0" />
+                              <div className="text-center">
+                                <div className="text-4xl font-bold text-emerald-400">{userData.resumeScore.current}</div>
+                                <div className="text-xs text-emerald-400 mt-1">Current</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-2xl font-bold text-green-400">+{userData.resumeScore.current - userData.resumeScore.previous}</div>
+                                <div className="text-xs text-zinc-500 mt-1">Points</div>
+                              </div>
+                            </div>
+                            <div className="pt-3 border-t border-zinc-700/50">
+                              <div className="text-xs font-medium text-zinc-400 mb-2">Recent improvements:</div>
+                              <div className="space-y-1.5">
+                                {userData.resumeScore.improvements.map((improvement, idx) => (
+                                  <li key={idx} className="flex items-center gap-2 text-sm text-zinc-300">
+                                    <Check className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                                    <span>{improvement}</span>
+                                  </li>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {activePostType === 'challenge' && (
+                        <div className="space-y-3">
+                          <p className="text-sm text-zinc-400 mb-3">Select a completed challenge to share:</p>
+                          <div className="space-y-2">
+                            {userData.completedChallenges.map((challenge) => (
+                              <button
+                                key={challenge.id}
+                                onClick={() => setSelectedChallenge(challenge.id)}
+                                className={cn(
+                                  "w-full p-3.5 rounded-lg border text-left transition-all duration-200",
+                                  selectedChallenge === challenge.id
+                                    ? "bg-fuchsia-900/10 border-fuchsia-700/50 ring-1 ring-fuchsia-700/50"
+                                    : "bg-zinc-800/30 border-zinc-700/50 hover:bg-zinc-800/50 hover:border-zinc-600"
+                                )}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-white text-sm">{challenge.name}</div>
+                                    <div className="text-xs text-zinc-500 mt-1">Completed {challenge.completedDate}</div>
+                                  </div>
+                                  <Badge className="bg-fuchsia-950/50 text-fuchsia-400 border-fuchsia-900/50 text-xs ml-3">
+                                    +{challenge.xpEarned} XP
+                                  </Badge>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {activePostType === 'streak' && (
+                        <div>
+                          <div className="bg-zinc-800/30 rounded-lg p-4 border border-zinc-700/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-sm font-medium text-zinc-300">Current Streak</span>
+                              <Badge className="bg-yellow-950/50 text-yellow-400 border-yellow-900/50 text-xs">
+                                Active
+                              </Badge>
+                            </div>
+                            <div className="text-center mb-4 py-3">
+                              <div className="text-6xl font-bold text-yellow-400">{userData.currentStreak.days}</div>
+                              <div className="text-sm text-zinc-400 mt-2">Days</div>
+                            </div>
+                            <div className="space-y-2.5 pt-3 border-t border-zinc-700/50">
+                              <div className="text-sm">
+                                <span className="text-zinc-500">Type:</span>
+                                <span className="text-white ml-2 font-medium">{userData.currentStreak.type}</span>
+                              </div>
+                              <div className="text-sm">
+                                <span className="text-zinc-500">Started:</span>
+                                <span className="text-white ml-2">{userData.currentStreak.startDate}</span>
+                              </div>
+                              <div>
+                                <div className="text-xs font-medium text-zinc-400 mb-2">Daily activities:</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {userData.currentStreak.activities.map((activity, idx) => (
+                                    <Badge key={idx} className="bg-zinc-800 text-zinc-300 border-zinc-700 text-xs">
+                                      {activity}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {activePostType === 'leaderboard' && (
+                        <div className="space-y-3">
+                          <p className="text-sm text-zinc-400 mb-3">Select a leaderboard ranking to share:</p>
+                          <div className="space-y-2">
+                            {userData.leaderboardRankings.map((ranking, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => setSelectedLeaderboard(idx)}
+                                className={cn(
+                                  "w-full p-3.5 rounded-lg border text-left transition-all duration-200",
+                                  selectedLeaderboard === idx
+                                    ? "bg-orange-900/10 border-orange-700/50 ring-1 ring-orange-700/50"
+                                    : "bg-zinc-800/30 border-zinc-700/50 hover:bg-zinc-800/50 hover:border-zinc-600"
+                                )}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-white text-sm mb-1">{ranking.category}</div>
+                                    <div className="text-xs text-zinc-500">
+                                      #{ranking.previousRank} → #{ranking.currentRank} <span className="text-zinc-600">•</span> {ranking.totalParticipants.toLocaleString()} participants
+                                    </div>
+                                  </div>
+                                  <div className="text-right ml-3">
+                                    <div className="text-base font-bold text-emerald-400">
+                                      +{ranking.previousRank - ranking.currentRank}
+                                    </div>
+                                    <div className="text-xs text-zinc-500">spots</div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="text-sm text-zinc-400 mb-2 block">Add a personal message (optional)</label>
+                        <textarea
+                          placeholder="Share your thoughts, tips, or motivation..."
+                          value={postMessage}
+                          onChange={(e) => setPostMessage(e.target.value)}
+                          className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 resize-none h-20 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-3 border-t border-zinc-800 flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setActivePostType(null)
+                        setSelectedChallenge(null)
+                        setSelectedLeaderboard(null)
+                        setPostMessage("")
+                      }}
+                      className="flex-1 bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-10"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreatePost}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-10"
+                      disabled={
+                        (activePostType === 'challenge' && !selectedChallenge) ||
+                        (activePostType === 'leaderboard' && selectedLeaderboard === null)
+                      }
+                    >
+                      Share Progress
+                    </Button>
+                  </div>
+                </div>
+              </AnimatedSection>
+            )}
+
             {/* Feed Tabs */}
             <Tabs defaultValue="feed" className="w-full">
-              <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-4">
+              <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-4 transition-all duration-300 ease-in-out">
                 <TabsTrigger
                   value="feed"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-2 sm:px-3"
                 >
                   Feed
                 </TabsTrigger>
                 <TabsTrigger
                   value="network"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-2 sm:px-3"
                 >
                   Network
                 </TabsTrigger>
                 <TabsTrigger
                   value="achievements"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-2 sm:px-3"
                 >
                   Achievements
                 </TabsTrigger>
@@ -669,13 +1017,13 @@ export default function HomePage() {
               <TabsContent value="feed" className="space-y-4">
                 {/* Mixed Feed - Posts and Suggestions */}
                 {mixedFeed.map((item, index) => (
-                  <AnimatedSection key={item.id} delay={0.2 + index * 0.1}>
+                  <AnimatedSection key={item.id} delay={0.1 + index * 0.05}>
                     {item.type === 'post' && item.data && 'user' in item.data ? (
                       // Achievement Post
                     <EnhancedCard
                       variant="default"
                       hover="lift"
-                      className="bg-zinc-900 border border-zinc-800 overflow-hidden"
+                      className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out"
                     >
                       <EnhancedCardHeader className="p-3 sm:p-4">
                         <div className="flex items-center justify-between">
@@ -717,24 +1065,14 @@ export default function HomePage() {
                           <div
                             className={cn(
                               "p-3 rounded-lg mb-3 transition-all duration-300 hover:shadow-md border",
-                                item.data.content.type === "level_up"
-                                  ? "bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
-                                  : item.data.content.type === "achievement"
-                                ? "bg-blue-900/20 border-blue-800/40 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]"
-                                  : item.data.content.type === "resume_score"
-                                    ? "bg-emerald-900/20 border-emerald-800/40 shadow-[0_0_8px_0_rgba(16,185,129,0.2)]"
+                                item.data.content.type === "resume_score"
+                                  ? "bg-emerald-900/20 border-emerald-800/40 shadow-[0_0_8px_0_rgba(16,185,129,0.2)]"
                                   : item.data.content.type === "challenge"
                                     ? "bg-fuchsia-900/20 border-fuchsia-800/40 shadow-[0_0_8px_0_rgba(217,70,239,0.2)]"
                                   : item.data.content.type === "streak"
                                     ? "bg-yellow-900/20 border-yellow-800/40 shadow-[0_0_8px_0_rgba(234,179,8,0.2)]"
                                   : item.data.content.type === "leaderboard"
                                     ? "bg-orange-900/20 border-orange-800/40 shadow-[0_0_8px_0_rgba(249,115,22,0.2)]"
-                                  : item.data.content.type === "weekly_highlight"
-                                    ? "bg-violet-900/20 border-violet-800/40 shadow-[0_0_8px_0_rgba(139,92,246,0.2)]"
-                                  : item.data.content.type === "rare_badge"
-                                    ? "bg-pink-900/20 border-pink-800/40 shadow-[0_0_8px_0_rgba(236,72,153,0.2)]"
-                                  : item.data.content.type === "community_spotlight"
-                                    ? "bg-cyan-900/20 border-cyan-800/40 shadow-[0_0_8px_0_rgba(6,182,212,0.2)]"
                                   : item.data.content.type === "resume_milestone"
                                     ? "bg-indigo-900/20 border-indigo-800/40 shadow-[0_0_8px_0_rgba(99,102,241,0.2)]"
                                   : "bg-green-900/20 border-green-800/40 shadow-[0_0_8px_0_rgba(34,197,94,0.2)]",
@@ -742,12 +1080,6 @@ export default function HomePage() {
                             >
                               <div className="flex items-center justify-between">
                             <div className="flex items-center">
-                                  {item.data.content.type === "level_up" && (
-                                    <Trophy className="h-5 w-5 mr-2 text-blue-400" />
-                                  )}
-                                  {item.data.content.type === "achievement" && (
-                                <Award className="h-5 w-5 mr-2 text-blue-400" />
-                              )}
                                   {item.data.content.type === "resume_score" && (
                                     <BarChart2 className="h-5 w-5 mr-2 text-emerald-400" />
                               )}
@@ -760,15 +1092,6 @@ export default function HomePage() {
                                   {item.data.content.type === "leaderboard" && (
                                     <Trophy className="h-5 w-5 mr-2 text-orange-400" />
                                   )}
-                                  {item.data.content.type === "weekly_highlight" && (
-                                    <Calendar className="h-5 w-5 mr-2 text-violet-400" />
-                                  )}
-                                  {item.data.content.type === "rare_badge" && (
-                                    <Award className="h-5 w-5 mr-2 text-pink-400" />
-                                  )}
-                                  {item.data.content.type === "community_spotlight" && (
-                                    <Users className="h-5 w-5 mr-2 text-cyan-400" />
-                                  )}
                                   {item.data.content.type === "resume_milestone" && (
                                     <BarChart2 className="h-5 w-5 mr-2 text-indigo-400" />
                               )}
@@ -776,7 +1099,9 @@ export default function HomePage() {
                                 <p className="font-bold text-sm text-white">
                                       {item.data.content.achievement}
                                     </p>
-                                    <p className="text-xs text-zinc-400">{item.data.content.badgeUnlocked}</p>
+                                    {item.data.content.streakDays && (
+                                      <p className="text-xs text-zinc-400">{item.data.content.streakDays} days streak</p>
+                                    )}
                                     {/* Additional info for specific types */}
                                     {item.data.content.type === "resume_score" && (
                                       <div className="flex gap-2 mt-1">
@@ -798,34 +1123,6 @@ export default function HomePage() {
                                         </span>
                                       </div>
                                     )}
-                                    {item.data.content.type === "weekly_highlight" && item.data.content.weeklyStats && (
-                                      <div className="flex gap-2 mt-1">
-                                        <span className="text-xs text-violet-300">
-                                          {item.data.content.weeklyStats.assessments} assessments
-                                        </span>
-                                        <span className="text-xs text-yellow-300">
-                                          {item.data.content.weeklyStats.streak} day streak
-                                        </span>
-                                        <span className="text-xs text-emerald-300">
-                                          {item.data.content.weeklyStats.scoreIncrease} score
-                                        </span>
-                                      </div>
-                                    )}
-                                    {item.data.content.type === "rare_badge" && (
-                                      <p className="text-xs text-pink-300 mt-1">
-                                        {item.data.content.rarity}
-                                      </p>
-                                    )}
-                                    {item.data.content.type === "community_spotlight" && (
-                                      <div className="mt-1">
-                                        <p className="text-xs text-cyan-300">
-                                          Featured: {item.data.content.featuredUser}
-                                        </p>
-                                        <p className="text-xs text-zinc-400">
-                                          {item.data.content.highlight}
-                                        </p>
-                                      </div>
-                                    )}
                                     {item.data.content.type === "resume_milestone" && (
                                       <div className="flex gap-2 mt-1">
                                         <span className="text-xs text-indigo-300 font-medium">
@@ -845,70 +1142,23 @@ export default function HomePage() {
                           </div>
                         )}
 
-                          {item.data.content.image && (
-                          <div className="rounded-lg overflow-hidden mb-3 transition-all duration-300 hover:shadow-lg border border-zinc-700/50">
-                            <img
-                                src={item.data.content.image || "/placeholder.svg"}
-                              alt="Post content"
-                              className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
-                            />
-                          </div>
-                        )}
                       </EnhancedCardContent>
                       <EnhancedCardFooter className="p-3 sm:p-4 pt-0">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center space-x-4">
-                            <EnhancedButton
-                              variant="ghost"
-                              size="sm"
-                              rounded="full"
-                              className={cn(
-                                "transition-all duration-300",
-                                  likedPosts.includes(Number(item.data.id)) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
-                              )}
-                                onClick={() => item.data && toggleLike(Number(item.data.id))}
-                            >
-                              <ThumbsUp
-                                  className={cn("h-4 w-4 mr-1", likedPosts.includes(Number(item.data.id)) && "fill-current")}
-                              />
-                                <span className="text-xs">{item.data.likes}</span>
-                            </EnhancedButton>
-                            <EnhancedButton
-                              variant="ghost"
-                              size="sm"
-                              rounded="full"
-                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
-                              onClick={() => {
-                                  item.data && console.log(`View comments for post ${Number(item.data.id)}`)
-                              }}
-                            >
-                              <MessageCircle className="h-4 w-4 mr-1" />
-                                <span className="text-xs">{item.data.comments}</span>
-                            </EnhancedButton>
-                            <EnhancedButton
-                              variant="ghost"
-                              size="sm"
-                              rounded="full"
-                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-300"
-                              onClick={() => {
-                                  item.data && console.log(`Share post ${Number(item.data.id)}`)
-                              }}
-                            >
-                              <Share2 className="h-4 w-4 mr-1" />
-                              <span className="text-xs">Share</span>
-                            </EnhancedButton>
-                          </div>
+                        <div className="flex items-center">
                           <EnhancedButton
                             variant="ghost"
                             size="sm"
                             rounded="full"
                             className={cn(
                               "transition-all duration-300",
-                                savedPosts.includes(Number(item.data.id)) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
+                                likedPosts.includes(Number(item.data.id)) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
                             )}
-                              onClick={() => item.data && toggleSave(Number(item.data.id))}
+                              onClick={() => item.data && toggleLike(Number(item.data.id))}
                           >
-                              <Bookmark className={cn("h-4 w-4", savedPosts.includes(Number(item.data.id)) && "fill-current")} />
+                            <ThumbsUp
+                                className={cn("h-4 w-4 mr-1", likedPosts.includes(Number(item.data.id)) && "fill-current")}
+                            />
+                              <span className="text-xs">{item.data.likes}</span>
                           </EnhancedButton>
                         </div>
                       </EnhancedCardFooter>
@@ -918,7 +1168,7 @@ export default function HomePage() {
                       <EnhancedCard
                         variant="gradient"
                         hover="lift"
-                        className="bg-zinc-900 border border-zinc-800"
+                        className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out"
                       >
                         <EnhancedCardHeader className="pb-3">
                           <EnhancedCardTitle className="text-lg flex items-center">
@@ -1040,8 +1290,8 @@ export default function HomePage() {
               <TabsContent value="network" className="space-y-4">
                 <h3 className="text-lg font-extrabold mb-2 bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">People You May Know</h3>
                 {networkSuggestions.map((person, index) => (
-                  <AnimatedSection key={person.id} delay={0.2 + index * 0.1}>
-                    <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800">
+                  <AnimatedSection key={person.id} delay={0.1 + index * 0.08}>
+                    <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
                       <EnhancedCardContent className="p-4">
                         <div className="flex items-center">
                           <Avatar className="h-12 w-12 mr-3 interactive">
@@ -1085,13 +1335,13 @@ export default function HomePage() {
               </TabsContent>
 
               <TabsContent value="achievements" className="space-y-4">
-                <AnimatedSection delay={0.2} staggerChildren staggerDelay={0.1}>
+                <AnimatedSection delay={0.1} staggerChildren staggerDelay={0.05}>
                   <h3 className="text-lg font-extrabold mb-2 flex items-center">
                     <Award className="h-5 w-5 mr-2 text-blue-400" />
                     <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">Your Recent Achievements</span>
                   </h3>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
                     <EnhancedCardContent className="p-3">
                       <div className="flex items-start">
                         <div className="bg-blue-950 p-2 rounded-md mr-3">
@@ -1111,7 +1361,7 @@ export default function HomePage() {
                     </EnhancedCardContent>
                   </EnhancedCard>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
                     <EnhancedCardContent className="p-3">
                       <div className="flex items-start">
                         <div className="bg-purple-950 p-2 rounded-md mr-3">
@@ -1131,7 +1381,7 @@ export default function HomePage() {
                     </EnhancedCardContent>
                   </EnhancedCard>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
                     <EnhancedCardContent className="p-3">
                       <div className="flex items-start">
                         <div className="bg-green-950 p-2 rounded-md mr-3">
@@ -1172,10 +1422,6 @@ export default function HomePage() {
       </div>
 
 
-      {/* XP Notification */}
-      {showXpNotification && (
-        <XPNotification xp={10} message="Action completed!" onComplete={() => setShowXpNotification(false)} />
-      )}
     </DashboardLayout>
   )
 }
