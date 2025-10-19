@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
-import { Home, Search, Award, Users } from "lucide-react"
+import { Home, Search, Circle, UserPlus } from "lucide-react"
 
 export function BottomNav() {
   const pathname = usePathname()
@@ -20,8 +20,8 @@ export function BottomNav() {
   const navItems = [
     { name: "Home", href: "/home", icon: Home },
     { name: "Search", href: "/search", icon: Search },
-    { name: "Goals", href: "/goals", icon: Award },
-    { name: "Community", href: "/community", icon: Users },
+    { name: "Goals", href: "/goals", icon: Circle },
+    { name: "Community", href: "/community", icon: UserPlus },
   ]
 
   return (
@@ -40,14 +40,14 @@ export function BottomNav() {
                 {isActive && (
                   <motion.div
                     layoutId="bottomNavIndicator"
-                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+                    className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full"
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
                 <div
-                  className={`flex flex-col items-center justify-center transform transition-transform ${isActive ? "text-primary-500 scale-110" : "text-zinc-500 hover:text-zinc-300"}`}
+                  className={`flex flex-col items-center justify-center transition-all duration-200 ${isActive ? "text-white" : "text-zinc-400 hover:text-zinc-200"}`}
                 >
-                  <item.icon className="h-6 w-6 stroke-2" />
+                  <item.icon className="h-6 w-6 stroke-1" />
                   <span className="text-[10px] mt-1">{item.name}</span>
                 </div>
               </div>

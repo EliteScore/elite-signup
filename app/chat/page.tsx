@@ -5,34 +5,12 @@ import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
   Search,
-  MoreVertical,
-  Phone,
-  Video,
   Info,
   Send,
-  Image,
-  Smile,
-  Paperclip,
-  Users,
-  MessageCircle,
-  Bell,
-  Settings,
   Plus,
-  Crown,
-  Shield,
-  Star,
   Check,
   CheckCheck,
-  Clock,
-  Reply,
-  Forward,
-  Copy,
-  Trash2,
-  Pin,
-  Archive,
-  VolumeX,
-  UserX,
-  Flag,
+  MessageCircle,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -43,14 +21,6 @@ import { EnhancedButton } from "@/components/ui/enhanced-button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { AnimatedSection } from "@/components/ui/animated-section"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -246,7 +216,7 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [messageText, setMessageText] = useState("")
   const [showNewChatDialog, setShowNewChatDialog] = useState(false)
-  const [activeTab, setActiveTab] = useState<"all" | "personal" | "groups" | "community">("all")
+  const [activeTab, setActiveTab] = useState<"all" | "groups" | "community">("all")
   const [showConversations, setShowConversations] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -254,7 +224,7 @@ export default function ChatPage() {
   // Mobile detection
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
+      setIsMobile(window.innerWidth < 1024) // Changed to lg breakpoint
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
@@ -265,16 +235,13 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [selectedConversation, messageText])
+  // Removed auto-scroll on conversation selection to prevent unwanted scrolling
 
   const filteredConversations = conversations.filter((conv) => {
     const matchesSearch = conv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
     
     if (activeTab === "all") return matchesSearch
-    if (activeTab === "personal") return matchesSearch && conv.type === "personal"
     if (activeTab === "groups") return matchesSearch && conv.type === "group"
     if (activeTab === "community") return matchesSearch && conv.type === "community"
     
@@ -289,6 +256,10 @@ export default function ChatPage() {
       // In a real app, this would send the message to the server
       console.log("Sending message:", messageText)
       setMessageText("")
+      // Only scroll to bottom when actually sending a message
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
     }
   }
 
@@ -315,31 +286,31 @@ export default function ChatPage() {
 
   return (
     <DashboardLayout showBottomNav={false}>
-      <div className="h-screen flex flex-col bg-black overflow-hidden">
+      <div className="min-h-screen bg-black">
         {/* Mobile Header */}
-        <div className="bg-zinc-900/95 backdrop-blur-sm border-b border-blue-700/40 px-4 py-3 flex-shrink-0">
+        <div className="bg-black border-b border-zinc-800 px-3 py-2.5 sticky top-0 z-40">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {isMobile && selectedConversation && !showConversations ? (
                 <EnhancedButton
                   variant="ghost"
                   size="icon"
-                  className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                  className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-8 w-8"
                   onClick={handleBackToConversations}
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4" />
                 </EnhancedButton>
               ) : (
                 <EnhancedButton
                   variant="ghost"
                   size="icon"
-                  className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                  className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-8 w-8"
                   onClick={() => router.back()}
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <ArrowLeft className="h-4 w-4" />
                 </EnhancedButton>
               )}
-              <h1 className="text-xl font-bold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
+              <h1 className="text-base sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                 {isMobile && selectedConversation && !showConversations ? selectedConv?.name : "Messages"}
               </h1>
             </div>
@@ -349,30 +320,27 @@ export default function ChatPage() {
                   <EnhancedButton
                     variant="ghost"
                     size="icon"
-                    className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                    className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-8 w-8"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                   </EnhancedButton>
                 </DialogTrigger>
-                <DialogContent className="bg-zinc-900/95 border border-blue-700/40 text-white max-w-md mx-4">
+                <DialogContent className="bg-zinc-900 border border-zinc-800 text-white max-w-md mx-4 rounded-xl">
                   <DialogHeader>
-                    <DialogTitle className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
-                      Start New Chat
+                    <DialogTitle className="text-base font-bold text-white">
+                      New Message
                     </DialogTitle>
-                    <DialogDescription className="text-zinc-400">
-                      Choose who you want to message
-                    </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
+                  <div className="space-y-2.5">
                     <Input
-                      placeholder="Search for people..."
-                      className="bg-zinc-800/80 border-blue-700/40 text-white focus:border-blue-500"
+                      placeholder="Search..."
+                      className="bg-zinc-800 border-zinc-700 text-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-lg h-9 text-sm"
                     />
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-1 max-h-80 overflow-y-auto hide-scrollbar">
                       {conversations.filter(c => c.type === "personal").map((person) => (
                         <div
                           key={person.id}
-                          className="flex items-center gap-3 p-2 hover:bg-zinc-800/50 rounded-lg cursor-pointer"
+                          className="flex items-center gap-2.5 p-2.5 hover:bg-zinc-800/50 rounded-lg cursor-pointer transition-colors active:bg-zinc-800"
                           onClick={() => {
                             handleConversationSelect(person.id)
                             setShowNewChatDialog(false)
@@ -382,9 +350,9 @@ export default function ChatPage() {
                             <AvatarImage src={person.avatar} />
                             <AvatarFallback className="bg-zinc-800">{person.name.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-white">{person.name}</h4>
-                            <p className="text-sm text-zinc-400">@{person.username}</p>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-white truncate text-sm">{person.name}</h4>
+                            <p className="text-xs text-zinc-400 truncate">@{person.username}</p>
                           </div>
                         </div>
                       ))}
@@ -396,134 +364,88 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        {/* Mobile Layout */}
+        <div className="flex flex-col lg:flex-row min-h-[calc(100vh-80px)]">
           {/* Conversations List */}
           <div className={cn(
-            "bg-zinc-900/50 border-r border-blue-700/40 flex flex-col transition-all duration-300",
+            "bg-zinc-900 border-r-0 lg:border-r border-zinc-800 flex flex-col transition-all duration-300",
             isMobile 
-              ? (showConversations ? "w-full" : "hidden") 
-              : "w-full sm:w-80 lg:w-96"
+              ? (showConversations ? "w-full h-full" : "hidden") 
+              : "w-full lg:w-80 xl:w-96"
           )}>
             {/* Search */}
-            <div className="p-4 border-b border-blue-700/40 flex-shrink-0">
+            <div className="p-3 border-b border-zinc-800 flex-shrink-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
                 <Input
                   placeholder="Search messages..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-zinc-800/80 border-blue-700/40 text-white focus:border-blue-500"
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-9 text-sm"
                 />
               </div>
             </div>
 
-            {/* Tabs */}
-            <div className="px-4 py-2 border-b border-blue-700/40 flex-shrink-0">
-              <div className="flex gap-1 bg-zinc-800/50 rounded-lg p-1">
-                {[
-                  { id: "all", label: "All", icon: MessageCircle },
-                  { id: "personal", label: "Personal", icon: Users },
-                  { id: "groups", label: "Groups", icon: Users },
-                  { id: "community", label: "Community", icon: Bell },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-md text-xs font-medium transition-all duration-200",
-                      activeTab === tab.id
-                        ? "bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-white shadow-[0_0_8px_0_rgba(80,0,255,0.3)]"
-                        : "text-zinc-400 hover:text-white hover:bg-zinc-700/50"
-                    )}
-                  >
-                    <tab.icon className="h-3 w-3" />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Conversations */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto hide-scrollbar">
               {filteredConversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                  <MessageCircle className="h-12 w-12 text-zinc-600 mb-4" />
-                  <h3 className="text-lg font-semibold text-white mb-2">No conversations</h3>
-                  <p className="text-zinc-400 text-sm mb-4">Start a new chat to begin messaging</p>
+                <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                  <MessageCircle className="h-10 w-10 text-zinc-600 mb-3" />
+                  <h3 className="text-base font-semibold text-white mb-1.5">No conversations</h3>
+                  <p className="text-zinc-400 text-xs mb-3">Start a new chat to begin messaging</p>
                   <EnhancedButton
                     onClick={() => setShowNewChatDialog(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    className="bg-blue-600 hover:bg-blue-700 text-xs px-4 py-2"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
                     New Chat
                   </EnhancedButton>
                 </div>
               ) : (
                 filteredConversations.map((conversation) => (
-                  <motion.div
+                  <div
                     key={conversation.id}
                     className={cn(
-                      "flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 border-b border-zinc-800/50",
+                      "flex items-center gap-2.5 p-3 cursor-pointer transition-all duration-150 active:bg-zinc-800/70",
                       selectedConversation === conversation.id
-                        ? "bg-blue-900/20 border-blue-700/40"
-                        : "hover:bg-zinc-800/50"
+                        ? "bg-zinc-800/50"
+                        : "hover:bg-zinc-800/30"
                     )}
                     onClick={() => handleConversationSelect(conversation.id)}
-                    whileHover={{ backgroundColor: "rgba(80, 0, 255, 0.1)" }}
                   >
                     <div className="relative flex-shrink-0">
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-11 w-11">
                         <AvatarImage src={conversation.avatar} />
                         <AvatarFallback className="bg-zinc-800">
                           {conversation.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       {conversation.isOnline && (
-                        <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-zinc-900">
-                          <div className="h-full w-full bg-green-400 rounded-full animate-ping opacity-75"></div>
-                        </div>
+                        <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-black"></div>
                       )}
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <h3 className="font-semibold text-white truncate">
-                            {conversation.name}
-                          </h3>
-                          {conversation.isPinned && (
-                            <Pin className="h-3 w-3 text-blue-400 flex-shrink-0" />
-                          )}
-                          {conversation.isOfficial && (
-                            <Crown className="h-3 w-3 text-yellow-400 flex-shrink-0" />
-                          )}
-                          {conversation.isMuted && (
-                            <VolumeX className="h-3 w-3 text-zinc-500 flex-shrink-0" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-xs text-zinc-500">{conversation.timestamp}</span>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <h3 className="font-semibold text-white truncate text-sm">
+                          {conversation.name}
+                        </h3>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="text-[10px] text-zinc-500">{conversation.timestamp}</span>
                           {conversation.unreadCount > 0 && (
-                            <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                            <div className="bg-blue-600 text-white text-[10px] font-semibold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
                               {conversation.unreadCount}
-                            </Badge>
+                            </div>
                           )}
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-zinc-400 truncate flex-1">
-                          {conversation.lastMessage}
-                        </p>
-                        {conversation.type === "group" && (
-                          <div className="flex items-center gap-1 text-xs text-zinc-500 ml-2 flex-shrink-0">
-                            <Users className="h-3 w-3" />
-                            <span>{conversation.members}</span>
-                          </div>
-                        )}
-                      </div>
+                      <p className="text-xs text-zinc-400 truncate">
+                        {conversation.lastMessage}
+                      </p>
                     </div>
-                  </motion.div>
+                  </div>
                 ))
               )}
             </div>
@@ -531,151 +453,108 @@ export default function ChatPage() {
 
           {/* Chat Area */}
           <div className={cn(
-            "flex-1 flex flex-col",
+            "flex-1 flex flex-col bg-black",
             isMobile && showConversations ? "hidden" : "flex"
           )}>
             {selectedConversation && selectedConv ? (
               <>
                 {/* Chat Header - Desktop Only */}
                 {!isMobile && (
-                  <div className="bg-zinc-900/80 backdrop-blur-sm border-b border-blue-700/40 px-4 py-3 flex-shrink-0">
+                  <div className="bg-zinc-900 border-b border-zinc-800 px-3 py-2.5 flex-shrink-0">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar className="h-9 w-9">
                           <AvatarImage src={selectedConv.avatar} />
                           <AvatarFallback className="bg-zinc-800">
                             {selectedConv.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <h2 className="font-semibold text-white flex items-center gap-2">
+                          <h2 className="font-semibold text-white text-sm">
                             {selectedConv.name}
-                            {selectedConv.isOfficial && (
-                              <Crown className="h-4 w-4 text-yellow-400" />
-                            )}
                           </h2>
-                          <p className="text-sm text-zinc-400">
+                          <p className="text-xs text-zinc-400">
                             {selectedConv.type === "personal" && selectedConv.isOnline
-                              ? "Online"
+                              ? "Active now"
                               : selectedConv.type === "group"
                               ? `${selectedConv.members} members`
-                              : "Official channel"}
+                              : "Community"}
                           </p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        {selectedConv.type === "personal" && (
-                          <>
-                            <EnhancedButton
-                              variant="ghost"
-                              size="icon"
-                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                            >
-                              <Phone className="h-5 w-5" />
-                            </EnhancedButton>
-                            <EnhancedButton
-                              variant="ghost"
-                              size="icon"
-                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                            >
-                              <Video className="h-5 w-5" />
-                            </EnhancedButton>
-                          </>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <EnhancedButton
-                              variant="ghost"
-                              size="icon"
-                              className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                            >
-                              <MoreVertical className="h-5 w-5" />
-                            </EnhancedButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-zinc-900 border border-blue-700/40 text-white">
-                            <DropdownMenuItem>
-                              <Info className="h-4 w-4 mr-2" />
-                              View Info
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Pin className="h-4 w-4 mr-2" />
-                              {selectedConv.isPinned ? "Unpin" : "Pin"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <VolumeX className="h-4 w-4 mr-2" />
-                              {selectedConv.isMuted ? "Unmute" : "Mute"}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-400">
-                              <Archive className="h-4 w-4 mr-2" />
-                              Archive
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      <EnhancedButton
+                        variant="ghost"
+                        size="icon"
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-8 w-8"
+                      >
+                        <Info className="h-4 w-4" />
+                      </EnhancedButton>
                     </div>
                   </div>
                 )}
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-3 space-y-2.5 hide-scrollbar" style={{ scrollBehavior: 'smooth' }}>
                   {selectedMessages.map((message, index) => (
                     <motion.div
                       key={message.id}
                       className={cn(
-                        "flex gap-3",
+                        "flex gap-2",
                         message.senderId === "me" ? "justify-end" : "justify-start"
                       )}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                      transition={{ duration: 0.2 }}
+                      layout
                     >
                       {message.senderId !== "me" && (
-                        <Avatar className="h-8 w-8 flex-shrink-0">
+                        <Avatar className="h-6 w-6 flex-shrink-0">
                           <AvatarImage src={
                             selectedConv.type === "personal" 
                               ? selectedConv.avatar 
                               : "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces"
                           } />
-                          <AvatarFallback className="bg-zinc-800">
+                          <AvatarFallback className="bg-zinc-800 text-[10px]">
                             {message.senderName.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                       )}
                       
                       <div className={cn(
-                        "max-w-[85%] sm:max-w-xs lg:max-w-md",
+                        "max-w-[85%] sm:max-w-[80%] lg:max-w-md",
                         message.senderId === "me" ? "order-first" : "order-last"
                       )}>
                         {message.senderId !== "me" && (
-                          <p className="text-xs text-zinc-400 mb-1 px-1">
+                          <p className="text-[10px] text-zinc-400 mb-0.5 px-1">
                             {message.senderName}
                           </p>
                         )}
                         
                         <div className={cn(
-                          "rounded-2xl px-4 py-2 relative",
+                          "rounded-2xl px-3 py-2 relative inline-block",
                           message.type === "announcement"
-                            ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-700/40"
+                            ? "bg-blue-900/20 border border-blue-700/40"
                             : message.senderId === "me"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                            ? "bg-blue-600 text-white"
                             : "bg-zinc-800 text-white"
                         )}>
-                          <p className="text-sm leading-relaxed break-words">{message.content}</p>
-                          
-                          <div className="flex items-center justify-end gap-1 mt-1">
-                            <span className="text-xs opacity-70">{message.timestamp}</span>
-                            {message.senderId === "me" && (
-                              <div className="flex items-center">
-                                {message.isRead ? (
-                                  <CheckCheck className="h-3 w-3 text-blue-300" />
-                                ) : (
-                                  <Check className="h-3 w-3 text-zinc-400" />
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          <p className="text-xs leading-relaxed break-words">{message.content}</p>
+                        </div>
+                        
+                        {/* Timestamp and Read Status */}
+                        <div className={cn(
+                          "flex items-center gap-1 mt-0.5 px-1",
+                          message.senderId === "me" ? "justify-end" : "justify-start"
+                        )}>
+                          <span className="text-[10px] text-zinc-500">{message.timestamp}</span>
+                          {message.senderId === "me" && (
+                            message.isRead ? (
+                              <CheckCheck className="h-2.5 w-2.5 text-blue-400" />
+                            ) : (
+                              <Check className="h-2.5 w-2.5 text-zinc-500" />
+                            )
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -684,63 +563,42 @@ export default function ChatPage() {
                 </div>
 
                 {/* Message Input */}
-                <div className="bg-zinc-900/80 backdrop-blur-sm border-t border-blue-700/40 p-4 flex-shrink-0">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <EnhancedButton
-                      variant="ghost"
-                      size="icon"
-                      className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 flex-shrink-0"
-                    >
-                      <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </EnhancedButton>
-                    
-                    <div className="flex-1 relative">
-                      <Input
-                        placeholder="Type a message..."
-                        value={messageText}
-                        onChange={(e) => setMessageText(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        className="bg-zinc-800/80 border-blue-700/40 text-white focus:border-blue-500 pr-10 sm:pr-12 text-sm sm:text-base"
-                      />
-                      <EnhancedButton
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 sm:right-2 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-white h-8 w-8"
-                      >
-                        <Smile className="h-4 w-4" />
-                      </EnhancedButton>
-                    </div>
-                    
-                    <EnhancedButton
-                      variant="ghost"
-                      size="icon"
-                      className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 flex-shrink-0"
-                    >
-                      <Image className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </EnhancedButton>
-                    
-                    <EnhancedButton
+                <div className="bg-zinc-900 border-t border-zinc-800 p-3 flex-shrink-0 sticky bottom-0">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Message..."
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="flex-1 bg-zinc-800 border-zinc-700 text-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-full px-3.5 text-xs h-9"
+                    />
+                    <button
                       onClick={handleSendMessage}
                       disabled={!messageText.trim()}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 flex-shrink-0"
+                      className={cn(
+                        "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all",
+                        messageText.trim()
+                          ? "bg-blue-600 hover:bg-blue-700"
+                          : "bg-zinc-800 text-zinc-500"
+                      )}
                     >
-                      <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </EnhancedButton>
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               </>
             ) : (
               /* Empty State */
-              <div className="flex-1 flex items-center justify-center p-8">
+              <div className="flex-1 flex items-center justify-center p-4">
                 <div className="text-center max-w-sm">
-                  <MessageCircle className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Select a conversation</h3>
-                  <p className="text-zinc-400 mb-6 text-sm">Choose a chat to start messaging</p>
+                  <MessageCircle className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                  <h3 className="text-base font-bold text-white mb-1.5">Select a conversation</h3>
+                  <p className="text-zinc-400 mb-4 text-xs">Choose a chat to start messaging</p>
                   <EnhancedButton
                     onClick={() => setShowNewChatDialog(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    className="bg-blue-600 hover:bg-blue-700 text-xs px-4 py-2"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
                     Start New Chat
                   </EnhancedButton>
                 </div>

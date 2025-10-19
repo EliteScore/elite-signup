@@ -1,0 +1,32 @@
+✨ Features
+Direct Messaging
+✅ Send/receive messages
+✅ Edit/delete messages
+✅ Delete conversations
+✅ Typing indicators
+✅ Message history
+✅ Reply to messages
+Group Chats
+✅ Create groups (max 50 members)
+✅ Group messages with @mentions
+✅ Add/remove members
+✅ Promote/demote admins
+✅ Leave/delete groups
+✅ Send announcements (Owner/Admin)
+✅ Pin/unpin important messages
+✅ Reactions (any emoji)
+Security
+✅ JWT authentication
+✅ User blocking (bidirectional)
+✅ Follow relationships (must follow to message)
+✅ Rate limiting (30 msg/60s)
+✅ Message encryption (AES-256-CBC)
+✅ Input validation
+Performance
+✅ 50,000+ concurrent connections
+✅ 10,000+ messages per second
+✅ Redis support (optional)
+✅ Cluster mode available
+✅ Connection pooling
+Full feature list: Features
+

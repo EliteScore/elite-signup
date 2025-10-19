@@ -719,64 +719,61 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 overflow-x-hidden scroll-smooth">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Spacer */}
-          <div className="lg:col-span-2"></div>
-
+      <div className="min-h-screen">
+        <div className="max-w-4xl mx-auto px-3 py-6 sm:px-4 sm:py-6 overflow-x-hidden scroll-smooth">
           {/* Main Feed */}
-          <div className="lg:col-span-8 space-y-4 sm:space-y-6">
+          <div className="space-y-6 sm:space-y-6">
 
             {/* Motivational Header */}
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Keep pushing. Your future self will thank you.</h2>
-              <p className="text-sm text-zinc-300">Every post is someone getting better. Your turn.</p>
+            <div className="text-center mb-5 sm:mb-6">
+              <h2 className="text-base sm:text-2xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent px-2">Keep pushing. Your future self will thank you.</h2>
+              <p className="text-xs sm:text-base text-zinc-400 px-2">Every post is someone getting better. Your turn.</p>
             </div>
 
             {/* Create Post - Minimized LinkedIn Style */}
             {!activePostType ? (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4 transition-all duration-300 ease-in-out">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src="/placeholder.svg?height=40&width=40" />
-                    <AvatarFallback className="bg-zinc-800">U</AvatarFallback>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 sm:p-4 transition-all duration-300 ease-in-out">
+                <div className="flex items-center gap-2.5 mb-1">
+                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
+                    <AvatarImage src="/placeholder.svg?height=32&width=32" />
+                    <AvatarFallback className="bg-zinc-800 text-xs">U</AvatarFallback>
                   </Avatar>
                   <button
                     onClick={() => setActivePostType('resume_score')}
-                    className="flex-1 text-left px-4 py-2.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-zinc-400 text-sm transition-colors"
+                    className="flex-1 text-left px-3 py-2 sm:px-4 sm:py-2.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-zinc-400 text-xs sm:text-base transition-colors"
                   >
                     Share your progress...
                   </button>
                 </div>
-                <div className="flex items-center justify-around mt-3 pt-3 border-t border-zinc-800">
+                <div className="flex items-center justify-around mt-3 pt-3 border-t border-zinc-800 gap-1">
                   <button
                     onClick={() => setActivePostType('resume_score')}
-                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                   >
-                    <BarChart2 className="h-5 w-5 text-emerald-400" />
-                    <span className="text-xs sm:text-sm">Resume Score</span>
+                    <BarChart2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-[11px] sm:text-sm">Resume</span>
                   </button>
                   <button
                     onClick={() => setActivePostType('challenge')}
-                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                   >
-                    <Award className="h-5 w-5 text-fuchsia-400" />
-                    <span className="text-xs sm:text-sm">Challenge</span>
+                    <Award className="h-3.5 w-3.5 text-fuchsia-400" />
+                    <span className="text-[11px] sm:text-sm">Challenge</span>
                   </button>
                   <button
                     onClick={() => setActivePostType('streak')}
-                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                   >
-                    <Zap className="h-5 w-5 text-yellow-400" />
-                    <span className="text-xs sm:text-sm">Streak</span>
+                    <Zap className="h-3.5 w-3.5 text-yellow-400" />
+                    <span className="text-[11px] sm:text-sm">Streak</span>
                   </button>
                   <button
                     onClick={() => setActivePostType('leaderboard')}
-                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                   >
-                    <Trophy className="h-5 w-5 text-orange-400" />
-                    <span className="text-xs sm:text-sm hidden sm:inline">Leaderboard</span>
-                    <span className="text-xs sm:hidden">Board</span>
+                    <Trophy className="h-3.5 w-3.5 text-orange-400" />
+                    <span className="text-[11px] sm:text-sm hidden sm:inline">Leaderboard</span>
+                    <span className="text-[11px] sm:hidden">Board</span>
                   </button>
                 </div>
               </div>
@@ -785,15 +782,15 @@ export default function HomePage() {
             {/* Post Creation Form */}
             {activePostType && (
               <AnimatedSection delay={0.1}>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-xl mb-4 transition-all duration-300 ease-in-out">
-                  <div className="p-4 border-b border-zinc-800">
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl transition-all duration-300 ease-in-out">
+                  <div className="p-3 sm:p-4 border-b border-zinc-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {activePostType === 'resume_score' && <BarChart2 className="h-5 w-5 text-emerald-400" />}
-                        {activePostType === 'challenge' && <Award className="h-5 w-5 text-fuchsia-400" />}
-                        {activePostType === 'streak' && <Zap className="h-5 w-5 text-yellow-400" />}
-                        {activePostType === 'leaderboard' && <Trophy className="h-5 w-5 text-orange-400" />}
-                        <h3 className="text-base font-semibold text-white">
+                        {activePostType === 'resume_score' && <BarChart2 className="h-4 w-4 text-emerald-400" />}
+                        {activePostType === 'challenge' && <Award className="h-4 w-4 text-fuchsia-400" />}
+                        {activePostType === 'streak' && <Zap className="h-4 w-4 text-yellow-400" />}
+                        {activePostType === 'leaderboard' && <Trophy className="h-4 w-4 text-orange-400" />}
+                        <h3 className="text-sm sm:text-lg font-semibold text-white">
                           Share {activePostType === 'resume_score' ? 'Resume Score' : activePostType === 'challenge' ? 'Challenge' : activePostType === 'streak' ? 'Streak' : 'Leaderboard'}
                         </h3>
                       </div>
@@ -804,42 +801,42 @@ export default function HomePage() {
                           setSelectedLeaderboard(null)
                           setPostMessage("")
                         }}
-                        className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                        className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
                       >
-                        <X className="h-5 w-5" />
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="p-4">
-                    <div className="space-y-4">
+                  <div className="p-3 sm:p-4">
+                    <div className="space-y-4 sm:space-y-5">
                       {activePostType === 'resume_score' && (
                         <div>
-                          <div className="bg-zinc-800/30 rounded-lg p-4 border border-zinc-700/50">
-                            <div className="flex items-center justify-between mb-4">
-                              <span className="text-sm font-medium text-zinc-300">Your Resume Score</span>
-                              <span className="text-xs text-zinc-500">{userData.resumeScore.lastUpdated}</span>
+                          <div className="bg-zinc-800/30 rounded-lg p-3 sm:p-4 border border-zinc-700/50">
+                            <div className="flex items-center justify-between mb-3 sm:mb-4">
+                              <span className="text-xs sm:text-base font-medium text-zinc-300">Your Resume Score</span>
+                              <span className="text-[10px] sm:text-sm text-zinc-500">{userData.resumeScore.lastUpdated}</span>
                             </div>
-                            <div className="flex items-center justify-center gap-6 mb-4">
+                            <div className="flex items-center justify-center gap-3 sm:gap-6 mb-4 sm:mb-5">
                               <div className="text-center">
-                                <div className="text-3xl font-bold text-zinc-400">{userData.resumeScore.previous}</div>
-                                <div className="text-xs text-zinc-500 mt-1">Previous</div>
+                                <div className="text-xl sm:text-3xl font-bold text-zinc-400">{userData.resumeScore.previous}</div>
+                                <div className="text-[10px] sm:text-sm text-zinc-500 mt-0.5">Previous</div>
                               </div>
-                              <ChevronRight className="h-5 w-5 text-zinc-600 flex-shrink-0" />
+                              <ChevronRight className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-zinc-600 flex-shrink-0" />
                               <div className="text-center">
-                                <div className="text-4xl font-bold text-emerald-400">{userData.resumeScore.current}</div>
-                                <div className="text-xs text-emerald-400 mt-1">Current</div>
+                                <div className="text-2xl sm:text-4xl font-bold text-emerald-400">{userData.resumeScore.current}</div>
+                                <div className="text-[10px] sm:text-sm text-emerald-400 mt-0.5">Current</div>
                               </div>
                               <div className="text-center">
-                                <div className="text-2xl font-bold text-green-400">+{userData.resumeScore.current - userData.resumeScore.previous}</div>
-                                <div className="text-xs text-zinc-500 mt-1">Points</div>
+                                <div className="text-xl sm:text-3xl font-bold text-green-400">+{userData.resumeScore.current - userData.resumeScore.previous}</div>
+                                <div className="text-[10px] sm:text-sm text-zinc-500 mt-0.5">Points</div>
                               </div>
                             </div>
                             <div className="pt-3 border-t border-zinc-700/50">
-                              <div className="text-xs font-medium text-zinc-400 mb-2">Recent improvements:</div>
+                              <div className="text-[10px] sm:text-sm font-medium text-zinc-400 mb-2">Recent improvements:</div>
                               <div className="space-y-1.5">
                                 {userData.resumeScore.improvements.map((improvement, idx) => (
-                                  <li key={idx} className="flex items-center gap-2 text-sm text-zinc-300">
-                                    <Check className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                                  <li key={idx} className="flex items-center gap-2 text-xs sm:text-base text-zinc-300">
+                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-400 flex-shrink-0" />
                                     <span>{improvement}</span>
                                   </li>
                                 ))}
@@ -851,14 +848,14 @@ export default function HomePage() {
 
                       {activePostType === 'challenge' && (
                         <div className="space-y-3">
-                          <p className="text-sm text-zinc-400 mb-3">Select a completed challenge to share:</p>
+                          <p className="text-xs sm:text-base text-zinc-400">Select a completed challenge to share:</p>
                           <div className="space-y-2">
                             {userData.completedChallenges.map((challenge) => (
                               <button
                                 key={challenge.id}
                                 onClick={() => setSelectedChallenge(challenge.id)}
                                 className={cn(
-                                  "w-full p-3.5 rounded-lg border text-left transition-all duration-200",
+                                  "w-full p-3 rounded-lg border text-left transition-all duration-200",
                                   selectedChallenge === challenge.id
                                     ? "bg-fuchsia-900/10 border-fuchsia-700/50 ring-1 ring-fuchsia-700/50"
                                     : "bg-zinc-800/30 border-zinc-700/50 hover:bg-zinc-800/50 hover:border-zinc-600"
@@ -866,10 +863,10 @@ export default function HomePage() {
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-white text-sm">{challenge.name}</div>
-                                    <div className="text-xs text-zinc-500 mt-1">Completed {challenge.completedDate}</div>
+                                    <div className="font-medium text-white text-xs sm:text-base">{challenge.name}</div>
+                                    <div className="text-[10px] sm:text-sm text-zinc-500 mt-0.5">Completed {challenge.completedDate}</div>
                                   </div>
-                                  <Badge className="bg-fuchsia-950/50 text-fuchsia-400 border-fuchsia-900/50 text-xs ml-3">
+                                  <Badge className="bg-fuchsia-950/50 text-fuchsia-400 border-fuchsia-900/50 text-[10px] ml-2">
                                     +{challenge.xpEarned} XP
                                   </Badge>
                                 </div>
@@ -881,31 +878,31 @@ export default function HomePage() {
 
                       {activePostType === 'streak' && (
                         <div>
-                          <div className="bg-zinc-800/30 rounded-lg p-4 border border-zinc-700/50">
-                            <div className="flex items-center justify-between mb-4">
-                              <span className="text-sm font-medium text-zinc-300">Current Streak</span>
-                              <Badge className="bg-yellow-950/50 text-yellow-400 border-yellow-900/50 text-xs">
+                          <div className="bg-zinc-800/30 rounded-lg p-3 sm:p-4 border border-zinc-700/50">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs sm:text-sm font-medium text-zinc-300">Current Streak</span>
+                              <Badge className="bg-yellow-950/50 text-yellow-400 border-yellow-900/50 text-[10px]">
                                 Active
                               </Badge>
                             </div>
-                            <div className="text-center mb-4 py-3">
-                              <div className="text-6xl font-bold text-yellow-400">{userData.currentStreak.days}</div>
-                              <div className="text-sm text-zinc-400 mt-2">Days</div>
+                            <div className="text-center mb-4 sm:mb-4 py-2">
+                              <div className="text-3xl sm:text-5xl font-bold text-yellow-400">{userData.currentStreak.days}</div>
+                              <div className="text-[10px] sm:text-sm text-zinc-400 mt-0.5">Days</div>
                             </div>
-                            <div className="space-y-2.5 pt-3 border-t border-zinc-700/50">
-                              <div className="text-sm">
+                            <div className="space-y-2 pt-3 border-t border-zinc-700/50">
+                              <div className="text-xs sm:text-sm">
                                 <span className="text-zinc-500">Type:</span>
                                 <span className="text-white ml-2 font-medium">{userData.currentStreak.type}</span>
                               </div>
-                              <div className="text-sm">
+                              <div className="text-xs sm:text-sm">
                                 <span className="text-zinc-500">Started:</span>
                                 <span className="text-white ml-2">{userData.currentStreak.startDate}</span>
                               </div>
                               <div>
-                                <div className="text-xs font-medium text-zinc-400 mb-2">Daily activities:</div>
+                                <div className="text-[10px] sm:text-xs font-medium text-zinc-400 mb-1.5">Daily activities:</div>
                                 <div className="flex flex-wrap gap-1.5">
                                   {userData.currentStreak.activities.map((activity, idx) => (
-                                    <Badge key={idx} className="bg-zinc-800 text-zinc-300 border-zinc-700 text-xs">
+                                    <Badge key={idx} className="bg-zinc-800 text-zinc-300 border-zinc-700 text-[10px]">
                                       {activity}
                                     </Badge>
                                   ))}
@@ -918,14 +915,14 @@ export default function HomePage() {
 
                       {activePostType === 'leaderboard' && (
                         <div className="space-y-3">
-                          <p className="text-sm text-zinc-400 mb-3">Select a leaderboard ranking to share:</p>
+                          <p className="text-xs sm:text-sm text-zinc-400">Select a leaderboard ranking to share:</p>
                           <div className="space-y-2">
                             {userData.leaderboardRankings.map((ranking, idx) => (
                               <button
                                 key={idx}
                                 onClick={() => setSelectedLeaderboard(idx)}
                                 className={cn(
-                                  "w-full p-3.5 rounded-lg border text-left transition-all duration-200",
+                                  "w-full p-3 sm:p-3 rounded-lg border text-left transition-all duration-200",
                                   selectedLeaderboard === idx
                                     ? "bg-orange-900/10 border-orange-700/50 ring-1 ring-orange-700/50"
                                     : "bg-zinc-800/30 border-zinc-700/50 hover:bg-zinc-800/50 hover:border-zinc-600"
@@ -933,16 +930,16 @@ export default function HomePage() {
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-white text-sm mb-1">{ranking.category}</div>
-                                    <div className="text-xs text-zinc-500">
+                                    <div className="font-medium text-white text-xs sm:text-sm mb-1">{ranking.category}</div>
+                                    <div className="text-[10px] sm:text-xs text-zinc-500">
                                       #{ranking.previousRank} → #{ranking.currentRank} <span className="text-zinc-600">•</span> {ranking.totalParticipants.toLocaleString()} participants
                                     </div>
                                   </div>
-                                  <div className="text-right ml-3">
-                                    <div className="text-base font-bold text-emerald-400">
+                                  <div className="text-right ml-2">
+                                    <div className="text-sm sm:text-base font-bold text-emerald-400">
                                       +{ranking.previousRank - ranking.currentRank}
                                     </div>
-                                    <div className="text-xs text-zinc-500">spots</div>
+                                    <div className="text-[10px] sm:text-xs text-zinc-500">spots</div>
                                   </div>
                                 </div>
                               </button>
@@ -952,18 +949,18 @@ export default function HomePage() {
                       )}
 
                       <div>
-                        <label className="text-sm text-zinc-400 mb-2 block">Add a personal message (optional)</label>
+                        <label className="text-xs sm:text-sm text-zinc-400 mb-1.5 block">Add a personal message (optional)</label>
                         <textarea
                           placeholder="Share your thoughts, tips, or motivation..."
                           value={postMessage}
                           onChange={(e) => setPostMessage(e.target.value)}
-                          className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 resize-none h-20 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
+                          className="w-full p-3 sm:p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 resize-none h-20 sm:h-20 text-xs sm:text-base focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="px-4 py-3 border-t border-zinc-800 flex gap-3">
+                  <div className="px-3 sm:px-4 py-3 sm:py-4 border-t border-zinc-800 flex gap-2.5">
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -972,13 +969,13 @@ export default function HomePage() {
                         setSelectedLeaderboard(null)
                         setPostMessage("")
                       }}
-                      className="flex-1 bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-10"
+                      className="flex-1 bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-10 sm:h-12 rounded-lg text-sm sm:text-base"
                     >
                       Cancel
                     </Button>
                     <Button
                       onClick={handleCreatePost}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-10"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-10 sm:h-12 rounded-lg text-sm sm:text-base"
                       disabled={
                         (activePostType === 'challenge' && !selectedChallenge) ||
                         (activePostType === 'leaderboard' && selectedLeaderboard === null)
@@ -993,28 +990,28 @@ export default function HomePage() {
 
             {/* Feed Tabs */}
             <Tabs defaultValue="feed" className="w-full">
-              <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-4 transition-all duration-300 ease-in-out">
+              <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-5 sm:mb-6 transition-all duration-300 ease-in-out">
                 <TabsTrigger
                   value="feed"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
                 >
                   Feed
                 </TabsTrigger>
                 <TabsTrigger
                   value="network"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
                 >
                   Network
                 </TabsTrigger>
                 <TabsTrigger
                   value="achievements"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-2 sm:px-3"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
                 >
                   Achievements
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="feed" className="space-y-4">
+              <TabsContent value="feed" className="space-y-5">
                 {/* Mixed Feed - Posts and Suggestions */}
                 {mixedFeed.map((item, index) => (
                   <AnimatedSection key={item.id} delay={0.1 + index * 0.05}>
@@ -1023,20 +1020,20 @@ export default function HomePage() {
                     <EnhancedCard
                       variant="default"
                       hover="lift"
-                      className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out"
+                      className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out rounded-xl"
                     >
-                      <EnhancedCardHeader className="p-3 sm:p-4">
+                      <EnhancedCardHeader className="p-3.5 sm:p-6">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="h-10 w-10 interactive">
+                          <div className="flex items-center space-x-2.5">
+                            <Avatar className="h-9 w-9 interactive">
                                 <AvatarImage src={item.data.user.image} />
                                 <AvatarFallback className="bg-zinc-800">{item.data.user.name.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-bold text-white">{item.data.user.name}</span>
+                                  <span className="font-bold text-white text-sm">{item.data.user.name}</span>
                                   {item.data.user.verified && (
-                                    <svg className="h-4 w-4 text-blue-400 fill-current" viewBox="0 0 24 24">
+                                    <svg className="h-3.5 w-3.5 text-blue-400 fill-current" viewBox="0 0 24 24">
                                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
                                   </svg>
                                 )}
@@ -1044,27 +1041,27 @@ export default function HomePage() {
                                     Level {item.data.user.level}
                                   </Badge>
                               </div>
-                                <div className="text-xs text-zinc-400">{item.data.user.title}</div>
-                                <div className="text-xs text-zinc-500">{item.data.timestamp}</div>
+                                <div className="text-xs text-zinc-400 mt-0.5">{item.data.user.title}</div>
+                                <div className="text-xs text-zinc-500 mt-0.5">{item.data.timestamp}</div>
                             </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-zinc-400 rounded-full hover:bg-zinc-800/50 hover:text-white"
+                            className="h-7 w-7 text-zinc-400 rounded-full hover:bg-zinc-800/50 hover:text-white"
                           >
-                            <MoreHorizontal className="h-5 w-5" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </div>
                       </EnhancedCardHeader>
-                      <EnhancedCardContent className="px-3 sm:px-4 pb-2">
-                          <p className="text-sm mb-3 text-white leading-relaxed">{item.data.content.text}</p>
+                      <EnhancedCardContent className="px-3.5 sm:px-6 pb-3.5">
+                          <p className="text-xs sm:text-base mb-4 text-white leading-relaxed">{item.data.content.text}</p>
 
                           {/* Achievement Badge with XP */}
                           {item.data.content.type && (
                           <div
                             className={cn(
-                              "p-3 rounded-lg mb-3 transition-all duration-300 hover:shadow-md border",
+                              "p-3 rounded-lg transition-all duration-300 hover:shadow-md border",
                                 item.data.content.type === "resume_score"
                                   ? "bg-emerald-900/20 border-emerald-800/40 shadow-[0_0_8px_0_rgba(16,185,129,0.2)]"
                                   : item.data.content.type === "challenge"
@@ -1081,61 +1078,61 @@ export default function HomePage() {
                               <div className="flex items-center justify-between">
                             <div className="flex items-center">
                                   {item.data.content.type === "resume_score" && (
-                                    <BarChart2 className="h-5 w-5 mr-2 text-emerald-400" />
+                                    <BarChart2 className="h-4 w-4 mr-2 text-emerald-400" />
                               )}
                                   {item.data.content.type === "challenge" && (
-                                <Award className="h-5 w-5 mr-2 text-fuchsia-400" />
+                                <Award className="h-4 w-4 mr-2 text-fuchsia-400" />
                               )}
                                   {item.data.content.type === "streak" && (
-                                    <Zap className="h-5 w-5 mr-2 text-yellow-400" />
+                                    <Zap className="h-4 w-4 mr-2 text-yellow-400" />
                                   )}
                                   {item.data.content.type === "leaderboard" && (
-                                    <Trophy className="h-5 w-5 mr-2 text-orange-400" />
+                                    <Trophy className="h-4 w-4 mr-2 text-orange-400" />
                                   )}
                                   {item.data.content.type === "resume_milestone" && (
-                                    <BarChart2 className="h-5 w-5 mr-2 text-indigo-400" />
+                                    <BarChart2 className="h-4 w-4 mr-2 text-indigo-400" />
                               )}
                               <div>
-                                <p className="font-bold text-sm text-white">
+                                <p className="font-bold text-xs text-white">
                                       {item.data.content.achievement}
                                     </p>
                                     {item.data.content.streakDays && (
-                                      <p className="text-xs text-zinc-400">{item.data.content.streakDays} days streak</p>
+                                      <p className="text-[10px] text-zinc-400">{item.data.content.streakDays} days streak</p>
                                     )}
                                     {/* Additional info for specific types */}
                                     {item.data.content.type === "resume_score" && (
-                                      <div className="flex gap-2 mt-1">
-                                        <span className="text-xs text-emerald-300 font-medium">
+                                      <div className="flex gap-2 mt-0.5">
+                                        <span className="text-[10px] text-emerald-300 font-medium">
                                           Score: {item.data.content.scoreChange}
                                         </span>
-                                        <span className="text-xs text-blue-300">
+                                        <span className="text-[10px] text-blue-300">
                                           {item.data.content.leaderboardChange}
                                         </span>
                               </div>
                                     )}
                                     {item.data.content.type === "leaderboard" && (
-                                      <div className="flex gap-2 mt-1">
-                                        <span className="text-xs text-orange-300 font-medium">
+                                      <div className="flex gap-2 mt-0.5">
+                                        <span className="text-[10px] text-orange-300 font-medium">
                                           Rank: {item.data.content.rank}
                                         </span>
-                                        <span className="text-xs text-zinc-400">
+                                        <span className="text-[10px] text-zinc-400">
                                           {item.data.content.category}
                                         </span>
                                       </div>
                                     )}
                                     {item.data.content.type === "resume_milestone" && (
-                                      <div className="flex gap-2 mt-1">
-                                        <span className="text-xs text-indigo-300 font-medium">
+                                      <div className="flex gap-2 mt-0.5">
+                                        <span className="text-[10px] text-indigo-300 font-medium">
                                           Score: {item.data.content.score}
                                         </span>
-                                        <span className="text-xs text-purple-300">
+                                        <span className="text-[10px] text-purple-300">
                                           {item.data.content.percentile}
                                         </span>
                                       </div>
                                     )}
                                   </div>
                                 </div>
-                                <Badge className="bg-green-900/50 text-green-300 border-green-800 text-[10px]">
+                                <Badge className="bg-green-900/50 text-green-300 border-green-800 text-[9px]">
                                   +{item.data.content.xpGained} XP
                                 </Badge>
                             </div>
@@ -1143,20 +1140,20 @@ export default function HomePage() {
                         )}
 
                       </EnhancedCardContent>
-                      <EnhancedCardFooter className="p-3 sm:p-4 pt-0">
+                      <EnhancedCardFooter className="px-3.5 pb-3.5 sm:px-6 sm:pb-6 pt-0">
                         <div className="flex items-center">
                           <EnhancedButton
                             variant="ghost"
                             size="sm"
                             rounded="full"
                             className={cn(
-                              "transition-all duration-300",
+                              "transition-all duration-300 px-3 py-1.5",
                                 likedPosts.includes(Number(item.data.id)) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
                             )}
                               onClick={() => item.data && toggleLike(Number(item.data.id))}
                           >
                             <ThumbsUp
-                                className={cn("h-4 w-4 mr-1", likedPosts.includes(Number(item.data.id)) && "fill-current")}
+                                className={cn("h-3.5 w-3.5 mr-1.5", likedPosts.includes(Number(item.data.id)) && "fill-current")}
                             />
                               <span className="text-xs">{item.data.likes}</span>
                           </EnhancedButton>
@@ -1168,44 +1165,44 @@ export default function HomePage() {
                       <EnhancedCard
                         variant="gradient"
                         hover="lift"
-                        className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out"
+                        className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl"
                       >
-                        <EnhancedCardHeader className="pb-3">
-                          <EnhancedCardTitle className="text-lg flex items-center">
+                        <EnhancedCardHeader className="p-3.5 pb-2">
+                          <EnhancedCardTitle className="text-sm flex items-center">
                             {'type' in item.data && item.data.type === "network_suggestion" && (
-                              <Users className="h-5 w-5 mr-2 text-blue-400" />
+                              <Users className="h-4 w-4 mr-2 text-blue-400" />
                             )}
                             {'type' in item.data && item.data.type === "progress_update" && (
-                              <BarChart2 className="h-5 w-5 mr-2 text-green-400" />
+                              <BarChart2 className="h-4 w-4 mr-2 text-green-400" />
                             )}
                             {'type' in item.data && item.data.type === "challenge_suggestion" && (
-                              <Trophy className="h-5 w-5 mr-2 text-fuchsia-400" />
+                              <Trophy className="h-4 w-4 mr-2 text-fuchsia-400" />
                             )}
                             <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">
                               {item.data.title}
                             </span>
                           </EnhancedCardTitle>
-                          <p className="text-sm text-zinc-400">{item.data.subtitle}</p>
+                          <p className="text-xs text-zinc-400 mt-0.5">{item.data.subtitle}</p>
                         </EnhancedCardHeader>
-                        <EnhancedCardContent className="p-4 pt-0">
+                        <EnhancedCardContent className="px-3.5 pb-3.5 pt-0">
                           {'type' in item.data && item.data.type === "network_suggestion" && 'suggestions' in item.data && item.data.suggestions && (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                               {item.data.suggestions.map((person: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between p-3 bg-zinc-800/60 border border-blue-700/30 rounded-lg">
-                                  <div className="flex items-center">
-                                    <Avatar className="h-10 w-10 mr-3">
+                                <div key={idx} className="flex items-center justify-between p-2.5 bg-zinc-800/60 border border-blue-700/30 rounded-lg">
+                                  <div className="flex items-center gap-2.5">
+                                    <Avatar className="h-8 w-8">
                                       <AvatarImage src={person.image} />
                                       <AvatarFallback className="bg-zinc-700">{person.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                      <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-white">{person.name}</h4>
-                                        <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
+                                      <div className="flex items-center gap-1.5">
+                                        <h4 className="font-bold text-white text-xs">{person.name}</h4>
+                                        <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[9px]">
                                           Level {person.level}
                                         </Badge>
                                       </div>
-                                      <p className="text-sm text-zinc-400">{person.title}</p>
-                                      <p className="text-xs text-zinc-500">{person.mutualConnections} mutual connections</p>
+                                      <p className="text-[10px] text-zinc-400 mt-0.5">{person.title}</p>
+                                      <p className="text-[9px] text-zinc-500 mt-0.5">{person.mutualConnections} mutual connections</p>
                                     </div>
                                   </div>
                                   <EnhancedButton
@@ -1213,8 +1210,8 @@ export default function HomePage() {
                                     rounded="full"
                                     variant="gradient"
                                     animation="shimmer"
-                                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)]"
-                                    leftIcon={<Plus className="h-3.5 w-3.5" />}
+                                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)] text-xs px-3 py-1"
+                                    leftIcon={<Plus className="h-3 w-3" />}
                                   >
                                     Connect
                                   </EnhancedButton>
@@ -1224,47 +1221,47 @@ export default function HomePage() {
                           )}
                           
                           {'type' in item.data && item.data.type === "progress_update" && 'stats' in item.data && item.data.stats && (
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-3">
-                                  <div className="text-xs text-zinc-400 mb-1">XP Gained</div>
-                                  <div className="text-lg font-bold text-green-400">+{item.data.stats.xpGained}</div>
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-2.5">
+                                  <div className="text-[10px] text-zinc-400 mb-0.5">XP Gained</div>
+                                  <div className="text-base font-bold text-green-400">+{item.data.stats.xpGained}</div>
                                 </div>
-                                <div className="bg-zinc-800/60 border border-blue-700/30 rounded-lg p-3">
-                                  <div className="text-xs text-zinc-400 mb-1">Tasks Done</div>
-                                  <div className="text-lg font-bold text-blue-400">{item.data.stats.tasksCompleted}</div>
+                                <div className="bg-zinc-800/60 border border-blue-700/30 rounded-lg p-2.5">
+                                  <div className="text-[10px] text-zinc-400 mb-0.5">Tasks Done</div>
+                                  <div className="text-base font-bold text-blue-400">{item.data.stats.tasksCompleted}</div>
                                 </div>
                               </div>
-                              <div className="bg-zinc-800/60 border border-yellow-700/30 rounded-lg p-3">
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm font-medium text-white">Level Progress</span>
-                                  <span className="text-xs text-zinc-400">{item.data.stats.levelProgress}%</span>
+                              <div className="bg-zinc-800/60 border border-yellow-700/30 rounded-lg p-2.5">
+                                <div className="flex justify-between items-center mb-1.5">
+                                  <span className="text-xs font-medium text-white">Level Progress</span>
+                                  <span className="text-[10px] text-zinc-400">{item.data.stats.levelProgress}%</span>
                                 </div>
                                 <AnimatedProgress 
                                   value={item.data.stats.levelProgress} 
                                   max={100} 
                                   className="[&>div]:bg-gradient-to-r [&>div]:from-yellow-500 [&>div]:to-orange-500"
                                 />
-                                <p className="text-xs text-zinc-500 mt-1">Next: Level {item.data.stats.nextLevel}</p>
+                                <p className="text-[10px] text-zinc-500 mt-1">Next: Level {item.data.stats.nextLevel}</p>
                               </div>
                             </div>
                           )}
                           
                           {'type' in item.data && item.data.type === "challenge_suggestion" && 'challenge' in item.data && item.data.challenge && (
-                            <div className="space-y-3">
-                              <div className="bg-zinc-800/60 border border-fuchsia-700/30 rounded-lg p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                  <h3 className="font-bold text-white">{item.data.challenge.title}</h3>
-                                  <Badge className="bg-fuchsia-900/50 text-fuchsia-300 border-fuchsia-800 text-[10px]">
+                            <div className="space-y-2.5">
+                              <div className="bg-zinc-800/60 border border-fuchsia-700/30 rounded-lg p-3">
+                                <div className="flex items-start justify-between mb-1.5">
+                                  <h3 className="font-bold text-white text-xs">{item.data.challenge.title}</h3>
+                                  <Badge className="bg-fuchsia-900/50 text-fuchsia-300 border-fuchsia-800 text-[9px]">
                                     +{item.data.challenge.xpReward} XP
                                   </Badge>
                                 </div>
-                                <p className="text-sm text-zinc-400 mb-3">{item.data.challenge.description}</p>
+                                <p className="text-[10px] text-zinc-400 mb-2">{item.data.challenge.description}</p>
                                 <div className="flex items-center justify-between">
-                                  <div className="text-xs text-zinc-500">
+                                  <div className="text-[9px] text-zinc-500">
                                     {item.data.challenge.participants.toLocaleString()} participants
                                   </div>
-                                  <div className="text-xs text-red-400 font-medium">
+                                  <div className="text-[9px] text-red-400 font-medium">
                                     {item.data.challenge.deadline}
                                   </div>
                                 </div>
@@ -1274,7 +1271,7 @@ export default function HomePage() {
                                 rounded="full"
                                 variant="gradient"
                                 animation="shimmer"
-                                className="w-full bg-gradient-to-r from-fuchsia-500 via-purple-500 to-blue-500 shadow-[0_0_8px_0_rgba(217,70,239,0.4)]"
+                                className="w-full bg-gradient-to-r from-fuchsia-500 via-purple-500 to-blue-500 shadow-[0_0_8px_0_rgba(217,70,239,0.4)] text-xs py-2"
                               >
                                 Join Challenge
                               </EnhancedButton>
@@ -1287,34 +1284,34 @@ export default function HomePage() {
                 ))}
               </TabsContent>
 
-              <TabsContent value="network" className="space-y-4">
-                <h3 className="text-lg font-extrabold mb-2 bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">People You May Know</h3>
+              <TabsContent value="network" className="space-y-3">
+                <h3 className="text-sm font-extrabold mb-3 bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">People You May Know</h3>
                 {networkSuggestions.map((person, index) => (
                   <AnimatedSection key={person.id} delay={0.1 + index * 0.08}>
-                    <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
-                      <EnhancedCardContent className="p-4">
-                        <div className="flex items-center">
-                          <Avatar className="h-12 w-12 mr-3 interactive">
+                    <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
+                      <EnhancedCardContent className="p-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-9 w-9 interactive">
                             <AvatarImage src={person.image} />
                             <AvatarFallback className="bg-zinc-800">{person.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-white">{person.name}</h4>
+                            <div className="flex items-center gap-1.5">
+                            <h4 className="font-bold text-white text-xs">{person.name}</h4>
                               <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
                                 Level {person.level}
                               </Badge>
                             </div>
-                            <p className="text-sm text-zinc-400">{person.title}</p>
-                            <p className="text-xs text-zinc-500 mt-1">{person.mutualConnections} mutual connections</p>
+                            <p className="text-[10px] text-zinc-400 mt-0.5">{person.title}</p>
+                            <p className="text-[9px] text-zinc-500 mt-0.5">{person.mutualConnections} mutual connections</p>
                           </div>
                           <EnhancedButton
                             size="sm"
                             rounded="full"
                             variant="gradient"
                             animation="shimmer"
-                            className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)]"
-                            leftIcon={<Plus className="h-3.5 w-3.5" />}
+                            className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)] text-xs px-3 py-1"
+                            leftIcon={<Plus className="h-3 w-3" />}
                           >
                             Connect
                           </EnhancedButton>
@@ -1327,75 +1324,75 @@ export default function HomePage() {
                   <EnhancedButton
                     variant="outline"
                     rounded="full"
-                    className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:border-blue-500/50 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)]"
+                    className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:border-blue-500/50 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] text-xs px-5 py-2"
                   >
                     View More Suggestions
                   </EnhancedButton>
                 </div>
               </TabsContent>
 
-              <TabsContent value="achievements" className="space-y-4">
+              <TabsContent value="achievements" className="space-y-3">
                 <AnimatedSection delay={0.1} staggerChildren staggerDelay={0.05}>
-                  <h3 className="text-lg font-extrabold mb-2 flex items-center">
-                    <Award className="h-5 w-5 mr-2 text-blue-400" />
+                  <h3 className="text-sm font-extrabold mb-3 flex items-center">
+                    <Award className="h-4 w-4 mr-2 text-blue-400" />
                     <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">Your Recent Achievements</span>
                   </h3>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
                     <EnhancedCardContent className="p-3">
-                      <div className="flex items-start">
-                        <div className="bg-blue-950 p-2 rounded-md mr-3">
-                          <Award className="h-5 w-5 text-blue-400" />
+                      <div className="flex items-start gap-2.5">
+                        <div className="bg-blue-950 p-2 rounded-md">
+                          <Award className="h-4 w-4 text-blue-400" />
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-white">Completed Advanced React Course</h3>
-                            <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-bold text-white text-xs">Completed Advanced React Course</h3>
+                            <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px] whitespace-nowrap">
                               +500 XP
                             </Badge>
                           </div>
-                          <p className="text-sm text-zinc-400 mt-1">Earned certificate of completion</p>
-                          <div className="text-xs text-zinc-500 mt-1">2 weeks ago</div>
+                          <p className="text-[10px] text-zinc-400 mt-1">Earned certificate of completion</p>
+                          <div className="text-[9px] text-zinc-500 mt-0.5">2 weeks ago</div>
                         </div>
                       </div>
                     </EnhancedCardContent>
                   </EnhancedCard>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
                     <EnhancedCardContent className="p-3">
-                      <div className="flex items-start">
-                        <div className="bg-purple-950 p-2 rounded-md mr-3">
-                          <Trophy className="h-5 w-5 text-purple-400" />
+                      <div className="flex items-start gap-2.5">
+                        <div className="bg-purple-950 p-2 rounded-md">
+                          <Trophy className="h-4 w-4 text-purple-400" />
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-white">Promoted to Senior Developer</h3>
-                            <Badge className="bg-purple-900/50 text-purple-300 border-purple-800 text-[10px]">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-bold text-white text-xs">Promoted to Senior Developer</h3>
+                            <Badge className="bg-purple-900/50 text-purple-300 border-purple-800 text-[10px] whitespace-nowrap">
                               +750 XP
                             </Badge>
                           </div>
-                          <p className="text-sm text-zinc-400 mt-1">Career milestone achievement</p>
-                          <div className="text-xs text-zinc-500 mt-1">1 month ago</div>
+                          <p className="text-[10px] text-zinc-400 mt-1">Career milestone achievement</p>
+                          <div className="text-[9px] text-zinc-500 mt-0.5">1 month ago</div>
                         </div>
                       </div>
                     </EnhancedCardContent>
                   </EnhancedCard>
 
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out">
+                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
                     <EnhancedCardContent className="p-3">
-                      <div className="flex items-start">
-                        <div className="bg-green-950 p-2 rounded-md mr-3">
-                          <FileText className="h-5 w-5 text-green-400" />
+                      <div className="flex items-start gap-2.5">
+                        <div className="bg-green-950 p-2 rounded-md">
+                          <FileText className="h-4 w-4 text-green-400" />
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-white">Published Technical Article</h3>
-                            <Badge className="bg-green-900/40 text-green-300 border-green-800/40 text-[10px]">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-bold text-white text-xs">Published Technical Article</h3>
+                            <Badge className="bg-green-900/40 text-green-300 border-green-800/40 text-[10px] whitespace-nowrap">
                               +300 XP
                             </Badge>
                           </div>
-                          <p className="text-sm text-zinc-400 mt-1">10,000+ views on Medium</p>
-                          <div className="text-xs text-zinc-500 mt-1">2 months ago</div>
+                          <p className="text-[10px] text-zinc-400 mt-1">10,000+ views on Medium</p>
+                          <div className="text-[9px] text-zinc-500 mt-0.5">2 months ago</div>
                         </div>
                       </div>
                     </EnhancedCardContent>
@@ -1405,7 +1402,7 @@ export default function HomePage() {
                     <EnhancedButton
                       variant="default"
                       rounded="full"
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-blue-600 hover:bg-blue-700 text-xs px-5 py-2"
                       onClick={() => router.push("/profile")}
                     >
                       View All Achievements
@@ -1415,13 +1412,8 @@ export default function HomePage() {
               </TabsContent>
             </Tabs>
           </div>
-
-          {/* Right Spacer */}
-          <div className="lg:col-span-2"></div>
         </div>
       </div>
-
-
     </DashboardLayout>
   )
 }
