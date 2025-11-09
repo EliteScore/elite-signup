@@ -9,7 +9,11 @@ const {
   handleRemoveReaction,
   handleEditMessage,
   handleDeleteMessage,
-  handleDeleteConversation
+  handleDeleteConversation,
+  handleGetPrivateMessages,
+  handleGetUserCommunities,
+  handleGetCommunityMembersList,
+  handleGetCommunityProgress
 } = require('./messageHandlers');
 
 const {
@@ -84,6 +88,22 @@ async function handleMessage(ws, message, clientId, clients, userConnections, co
       
     case 'delete_conversation':
       await handleDeleteConversation(ws, data, clientId, clients, userConnections, conversations);
+      break;
+      
+    case 'get_private_messages':
+      await handleGetPrivateMessages(ws, data, clientId, clients, userConnections, conversations);
+      break;
+    
+    case 'get_communities':
+      await handleGetUserCommunities(ws, data, clientId, clients);
+      break;
+
+    case 'get_community_members':
+      await handleGetCommunityMembersList(ws, data, clientId, clients);
+      break;
+
+    case 'get_community_progress':
+      await handleGetCommunityProgress(ws, data, clientId, clients);
       break;
       
     // Group chat handlers
@@ -188,7 +208,7 @@ async function handleMessage(ws, message, clientId, clients, userConnections, co
       ws.send(JSON.stringify({
         type: 'error',
         message: 'Unknown message type',
-        details: `The message type '${type}' is not supported. Supported types: authenticate, auth, get_online_users, start_conversation, send_private_message, mark_message_read, typing, add_reaction, remove_reaction, edit_message, delete_message, delete_conversation, create_group, send_group_message, get_group_messages, get_user_groups, get_group_members, add_group_member, remove_group_member, leave_group, update_group_info, get_group_info, edit_group_message, delete_group_message, add_group_reaction, remove_group_reaction, ping, test`
+        details: `The message type '${type}' is not supported. Supported types: authenticate, auth, get_online_users, start_conversation, send_private_message, mark_message_read, typing, add_reaction, remove_reaction, edit_message, delete_message, delete_conversation, get_private_messages, get_communities, get_community_members, get_community_progress, create_group, send_group_message, get_group_messages, get_user_groups, get_group_members, add_group_member, remove_group_member, leave_group, update_group_info, get_group_info, edit_group_message, delete_group_message, add_group_reaction, remove_group_reaction, ping, test`
       }));
   }
 }

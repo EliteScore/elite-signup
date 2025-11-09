@@ -124,6 +124,16 @@ ws.send(JSON.stringify({
 }));
 ```
 
+### Load Older Messages (Pagination)
+```javascript
+ws.send(JSON.stringify({
+  type: 'get_private_messages',
+  recipientId: '456',
+  limit: 50,
+  offset: 50  // Load messages 51-100
+}));
+```
+
 ### Create Group
 ```javascript
 ws.send(JSON.stringify({
@@ -139,6 +149,32 @@ ws.send(JSON.stringify({
   type: 'send_group_message',
   groupId: 'group123',
   content: 'Hi everyone!'
+}));
+```
+
+### Send Announcement (Owner/Admin)
+```javascript
+ws.send(JSON.stringify({
+  type: 'send_announcement',
+  groupId: 'group123',
+  content: 'Important: Meeting at 3 PM!'
+}));
+```
+
+### Pin Message (Owner/Admin)
+```javascript
+ws.send(JSON.stringify({
+  type: 'pin_message',
+  messageId: 'gmsg_001',
+  groupId: 'group123'
+}));
+```
+
+### Get Pinned Messages
+```javascript
+ws.send(JSON.stringify({
+  type: 'get_pinned_messages',
+  groupId: 'group123'
 }));
 ```
 

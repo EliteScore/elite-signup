@@ -13,14 +13,15 @@ if (process.env.DATABASE_URL) {
     }
   };
 } else {
-  // Use individual credentials
+  // Use individual credentials from environment variables
   dbConfig = {
-    host: process.env.DB_HOST || 'cd6emofiekhlj.cluster-czz5s0kz4scl.eu-west-1.rds.amazonaws.com',
+    host: process.env.DB_HOST,
     port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'd4ukv7mqkkc9i1',
-    user: process.env.DB_USER || 'u2eb6vlhflq6bt',
-    password: process.env.DB_PASS || 'pe9512a0cbf2bc2eee176022c82836beedc48733196d06484e5dc69e2754f5a79',
-    ssl: {
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    // Enable SSL for remote databases (required for most cloud databases)
+    ssl: process.env.DB_SSL === 'false' ? false : {
       rejectUnauthorized: false
     }
   };
@@ -143,9 +144,48 @@ async function initializeDatabase() {
           }
         }
         
-        console.log('Group chat tables and indexes setup completed');
+      console.log('Group chat tables and indexes setup completed');
       } catch (groupError) {
         console.warn('Group chat SQL file not found or error loading:', groupError.message);
+      }
+      
+      // Load and execute community tables SQL
+      try {
+        const communitySqlFile = fs.readFileSync(path.join(__dirname, '..', 'docs', 'community_tables.sql'), 'utf8');
+        const communityStatements = [];
+        let currentCommunityStmt = '';
+        
+        const communityLines = communitySqlFile.split('\n');
+        for (const line of communityLines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('--') || trimmed === '') continue;
+          
+          currentCommunityStmt += line + '\n';
+          if (line.includes(';')) {
+            if (currentCommunityStmt.trim()) {
+              communityStatements.push(currentCommunityStmt.trim());
+            }
+            currentCommunityStmt = '';
+          }
+        }
+        
+        if (currentCommunityStmt.trim()) {
+          communityStatements.push(currentCommunityStmt.trim());
+        }
+        
+        for (const stmt of communityStatements) {
+          if (stmt.trim()) {
+            try {
+              await dbPool.query(stmt);
+            } catch (sqlError) {
+              console.warn(`Community SQL statement failed (might already exist): ${sqlError.message}`);
+            }
+          }
+        }
+        
+        console.log('Community tables and indexes setup completed');
+      } catch (communityError) {
+        console.warn('Community SQL file not found or error loading:', communityError.message);
       }
       
     } catch (error) {

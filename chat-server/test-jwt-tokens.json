@@ -1,0 +1,51 @@
+{
+  "valid_tokens": [
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwianRpIjoidGVzdC1qd3QtMS0xNzYwMjk0NjA3MTA5IiwiaWF0IjoxNzYwMjk0NjA3LCJleHAiOjE3NjAzODEwMDd9.aR5_-R9U5ga1jgh0RcjYrHSiyIdAvPGbBqHYL3fjGAU",
+      "user": {
+        "userId": 1,
+        "username": "user1",
+        "email": "calin.gamerul@gmail.com"
+      },
+      "jti": "test-jwt-1-1760294607109"
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwianRpIjoidGVzdC1qd3QtMi0xNzYwMjk0NjA3MTE0IiwiaWF0IjoxNzYwMjk0NjA3LCJleHAiOjE3NjAzODEwMDd9.OOIrWT4yi7nB5TGV0C6pwyJIWkkfNmfLmo_402pdPcQ",
+      "user": {
+        "userId": 2,
+        "username": "user2",
+        "email": "user2@gmail.com"
+      },
+      "jti": "test-jwt-2-1760294607114"
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoidGVzdC1qd3QtMy0xNzYwMjk0NjA3MTE1IiwiaWF0IjoxNzYwMjk0NjA3LCJleHAiOjE3NjAzODEwMDd9.b0sTxLT9c8JfwXYOY5uGsoMxmwlTTmY4xypvVkiIDI4",
+      "user": {
+        "userId": 3,
+        "username": "user3",
+        "email": "user3@gmail.com"
+      },
+      "jti": "test-jwt-3-1760294607115"
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwianRpIjoidGVzdC1qd3QtNC0xNzYwMjk0NjA3MTE2IiwiaWF0IjoxNzYwMjk0NjA3LCJleHAiOjE3NjAzODEwMDd9.r6Zhu6un5CsNiM8MbihyW_CVgPHqKKyOa7RFxkgfcEw",
+      "user": {
+        "userId": 4,
+        "username": "user4",
+        "email": "user4@gmail.com"
+      },
+      "jti": "test-jwt-4-1760294607116"
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMCIsImp0aSI6InRlc3Qtand0LTMwLTE3NjAyOTQ2MDcxMTciLCJpYXQiOjE3NjAyOTQ2MDcsImV4cCI6MTc2MDM4MTAwN30.Ytv3U4b4-cftP-zlzlcFsv_dcGfphlH3cbYrHEJCK9E",
+      "user": {
+        "userId": 30,
+        "username": "testuser",
+        "email": "testuser@elitescore.com"
+      },
+      "jti": "test-jwt-30-1760294607117"
+    }
+  ],
+  "generated_at": "2025-10-12T18:43:27.118Z",
+  "note": "These tokens are valid for 24 hours and use the current JWT_SECRET"
+}

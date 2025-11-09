@@ -9,11 +9,12 @@
 
 ## Summary
 
-- **26 WebSocket message types**
+- **31 WebSocket message types**
 - **4 HTTP monitoring endpoints**
-- **7 Direct messaging endpoints**
-- **14 Group chat endpoints**
+- **8 Direct messaging endpoints**
+- **18 Group chat endpoints**
 - **2 Reaction endpoints**
+- **2 Utility endpoints**
 - **4 Security layers** (auth, blocking, following, rate limit)
 
 ---
@@ -45,10 +46,11 @@
 | Typing Indicators | ✅ | Real-time typing status |
 | Reply to Messages | ✅ | Reference parent message |
 
-**Endpoints:** 7 total
+**Endpoints:** 8 total
 - `get_online_users`
 - `start_conversation`
 - `send_private_message`
+- `get_private_messages` - Load history with pagination
 - `edit_private_message`
 - `delete_private_message`
 - `delete_conversation`
@@ -104,7 +106,7 @@
 | Delete Group Messages | ✅ | Delete own messages |
 | Max Members Limit | ✅ | Default 50, enforced in code |
 
-**Endpoints:** 14 total
+**Endpoints:** 18 total
 - `create_group`
 - `send_group_message`
 - `get_group_messages`
@@ -120,6 +122,10 @@
 - `promote_member`
 - `demote_member`
 - `delete_group`
+- `send_announcement`
+- `pin_message`
+- `unpin_message`
+- `get_pinned_messages`
 
 ---
 
@@ -151,6 +157,24 @@
 **Options:**
 - `permanent: false` - Soft delete (default)
 - `permanent: true` - Hard delete (immediate)
+
+---
+
+## Announcements & Pinning
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| Send Announcements | ✅ | Owner/admin can send important announcements |
+| Pin Messages | ✅ | Owner/admin can pin important messages |
+| Unpin Messages | ✅ | Owner/admin can unpin messages |
+| Get Pinned Messages | ✅ | Retrieve all pinned messages in group |
+| Real-Time Broadcast | ✅ | All members notified of pins/announcements |
+
+**Endpoints:** 4 total
+- `send_announcement`
+- `pin_message`
+- `unpin_message`
+- `get_pinned_messages`
 
 ---
 
@@ -337,10 +361,12 @@ All auto-initialized on server startup:
 
 **Total Implementation:**
 
-✅ **26 WebSocket message types**  
+✅ **31 WebSocket message types**  
 ✅ **4 HTTP monitoring endpoints**  
 ✅ **4 security layers**  
 ✅ **3 user roles** (owner, admin, member)  
 ✅ **12 database tables** (auto-initialized)  
+✅ **Announcements & pinned messages**  
+✅ **DM pagination for infinite scroll**  
 ✅ **Production ready!** 🚀
 

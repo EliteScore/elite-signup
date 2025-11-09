@@ -1,6 +1,6 @@
 # Complete API Reference
 
-All 26 WebSocket message types and HTTP endpoints.
+All 29 WebSocket message types and HTTP endpoints.
 
 ---
 
@@ -10,8 +10,9 @@ All 26 WebSocket message types and HTTP endpoints.
 2. [Direct Messages](#direct-messages)
 3. [Group Chats](#group-chats)
 4. [Reactions](#reactions)
-5. [HTTP Endpoints](#http-endpoints)
-6. [Error Codes](#error-codes)
+5. [Communities](#communities)
+6. [HTTP Endpoints](#http-endpoints)
+7. [Error Codes](#error-codes)
 
 ---
 
@@ -203,6 +204,50 @@ Delete your own message.
   "conversationId": "conv_123_456"
 }
 ```
+
+---
+
+### get_private_messages
+
+Load message history with pagination (for infinite scroll).
+
+**Send:**
+```json
+{
+  "type": "get_private_messages",
+  "recipientId": "456",
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Receive:**
+```json
+{
+  "type": "private_message_history",
+  "conversationId": "conv_123_456",
+  "messages": [
+    {
+      "messageId": "msg_001",
+      "senderId": "123",
+      "content": "Hello!",
+      "createdAt": "2025-10-12T15:00:00.000Z"
+    }
+  ],
+  "hasMore": true,
+  "total": 150,
+  "offset": 0,
+  "limit": 50
+}
+```
+
+**Pagination:**
+- `offset: 0` - Most recent 50 messages
+- `offset: 50` - Messages 51-100
+- `offset: 100` - Messages 101-150
+- `hasMore: true` - More messages available
+
+**Use Case:** Infinite scroll in chat UI to load older messages.
 
 ---
 
@@ -690,6 +735,122 @@ Delete group (Owner only).
 
 ---
 
+### send_announcement
+
+Send announcement to group (Owner/Admin only).
+
+**Send:**
+```json
+{
+  "type": "send_announcement",
+  "groupId": "group_abc123",
+  "content": "Important: Meeting at 3 PM!"
+}
+```
+
+**All Members Receive:**
+```json
+{
+  "type": "group_announcement",
+  "groupId": "group_abc123",
+  "announcementId": "ann_001",
+  "senderId": "123",
+  "senderUsername": "john_doe",
+  "content": "Important: Meeting at 3 PM!",
+  "createdAt": "2025-10-12T16:00:00.000Z"
+}
+```
+
+**Restrictions:**
+- ❌ Only owner or admin can send announcements
+
+---
+
+### pin_message
+
+Pin message in group (Owner/Admin only).
+
+**Send:**
+```json
+{
+  "type": "pin_message",
+  "messageId": "gmsg_001",
+  "groupId": "group_abc123"
+}
+```
+
+**All Members Receive:**
+```json
+{
+  "type": "message_pinned",
+  "messageId": "gmsg_001",
+  "groupId": "group_abc123",
+  "pinnedBy": "123",
+  "timestamp": "2025-10-12T16:05:00.000Z"
+}
+```
+
+**Restrictions:**
+- ❌ Only owner or admin can pin messages
+
+---
+
+### unpin_message
+
+Unpin message in group (Owner/Admin only).
+
+**Send:**
+```json
+{
+  "type": "unpin_message",
+  "messageId": "gmsg_001",
+  "groupId": "group_abc123"
+}
+```
+
+**All Members Receive:**
+```json
+{
+  "type": "message_unpinned",
+  "messageId": "gmsg_001",
+  "groupId": "group_abc123",
+  "unpinnedBy": "123",
+  "timestamp": "2025-10-12T16:10:00.000Z"
+}
+```
+
+---
+
+### get_pinned_messages
+
+Get all pinned messages in group.
+
+**Send:**
+```json
+{
+  "type": "get_pinned_messages",
+  "groupId": "group_abc123"
+}
+```
+
+**Receive:**
+```json
+{
+  "type": "pinned_messages",
+  "groupId": "group_abc123",
+  "messages": [
+    {
+      "messageId": "gmsg_001",
+      "content": "Important announcement",
+      "pinnedBy": "123",
+      "pinnedAt": "2025-10-12T16:05:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
 ## Reactions
 
 ### add_group_reaction
@@ -747,6 +908,147 @@ Remove your own reaction.
   "emoji": "👍"
 }
 ```
+
+---
+
+## Communities
+
+Real-time community features align chat with EliteScore dashboards.
+
+### get_communities
+
+Load all communities the authenticated user belongs to (mirrors EliteScore leaderboards).
+
+**Send:**
+```json
+{
+  "type": "get_communities"
+}
+```
+
+**Receive:**
+```json
+{
+  "type": "community_list",
+  "communities": [
+    {
+      "communityId": "community_product_engineers",
+      "name": "Product Engineers",
+      "description": "Daily 2% better crew",
+      "avatarUrl": "https://cdn.elitescore.com/avatars/product.png",
+      "defaultGroupId": "group_product_engineers",
+      "role": "member",
+      "joinedAt": "2025-01-02T18:34:22.194Z",
+      "isMuted": false
+    }
+  ],
+  "timestamp": "2025-11-09T20:00:00.000Z"
+}
+```
+
+---
+
+### get_community_members
+
+Retrieve the roster for a community you belong to.
+
+**Send:**
+```json
+{
+  "type": "get_community_members",
+  "communityId": "community_product_engineers"
+}
+```
+
+**Receive:**
+```json
+{
+  "type": "community_members",
+  "communityId": "community_product_engineers",
+  "members": [
+    {
+      "userId": "user_123",
+      "role": "owner",
+      "joinedAt": "2025-01-01T00:00:00.000Z",
+      "lastSeenAt": "2025-11-09T19:59:11.011Z",
+      "isMuted": false
+    }
+  ],
+  "timestamp": "2025-11-09T20:00:00.000Z"
+}
+```
+
+*Errors:*  
+- `AUTH_REQUIRED` if you are not authenticated  
+- `ACCESS_DENIED` if you are not a member
+
+---
+
+### get_community_progress
+
+Fetch your XP, streaks, and latest challenge inside a community.
+
+**Send:**
+```json
+{
+  "type": "get_community_progress",
+  "communityId": "community_product_engineers"
+}
+```
+
+**Receive:**
+```json
+{
+  "type": "community_progress",
+  "communityId": "community_product_engineers",
+  "progress": {
+    "communityId": "community_product_engineers",
+    "userId": "user_123",
+    "totalXp": 1840,
+    "dailyStreak": 5,
+    "weeklyStreak": 2,
+    "lastChallengeId": "challenge_2025_11_09_daily",
+    "lastChallengeType": "daily",
+    "lastCompletedAt": "2025-11-09T18:42:10.441Z"
+  },
+  "timestamp": "2025-11-09T20:00:00.000Z"
+}
+```
+
+---
+
+### community_progress_update (server push)
+
+Sent to all online members when EliteScore records a new challenge completion or XP sync.
+
+**Receive:**
+```json
+{
+  "type": "community_progress_update",
+  "communityId": "community_product_engineers",
+  "userId": "user_456",
+  "event": {
+    "eventId": "evt_01JBF94G8Z5N3P8",
+    "challengeId": "daily-standup",
+    "challengeType": "daily",
+    "xpAwarded": 40,
+    "occurredAt": "2025-11-09T19:55:12.991Z"
+  },
+  "progress": {
+    "communityId": "community_product_engineers",
+    "userId": "user_456",
+    "totalXp": 2620,
+    "dailyStreak": 12,
+    "weeklyStreak": 4,
+    "lastChallengeId": "daily-standup",
+    "lastChallengeType": "daily",
+    "lastCompletedAt": "2025-11-09T19:55:12.991Z"
+  },
+  "timestamp": "2025-11-09T19:55:13.201Z"
+}
+```
+
+Use this event to update chat sidebars, pin celebration messages, or trigger toast notifications without polling.
 
 ---
 
@@ -812,6 +1114,69 @@ Performance metrics.
 
 ---
 
+### POST /community/progression
+
+Webhook for EliteScore dashboard events. Upserts communities, syncs members, and broadcasts XP updates.
+
+- **Auth:** `Authorization: Bearer <COMMUNITY_SYNC_TOKEN>`
+- **Max payload:** `COMMUNITY_SYNC_MAX_PAYLOAD` bytes (default 256KB)
+
+**Request Body:**
+```json
+{
+  "community": {
+    "communityId": "community_product_engineers",
+    "name": "Product Engineers",
+    "description": "Daily 2% better crew",
+    "avatarUrl": "https://cdn.elitescore.com/avatars/product.png",
+    "defaultGroupId": "group_product_engineers",
+    "isActive": true
+  },
+  "event": {
+    "eventId": "evt_01JBF94G8Z5N3P8",
+    "userId": "user_456",
+    "challengeId": "daily-standup",
+    "challengeType": "daily",
+    "xpAwarded": 40,
+    "occurredAt": "2025-11-09T19:55:12.991Z",
+    "payload": { "note": "Completed async alignment" }
+  },
+  "progress": {
+    "userId": "user_456",
+    "totalXp": 2620,
+    "dailyStreak": 12,
+    "weeklyStreak": 4,
+    "lastChallengeId": "daily-standup",
+    "lastChallengeType": "daily",
+    "lastCompletedAt": "2025-11-09T19:55:12.991Z"
+  },
+  "members": [
+    { "userId": "user_456", "role": "member" },
+    { "userId": "user_123", "role": "owner" }
+  ]
+}
+```
+
+**Success Response:**
+```json
+{
+  "status": "ok",
+  "communityId": "community_product_engineers",
+  "event": { "...": "..." },
+  "progress": { "...": "..." },
+  "broadcast": { "delivered": 3 },
+  "timestamp": "2025-11-09T19:55:13.201Z"
+}
+```
+
+**Status Codes:**
+- `200` synced successfully
+- `401` missing/invalid bearer token
+- `413` payload too large
+- `500` server error (check logs)
+
+---
+
 ### GET /live
 
 Liveness probe.
@@ -842,14 +1207,16 @@ Liveness probe.
 
 ## Summary
 
-**Total Endpoints:** 26 WebSocket + 4 HTTP
+**Total Endpoints:** 34 WebSocket + 5 HTTP
 
 **Categories:**
 - 1 Authentication
-- 7 Direct Messages  
-- 14 Group Chats
+- 8 Direct Messages  
+- 18 Group Chats
 - 2 Reactions
-- 4 HTTP Monitoring
+- 3 Communities
+- 2 Utility
+- 5 HTTP / Webhooks
 
 **All endpoints return JSON and handle errors gracefully.**
 

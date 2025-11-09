@@ -17,6 +17,18 @@ A **production-ready chat server** that works as a microservice in your architec
 
 ## 📚 Complete Documentation
 
+### System Architecture
+
+#### 🏗️ [System Design](./docs/SYSTEM_DESIGN.md)
+Complete architecture overview - **Start here to understand how everything works!**
+- Microservice architecture with Java backend
+- Connection management & message routing
+- Security model (4 layers)
+- Scalability strategies
+- Performance optimizations
+
+---
+
 ### For Developers Building Frontend
 
 #### 🚀 [Frontend Quick Start](./docs/FRONTEND_QUICK_START.md)
@@ -90,6 +102,37 @@ ws.onopen = () => {
 
 ---
 
+## 🧩 Community Sync Setup (EliteScore)
+
+1. **Set environment variables**
+   ```bash
+   cp env.example .env
+   # Add/update:
+   COMMUNITY_SYNC_TOKEN=replace-with-shared-secret
+   COMMUNITY_SYNC_MAX_PAYLOAD=262144   # optional (bytes)
+   ```
+2. **Restart the chat server** so community tables auto-create.
+3. **Smoke test the DB flow**
+   ```bash
+   node tests/test-community-sync.js
+   ```
+4. **Send a sample webhook**
+   ```bash
+   npm run community:send -- --community demo --user demoUser
+   # Override endpoint: --url https://your-chat-server/community/progression
+   ```
+5. **Hook up the Next.js dashboard**
+   - After a challenge completes, POST to `/community/progression`.
+   - Include community metadata, member list, XP/streak snapshot.
+   - Use `Authorization: Bearer $COMMUNITY_SYNC_TOKEN`.
+6. **Update the chat client UI** (see [Frontend Integration](./FRONTEND_INTEGRATION.md)):
+   - After `auth_success`, call `get_communities`, `get_community_members`, `get_community_progress`.
+   - Listen for `community_progress_update` to refresh badges/toasts in real time.
+
+> Payload details live in the “Communities” section of the [API Reference](./docs/API_REFERENCE.md).
+
+---
+
 ## 🏗️ Architecture
 
 ```
@@ -135,6 +178,8 @@ Chat Server (Node.js)  ←→  Same Database
 - ✅ Add/remove members
 - ✅ Promote/demote admins
 - ✅ Leave/delete groups
+- ✅ Send announcements (Owner/Admin)
+- ✅ Pin/unpin important messages
 - ✅ Reactions (any emoji)
 
 ### Security

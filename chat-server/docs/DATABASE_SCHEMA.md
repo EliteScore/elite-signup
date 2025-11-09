@@ -26,6 +26,10 @@ All tables are shared with your main Java backend application.
 10. `user_follows` - Follow relationships
 11. `group_chats` - Group metadata
 12. `group_members` - Group membership
+13. `communities` - EliteScore community registry
+14. `community_members` - User → community membership
+15. `user_community_progress` - XP and streak snapshots
+16. `community_challenge_events` - Challenge event audit log
 
 ---
 
@@ -272,6 +276,87 @@ CREATE INDEX idx_group_members_list ON group_members(group_id);
 
 ---
 
+### communities
+EliteScore community metadata synced from the dashboard.
+
+```sql
+CREATE TABLE communities (
+  id SERIAL PRIMARY KEY,
+  community_id VARCHAR(255) UNIQUE NOT NULL,
+  external_ref VARCHAR(255),
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  avatar_url TEXT,
+  default_group_id VARCHAR(255),
+  created_by_user_id VARCHAR(255),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+---
+
+### community_members
+Links users to communities with role metadata.
+
+```sql
+CREATE TABLE community_members (
+  id SERIAL PRIMARY KEY,
+  community_id VARCHAR(255) REFERENCES communities(community_id) ON DELETE CASCADE,
+  user_id VARCHAR(255) NOT NULL,
+  role VARCHAR(50) DEFAULT 'member',
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  is_muted BOOLEAN DEFAULT FALSE,
+  metadata JSONB DEFAULT '{}'::JSONB,
+  UNIQUE(community_id, user_id)
+);
+```
+
+---
+
+### user_community_progress
+Stores XP, streaks, and recent activity per user per community.
+
+```sql
+CREATE TABLE user_community_progress (
+  id SERIAL PRIMARY KEY,
+  community_id VARCHAR(255) REFERENCES communities(community_id) ON DELETE CASCADE,
+  user_id VARCHAR(255) NOT NULL,
+  total_xp INTEGER DEFAULT 0,
+  daily_streak INTEGER DEFAULT 0,
+  weekly_streak INTEGER DEFAULT 0,
+  last_challenge_id VARCHAR(255),
+  last_challenge_type VARCHAR(100),
+  last_completed_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(community_id, user_id)
+);
+```
+
+---
+
+### community_challenge_events
+Audit log of challenge completions sent from the EliteScore dashboard.
+
+```sql
+CREATE TABLE community_challenge_events (
+  id SERIAL PRIMARY KEY,
+  event_id VARCHAR(255) UNIQUE NOT NULL,
+  community_id VARCHAR(255) REFERENCES communities(community_id) ON DELETE CASCADE,
+  user_id VARCHAR(255) NOT NULL,
+  challenge_id VARCHAR(255),
+  challenge_type VARCHAR(100),
+  xp_awarded INTEGER DEFAULT 0,
+  payload JSONB,
+  occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  ingested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+---
+
 ## Indexes
 
 All critical queries are indexed for performance:
@@ -306,6 +391,11 @@ group_chats
 private_messages
   ├── message_reactions (many)
   └── message_deletions (many)
+
+communities
+  ├── community_members (many)
+  ├── user_community_progress (many)
+  └── community_challenge_events (many)
 ```
 
 ---

@@ -3,6 +3,11 @@ const { verifyJWTWithBackend } = require('../security/jwtUtils');
 const { savePrivateMessageToDatabase, loadPrivateMessagesFromDatabase } = require('../database/messageOperations');
 const InputValidator = require('../security/inputValidator');
 const { getRedisClient, isRedisConnected } = require('../config/redis');
+const {
+  getCommunitiesForUser,
+  getCommunityMembers,
+  getUserCommunityProgress
+} = require('../database/communityOperations');
 const { checkIfBlocked } = require('../security/blockingUtils');
 const { canMessageUser } = require('../security/followingUtils');
 
@@ -1176,6 +1181,190 @@ async function handleDeleteConversation(ws, data, clientId, clients, userConnect
   }
 }
 
+async function handleGetPrivateMessages(ws, data, clientId, clients, userConnections, conversations) {
+  const client = clients.get(clientId);
+  if (!client || !client.user) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Authentication required',
+      details: 'You must be authenticated to load messages.'
+    }));
+    return;
+  }
+  
+  const { recipientId, limit = 50, offset = 0 } = data;
+  
+  if (!recipientId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Recipient ID is required'
+    }));
+    return;
+  }
+  
+  // Generate conversation ID
+  const conversationId = generateConversationId(client.user.userId, recipientId);
+  
+  // Load messages from database with pagination
+  const { loadPrivateMessagesFromDatabase } = require('../database/messageOperations');
+  const dbPool = require('../config/database').dbPool;
+  
+  try {
+    const messages = await loadPrivateMessagesFromDatabase(conversationId, dbPool, limit, offset);
+    
+    // Check if there are more messages
+    const totalMessages = await dbPool.query(
+      `SELECT COUNT(*) FROM private_messages WHERE conversation_id = $1 AND is_deleted = false`,
+      [conversationId]
+    );
+    const total = parseInt(totalMessages.rows[0].count);
+    const hasMore = (offset + limit) < total;
+    
+    ws.send(JSON.stringify({
+      type: 'private_message_history',
+      conversationId: conversationId,
+      messages: messages,
+      hasMore: hasMore,
+      total: total,
+      offset: offset,
+      limit: limit
+    }));
+    
+    console.log(`Loaded ${messages.length} messages for conversation ${conversationId} (offset: ${offset})`);
+  } catch (error) {
+    console.error('Error loading private messages:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to load messages',
+      details: error.message
+    }));
+  }
+}
+
+async function handleGetUserCommunities(ws, data, clientId, clients) {
+  const client = clients.get(clientId);
+  if (!client || !client.user) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Authentication required',
+      details: 'Authenticate before requesting communities.'
+    }));
+    return;
+  }
+
+  try {
+    const communities = await getCommunitiesForUser(client.user.userId);
+    ws.send(JSON.stringify({
+      type: 'community_list',
+      communities,
+      timestamp: new Date().toISOString()
+    }));
+  } catch (error) {
+    console.error('Error fetching communities:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to load communities',
+      details: error.message
+    }));
+  }
+}
+
+async function handleGetCommunityMembersList(ws, data, clientId, clients) {
+  const client = clients.get(clientId);
+  if (!client || !client.user) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Authentication required',
+      details: 'Authenticate before requesting community members.'
+    }));
+    return;
+  }
+
+  const { communityId } = data || {};
+  if (!communityId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'communityId is required'
+    }));
+    return;
+  }
+
+  try {
+    const members = await getCommunityMembers(communityId);
+    const isMember = members.some(member => member.userId === client.user.userId);
+
+    if (!isMember) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Access denied',
+        details: 'You are not a member of this community.'
+      }));
+      return;
+    }
+
+    ws.send(JSON.stringify({
+      type: 'community_members',
+      communityId,
+      members,
+      timestamp: new Date().toISOString()
+    }));
+  } catch (error) {
+    console.error('Error fetching community members:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to load community members',
+      details: error.message
+    }));
+  }
+}
+
+async function handleGetCommunityProgress(ws, data, clientId, clients) {
+  const client = clients.get(clientId);
+  if (!client || !client.user) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Authentication required',
+      details: 'Authenticate before requesting community progress.'
+    }));
+    return;
+  }
+
+  const { communityId } = data || {};
+  if (!communityId) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'communityId is required'
+    }));
+    return;
+  }
+
+  try {
+    const progress = await getUserCommunityProgress(communityId, client.user.userId);
+    ws.send(JSON.stringify({
+      type: 'community_progress',
+      communityId,
+      progress: progress || {
+        communityId,
+        userId: client.user.userId,
+        totalXp: 0,
+        dailyStreak: 0,
+        weeklyStreak: 0,
+        lastChallengeId: null,
+        lastChallengeType: null,
+        lastCompletedAt: null
+      },
+      timestamp: new Date().toISOString()
+    }));
+  } catch (error) {
+    console.error('Error fetching community progress:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to load community progress',
+      details: error.message
+    }));
+  }
+}
+
 module.exports = {
   generateConversationId,
   handleAuthentication,
@@ -1189,5 +1378,9 @@ module.exports = {
   handleEditMessage,
   handleDeleteMessage,
   handleDeleteConversation,
+  handleGetPrivateMessages,
+  handleGetUserCommunities,
+  handleGetCommunityMembersList,
+  handleGetCommunityProgress,
   broadcastToAll
 };

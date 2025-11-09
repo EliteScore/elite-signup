@@ -185,7 +185,22 @@ async function handleWebSocketConnection(ws, req, clients, userConnections, conv
       }
       
       // Check if user is authenticated for protected operations
-      const protectedOperations = ['get_online_users', 'start_conversation', 'send_private_message', 'mark_message_read', 'typing', 'add_reaction', 'remove_reaction', 'edit_message', 'delete_message', 'delete_conversation'];
+      const protectedOperations = [
+        'get_online_users',
+        'start_conversation',
+        'send_private_message',
+        'mark_message_read',
+        'typing',
+        'add_reaction',
+        'remove_reaction',
+        'edit_message',
+        'delete_message',
+        'delete_conversation',
+        'get_private_messages',
+        'get_communities',
+        'get_community_members',
+        'get_community_progress'
+      ];
       
       if (protectedOperations.includes(message.type) && (!currentClient || !currentClient.user)) {
         ws.send(JSON.stringify({

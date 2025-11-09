@@ -127,6 +127,9 @@ class ChatClient {
   // Convenience methods
   getOnlineUsers() { this.send({ type: 'get_online_users' }); }
   startConversation(recipientId) { this.send({ type: 'start_conversation', recipientId }); }
+  getPrivateMessages(recipientId, limit = 50, offset = 0) {
+    this.send({ type: 'get_private_messages', recipientId, limit, offset });
+  }
   sendPrivateMessage(recipientId, content, replyToMessageId = null) {
     this.send({
       type: 'send_private_message',
@@ -168,6 +171,10 @@ class ChatClient {
   promoteGroupMember(groupId, userId) { this.send({ type: 'promote_member', groupId, userId }); }
   demoteGroupMember(groupId, userId) { this.send({ type: 'demote_member', groupId, userId }); }
   deleteGroup(groupId, permanent = false) { this.send({ type: 'delete_group', groupId, permanent }); }
+  sendAnnouncement(groupId, content) { this.send({ type: 'send_announcement', groupId, content }); }
+  pinMessage(messageId, groupId) { this.send({ type: 'pin_message', messageId, groupId }); }
+  unpinMessage(messageId, groupId) { this.send({ type: 'unpin_message', messageId, groupId }); }
+  getPinnedMessages(groupId) { this.send({ type: 'get_pinned_messages', groupId }); }
   addReaction(messageId, emoji) { this.send({ type: 'add_group_reaction', messageId, emoji }); }
   removeReaction(messageId, emoji) { this.send({ type: 'remove_group_reaction', messageId, emoji }); }
 }

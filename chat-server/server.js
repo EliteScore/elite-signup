@@ -117,7 +117,7 @@ async function initializeServices() {
 initializeServices();
 
 // Setup HTTP endpoints with function to get current database status
-setupHttpEndpoints(server, wss, dbPool, getDbConnected, metrics);
+setupHttpEndpoints(server, wss, dbPool, getDbConnected, metrics, clients, userConnections);
 
 // Import cleanup function for deleted groups
 const { cleanupOldDeletedGroups } = require('./database/groupOperations');

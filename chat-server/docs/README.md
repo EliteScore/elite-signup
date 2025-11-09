@@ -43,6 +43,24 @@ Production-ready utility classes
 
 ---
 
+### Architecture & Design
+
+Understanding the system? Start here:
+
+#### 🏗️ [System Design](./SYSTEM_DESIGN.md)
+Complete architecture overview
+- High-level architecture diagrams
+- Microservice architecture explained
+- Connection management
+- Message flow & routing
+- Data storage strategy
+- Security model (4 layers)
+- Scalability options (single → cluster → multi-instance)
+- Performance optimizations
+- Design decisions & rationale
+
+---
+
 ### For Backend Developers
 
 Running the server? Start here:
@@ -70,16 +88,21 @@ PostgreSQL database structure
 
 #### 🚀 [Deployment](./DEPLOYMENT.md)
 Deploy to production
-- Heroku deployment
-- Docker deployment
-- AWS/VPS deployment
-- Production checklist
+- Heroku deployment (automated scripts)
+- Docker & Docker Compose
+- AWS/VPS with PM2
+- Kubernetes configuration
+- Load balancer setup
+- Scaling strategies
 
 #### 🧪 [Testing](./TESTING.md)
 Run and write tests
-- Test suite overview
-- Running tests
+- Test suite overview (11 test files)
+- Running tests step-by-step
+- Load testing & stress tests
+- Manual testing
 - Writing new tests
+- CI/CD examples
 
 ---
 

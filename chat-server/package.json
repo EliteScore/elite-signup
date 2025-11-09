@@ -14,6 +14,7 @@
     "test:editing": "node tests/test-message-editing-deletion.js",
     "test:stress": "node tests/simple-stress-test.js",
     "test:stress:full": "node tests/stress-test.js",
+    "community:send": "node scripts/send-community-progression.js",
     "health": "curl http://localhost:3001/health",
     "metrics": "curl http://localhost:3001/metrics",
     "deploy:heroku": "bash deployment/deploy-heroku.sh",

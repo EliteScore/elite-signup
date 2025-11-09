@@ -82,8 +82,8 @@ Your Application Flow:
 
 ## What's Included
 
-✅ **26 WebSocket message types**  
-✅ **4 HTTP monitoring endpoints**  
+✅ **29 WebSocket message types**  
+✅ **5 HTTP monitoring/webhook endpoints**  
 ✅ **Complete working examples** (HTML + React)  
 ✅ **Production-ready utilities**  
 ✅ **Event-driven architecture**  
@@ -127,6 +127,8 @@ chatClient.sendPrivateMessage('user123', 'Hello!');
 - Add/remove members
 - Promote/demote members
 - Leave/delete groups
+- Send announcements (Owner/Admin)
+- Pin/unpin messages (Owner/Admin)
 - @mentions (@username, @everyone)
 - Reactions (any emoji)
 
@@ -141,6 +143,7 @@ chatClient.sendPrivateMessage('user123', 'Hello!');
 - Online/offline status
 - Group events (member added/removed/left)
 - Reaction notifications
+- Community progress broadcasts (`community_progress_update`)
 
 ---
 
@@ -163,6 +166,7 @@ chatClient.sendPrivateMessage('user123', 'Hello!');
 2. **Check API Reference** → Understand all endpoints
 3. **Copy Code Examples** → Get working code
 4. **Use Helper Utilities** → Save development time
+5. **Wire Community Hooks** → Listen for `community_progress_update` and hydrate dashboards in real time
 
 ---
 
@@ -185,6 +189,16 @@ chatClient.sendPrivateMessage('user123', 'Hello!');
 - Verify authentication succeeded
 - Check if you follow the recipient
 - Check for blocking relationships
+---
+
+## Community Integrations (EliteScore)
+
+- **Fetch memberships** – send `{"type":"get_communities"}` after `auth_success` to populate sidebars or lobby tabs.
+- **Load rosters** – call `{"type":"get_community_members","communityId":"..."}` when entering a community room to render avatars or enforce access.
+- **Display XP/streaks** – request `{"type":"get_community_progress","communityId":"..."}` for the signed-in user and bind totals to badges or profile chips.
+- **React to push updates** – listen for `community_progress_update` messages to trigger toasts, auto-pin celebratory messages, or increment streak counters without polling.
+- **Sync webhooks** – the Next.js dashboard should POST to `/community/progression`; reuse the payload to show activity feeds or notifications inside your UI.
+- **Reuse JWT auth** – all community calls leverage the same authenticated WebSocket session you already established via `authenticate`.
 
 ---
 

@@ -2,14 +2,16 @@ const { Pool } = require('pg');
 const path = require('path');
 const { verifyJWTWithBackend } = require('../security/jwtUtils');
 
-// Database connection
+// Database connection - uses environment variables from .env file
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
 const dbPool = new Pool({
-  host: process.env.DB_HOST || 'cd6emofiekhlj.cluster-czz5s0kz4scl.eu-west-1.rds.amazonaws.com',
+  host: process.env.DB_HOST,
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'd4ukv7mqkkc9i1',
-  user: process.env.DB_USER || 'u2eb6vlhflq6bt',
-  password: process.env.DB_PASS || 'pe9512a0cbf2bc2eee176022c82836beedc48733196d06484e5dc69e2754f5a79',
-  ssl: { rejectUnauthorized: false }
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false }
 });
 
 // Load test JWT tokens
