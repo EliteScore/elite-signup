@@ -1,0 +1,240 @@
+# Resource: AuthResource 
+# Path Prefix: /v1/auth
+
+## POST /v1/auth/pre-signup
+Summary: Register a pre-signup lead (username + email only).
+Auth: none
+Consumes: application/json
+Produces: application/json
+
+Request Body:
+{
+"username": string,
+"email": string
+}
+
+Responses:
+- 200 OK — User registered successfully
+  Body: ApiResponse<Void>
+- 400 Bad Request — Missing body or required fields
+  Body: ApiResponse<Void>
+- 401 Unauthorized — Duplicate username/email (treated as unauthorized in code)
+  Body: ApiResponse<Void>
+
+Notes:
+- Logs diagnostic messages to stdout.
+- De-duplicates against existing pre-signups.
+
+--------------------------------------------------
+## POST /v1/auth/signup
+Summary: Create a full account (username, email, password). Role defaults to `FREE`.
+Auth: none
+Consumes: application/json
+Produces: application/json
+
+Request Body:
+{
+"username": string,
+"email": string,
+"password": string
+}
+
+Responses:
+- 200 OK — User registered successfully
+  Body: ApiResponse<Void>
+- 400 Bad Request — Any of username/email/password missing
+  Body: ApiResponse<Void>
+- 401 Unauthorized — Username or email already exists
+  Body: ApiResponse<Void>
+
+Notes:
+- Password is Argon2-hashed server-side.
+- Rejects if either username or email already taken.
+
+--------------------------------------------------
+## POST /v1/auth/login
+Summary: Start login; password verified, then 2FA code flow via email.
+Auth: none
+Consumes: application/json
+Produces: application/json
+
+Request Body:
+{
+"username": string,            // or use "email" instead of username
+"email": string | null,
+"password": string
+}
+
+Responses:
+- 200 OK — Password valid; 2FA required
+  Body: ApiResponse<string[]>
+  data = [ userRole, accessToken ]
+  message =
+  "Login success, waiting for code (use your last)"  // if a valid unused code exists
+  OR
+  "Login success, waiting for code(sent another one)" // if a new code was sent
+- 400 Bad Request — Missing username/email or password
+- 401 Unauthorized — Wrong password OR user does not exist
+  Body: ApiResponse<Void>
+- 429 Too Many Requests — Too many verification code requests last hour
+  Body: ApiResponse<String> (data is null; message explains rate limit)
+
+Notes:
+- If a still-valid, unused verification code exists, no new code is generated.
+- Otherwise generates and emails a new code (limit < 4 per hour) using the Brevo SMTP-backed `EmailService`.
+
+--------------------------------------------------
+## GET /v1/auth/verify_code?code={int}
+Summary: Verify the emailed 2FA code for the *authenticated* user.
+Auth: required (expects `userId` on request from prior token)
+Query Params:
+- code (int) — required
+
+Responses:
+- 200 OK — Code verified, login success
+  Body: ApiResponse<Void>
+- 400 Bad Request — Missing `code`
+- 401 Unauthorized — User does not exist
+  Body: ApiResponse<Void>
+- 200 OK — Invalid Code!
+  Body: ApiResponse<Void>
+  (Note: invalid code path returns 200 with `success=false`)
+
+Notes:
+- Marks code as used on success.
+- Uses `clientIp` attribute for audit.
+
+--------------------------------------------------
+## POST /v1/auth/resend_code
+Summary: Generate and email another verification code (rate-limited).
+Auth: required
+
+Responses:
+- 200 OK — Code regenerated!
+  Body: ApiResponse<Void>
+- 401 Unauthorized — User does not exist
+  Body: ApiResponse<Void>
+- 403 Forbidden — Generated too many codes in one hour
+  Body: ApiResponse<Void>
+
+Notes:
+- Limit: < 4 codes/hour.
+
+--------------------------------------------------
+## GET /v1/auth/logout
+Summary: Logout by revoking the presented JWT (by JTI).
+Auth: Bearer token required (in `Authorization` header)
+
+Headers:
+- Authorization: Bearer <jwt>
+
+Responses:
+- 200 OK — Logout successful
+  Body: ApiResponse<Void>
+
+Notes:
+- Extracts JTI and records revocation server-side.
+
+--------------------------------------------------
+## POST /v1/auth/generate_login_token
+Summary: Issue a short-lived login token and persist it as a reset/FP token.
+Auth: required
+
+Responses:
+- 200 OK — Token generated successfully
+  Body: ApiResponse<string>  // data=token
+- 401 Unauthorized — User does not exist
+  Body: ApiResponse<Void>
+
+Notes:
+- Token linked to user; separate storage with explicit expiry (~+1h).
+- Automatically emails the user a password-reset link via Brevo SMTP (`EmailService`).
+
+--------------------------------------------------
+## POST /v1/auth/forgot_password-{token}
+Summary: Reset password using a previously issued token.
+Auth: none (token in path)
+
+Path Params:
+- token (string) — embedded as `/forgot_password-{token}`
+
+Request Body:
+{
+"username": string,
+"password": string
+}
+
+Responses:
+- 200 OK — Reset success (token is consumed/deleted)
+  Body: ApiResponse<Void>
+- 400 Bad Request — Username doesn’t match token subject
+  Body: ApiResponse<Void>
+- 401 Unauthorized — Token invalid/expired OR user not found
+  Body: ApiResponse<Void>
+
+Notes:
+- Path style uses a hyphen before `{token}` (e.g., `/v1/auth/forgot_password-abcdef`).
+- Verifies the `username` matches the token subject extracted via JWT.
+
+==================================================
+
+Environment
+-----------
+Set the following environment variables to configure outbound email and OAuth integrations:
+
+### Brevo SMTP
+- `BREVO_SMTP_HOST` — SMTP host (default: `smtp-relay.brevo.com`)
+- `BREVO_SMTP_PORT` — SMTP port (default: `587`)
+- `BREVO_SMTP_LOGIN` — Brevo SMTP login (e.g., `9b286a001@smtp-brevo.com`)
+- `BREVO_SMTP_PASSWORD` — Brevo SMTP password
+- `BREVO_SMTP_STARTTLS` — Enable STARTTLS (`true` by default; set `false` for local testing)
+- `BREVO_SENDER_EMAIL` — Email address used in the From header (default: `no-reply@elite-score.com`)
+- `BREVO_SENDER_NAME` — Sender display name (default: `Elite Score`)
+- `PASSWORD_RESET_URL` — Base URL for password reset links (default: `https://elite-score.com/reset`)
+
+### Google OAuth
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth web application credentials
+- `GOOGLE_REDIRECT_URIS` — Comma-separated list of allowed redirect URIs
+- `GOOGLE_JS_ORIGINS` — Comma-separated list of allowed JavaScript origins
+- (Optional) `GOOGLE_AUTH_URI`, `GOOGLE_TOKEN_URI`, `GOOGLE_CERTS_URI`, `GOOGLE_USERINFO_URI`
+
+==================================================
+
+Examples — cURL
+---------------
+
+# Login (password step)
+curl -X POST "$BASE/v1/auth/login" \
+-H "Content-Type: application/json" \
+-d '{"username":"alice","password":"secret"}'
+
+# Verify code
+curl -X GET "$BASE/v1/auth/verify_code?code=123456" \
+-H "Authorization: Bearer <token-from-login>"
+
+# Resend code
+curl -X POST "$BASE/v1/auth/resend_code" \
+-H "Authorization: Bearer <token-from-login>"
+
+# Pre-signup
+curl -X POST "$BASE/v1/auth/pre-signup" \
+-H "Content-Type: application/json" \
+-d '{"username":"alice","email":"a@ex.com"}'
+
+# Signup
+curl -X POST "$BASE/v1/auth/signup" \
+-H "Content-Type: application/json" \
+-d '{"username":"alice","email":"a@ex.com","password":"secret"}'
+
+# Forgot password (reset)
+curl -X POST "$BASE/v1/auth/forgot_password-<token>" \
+-H "Content-Type: application/json" \
+-d '{"username":"alice","password":"newpass"}'
+
+# Logout
+curl -X GET "$BASE/v1/auth/logout" \
+-H "Authorization: Bearer <access-jwt>"
+
+# Generate login token
+curl -X POST "$BASE/v1/auth/generate_login_token" \
+-H "Authorization: Bearer <access-jwt>"
