@@ -1,10 +1,22 @@
 "use client"
 
+import { useRequireAuth } from "@/hooks/useRequireAuth"
+
 import { Suspense } from "react"
 import SearchImplementation from "./search-implementation"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function SearchClientWrapper() {
+  const isAuthorized = useRequireAuth() // Protect this route
+  
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
+  
   return (
     <Suspense 
       fallback={

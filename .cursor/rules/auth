@@ -191,6 +191,7 @@ Set the following environment variables to configure outbound email and OAuth in
 - `BREVO_SENDER_EMAIL` — Email address used in the From header (default: `no-reply@elite-score.com`)
 - `BREVO_SENDER_NAME` — Sender display name (default: `Elite Score`)
 - `PASSWORD_RESET_URL` — Base URL for password reset links (default: `https://elite-score.com/reset`)
+- `BREVO_NOTIFICATIONS_EMAIL` — Optional address to BCC on transactional emails (e.g., founders inbox)
 
 ### Google OAuth
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth web application credentials

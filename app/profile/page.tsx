@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useRequireAuth } from "@/hooks/useRequireAuth"
 import {
   Briefcase,
   FileText,
@@ -29,7 +30,16 @@ import { cn } from "@/lib/utils"
 import { LevelIndicator } from "@/components/level-indicator"
 
 export default function ProfilePage() {
+  const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
   const [activeTab, setActiveTab] = useState("overview")
   const [score, setScore] = useState(785)
   const [level, setLevel] = useState(4)

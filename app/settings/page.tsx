@@ -1,7 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-
+import { useRequireAuth } from "@/hooks/useRequireAuth"
 import { useState } from "react"
 import {
   Settings,
@@ -30,6 +30,16 @@ import { cn } from "@/lib/utils"
 import { AnimatedSection } from "@/components/ui/animated-section"
 
 export default function SettingsPage() {
+  const isAuthorized = useRequireAuth() // Protect this route
+  
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
+  
   const [theme, setTheme] = useState<"light" | "dark" | "system">("dark")
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(true)

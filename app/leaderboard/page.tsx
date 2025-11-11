@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRequireAuth } from "@/hooks/useRequireAuth"
 import { Award, ChevronDown, Filter, Search, Trophy, Users, X } from "lucide-react"
 
 import { SiteHeader } from "@/components/site-header"
@@ -229,6 +230,16 @@ const friendLeaderboard = [
 ]
 
 export default function LeaderboardPage() {
+  const isAuthorized = useRequireAuth() // Protect this route
+  
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
+  
   const [activeTab, setActiveTab] = useState("global")
   const [timeFilter, setTimeFilter] = useState("This Week")
   const [searchQuery, setSearchQuery] = useState("")

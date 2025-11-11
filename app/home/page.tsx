@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useRequireAuth } from "@/hooks/useRequireAuth"
 import {
   MessageCircle,
   Share2,
@@ -488,7 +489,17 @@ const userData = {
 }
 
 export default function HomePage() {
+  const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
+
+  // Don't render until auth check is complete
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
   const [likedPosts, setLikedPosts] = useState<number[]>(posts.filter((p) => p.liked).map((p) => p.id))
   const [savedPosts, setSavedPosts] = useState<number[]>(posts.filter((p) => p.saved).map((p) => p.id))
   const [postText, setPostText] = useState("")

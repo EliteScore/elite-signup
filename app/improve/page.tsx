@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { TrendingUp, Award, Calendar, FileText, ArrowRight, ChevronRight, Star } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useRequireAuth } from "@/hooks/useRequireAuth"
 
 import { AppShell } from "@/components/layout/app-shell"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -21,7 +22,16 @@ import { Separator } from "@/components/ui/separator"
 import { LevelIndicator } from "@/components/level-indicator"
 
 export default function ImprovePage() {
+  const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
   const [currentLevel, setCurrentLevel] = useState(3)
   const [currentXP, setCurrentXP] = useState(2450)
   const nextLevelXP = 3000

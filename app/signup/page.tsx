@@ -177,8 +177,8 @@ export default function SignupPage() {
       const result = isJson ? await response.json() : { success: true }
       console.log('Registration successful:', result)
       
-      // Redirect to home page on success
-      router.push("/home")
+      // After signup, redirect to login page to complete 2FA verification
+      router.push("/login")
       
     } catch (error) {
       console.error('Error during registration:', error)
