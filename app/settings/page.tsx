@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import { useRequireAuth } from "@/hooks/useRequireAuth"
 import { useState } from "react"
+import { ProfileEditDialog } from "@/components/profile-edit-dialog"
 import {
   Settings,
   User,
@@ -32,6 +33,7 @@ import { AnimatedSection } from "@/components/ui/animated-section"
 export default function SettingsPage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const [theme, setTheme] = useState<"light" | "dark" | "system">("dark")
+  const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(true)
   const [weeklyDigest, setWeeklyDigest] = useState(true)
@@ -88,7 +90,15 @@ export default function SettingsPage() {
   ]
 
   return (
-    <DashboardLayout>
+    <>
+      <ProfileEditDialog
+        open={showProfileEdit}
+        onOpenChange={setShowProfileEdit}
+        onSuccess={() => {
+          // Optionally refresh profile data or show success message
+        }}
+      />
+      <DashboardLayout>
       {/* Background Elements */}
       <div className="absolute inset-0 z-0">
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-radial from-blue-500/20 via-purple-700/15 to-transparent rounded-full blur-3xl" />
@@ -180,6 +190,7 @@ export default function SettingsPage() {
                               size="sm"
                               rounded="full"
                               className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)]"
+                              onClick={() => setShowProfileEdit(true)}
                             >
                               Edit
                             </EnhancedButton>
@@ -712,6 +723,7 @@ export default function SettingsPage() {
         </div>
       </div>
     </DashboardLayout>
+    </>
   )
 }
 

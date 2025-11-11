@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useRequireAuth } from "@/hooks/useRequireAuth"
 import {
@@ -29,6 +29,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { LevelIndicator } from "@/components/level-indicator"
 
+const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+
+interface ProfileData {
+  userId: number
+  phoneNumber: string | null
+  firstName: string | null
+  lastName: string | null
+  bio: string | null
+  visibility: "PUBLIC" | "PRIVATE"
+  followersCount: number | null
+  followingCount: number | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
 export default function ProfilePage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
@@ -40,8 +55,45 @@ export default function ProfilePage() {
   const progress = (xp / nextLevelXp) * 100
   const resumeScore = 87
   const resumeDelta = 5
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
 
-  if (!isAuthorized) {
+  useEffect(() => {
+    if (isAuthorized) {
+      fetchProfile()
+    }
+  }, [isAuthorized])
+
+  async function fetchProfile() {
+    setIsLoadingProfile(true)
+    try {
+      const token = localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+
+      if (!token) {
+        return
+      }
+
+      const response = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const result = await response.json().catch(() => null)
+
+      if (response.ok && result?.data) {
+        setProfileData(result.data)
+      }
+    } catch (error) {
+      console.error("Failed to fetch profile:", error)
+    } finally {
+      setIsLoadingProfile(false)
+    }
+  }
+
+  if (!isAuthorized || isLoadingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
@@ -49,11 +101,11 @@ export default function ProfilePage() {
     )
   }
 
-  // Mock user data
+  // Use real profile data or fallback to mock data
   const user = {
-    name: "Alex Johnson",
+    name: profileData ? `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim() || "User" : "Alex Johnson",
     username: "alex_improvement",
-    bio: "Computer Science student at Stanford University | Passionate about AI and machine learning | Looking to improve my leadership skills",
+    bio: profileData?.bio || "Computer Science student at Stanford University | Passionate about AI and machine learning | Looking to improve my leadership skills",
     location: "Stanford, CA",
     education: "Stanford University",
     major: "Computer Science",
@@ -61,8 +113,8 @@ export default function ProfilePage() {
     image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces",
     verified: true,
     connections: 248,
-    following: 156,
-    followers: 312,
+    following: profileData?.followingCount || 156,
+    followers: profileData?.followersCount || 312,
   }
 
   // Mock achievements data

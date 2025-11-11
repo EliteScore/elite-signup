@@ -136,6 +136,29 @@ Notes:
 - Extracts JTI and records revocation server-side.
 
 --------------------------------------------------
+## POST /v1/auth/forgot-password
+Summary: Request a password reset email (unauthenticated endpoint).
+Auth: none
+Consumes: application/json
+Produces: application/json
+
+Request Body:
+{
+"email": string
+}
+
+Responses:
+- 200 OK — Reset email sent (always returns success to prevent email enumeration)
+  Body: ApiResponse<Void>
+- 400 Bad Request — Email missing or invalid
+  Body: ApiResponse<Void>
+
+Notes:
+- Always returns success message to prevent attackers from discovering valid emails.
+- If email exists, sends reset link with token valid for 1 hour.
+- Uses Brevo SMTP to send password reset emails.
+
+--------------------------------------------------
 ## POST /v1/auth/generate_login_token
 Summary: Issue a short-lived login token and persist it as a reset/FP token.
 Auth: required
@@ -149,6 +172,7 @@ Responses:
 Notes:
 - Token linked to user; separate storage with explicit expiry (~+1h).
 - Automatically emails the user a password-reset link via Brevo SMTP (`EmailService`).
+- This endpoint requires authentication (meant for logged-in users).
 
 --------------------------------------------------
 ## POST /v1/auth/forgot_password-{token}
@@ -174,6 +198,7 @@ Responses:
 
 Notes:
 - Path style uses a hyphen before `{token}` (e.g., `/v1/auth/forgot_password-abcdef`).
+- An alternate slash variant `/v1/auth/forgot-password/{token}` is also accepted for convenience.
 - Verifies the `username` matches the token subject extracted via JWT.
 
 ==================================================
@@ -190,8 +215,7 @@ Set the following environment variables to configure outbound email and OAuth in
 - `BREVO_SMTP_STARTTLS` — Enable STARTTLS (`true` by default; set `false` for local testing)
 - `BREVO_SENDER_EMAIL` — Email address used in the From header (default: `no-reply@elite-score.com`)
 - `BREVO_SENDER_NAME` — Sender display name (default: `Elite Score`)
-- `PASSWORD_RESET_URL` — Base URL for password reset links (default: `https://elite-score.com/reset`)
-- `BREVO_NOTIFICATIONS_EMAIL` — Optional address to BCC on transactional emails (e.g., founders inbox)
+- `PASSWORD_RESET_URL` — Base URL for password reset links (supports `{token}` placeholder; default: `https://elite-score.com/reset?token={token}`)
 
 ### Google OAuth
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth web application credentials
@@ -227,7 +251,12 @@ curl -X POST "$BASE/v1/auth/signup" \
 -H "Content-Type: application/json" \
 -d '{"username":"alice","email":"a@ex.com","password":"secret"}'
 
-# Forgot password (reset)
+# Forgot password (request reset email)
+curl -X POST "$BASE/v1/auth/forgot-password" \
+-H "Content-Type: application/json" \
+-d '{"email":"alice@example.com"}'
+
+# Forgot password (reset with token)
 curl -X POST "$BASE/v1/auth/forgot_password-<token>" \
 -H "Content-Type: application/json" \
 -d '{"username":"alice","password":"newpass"}'
