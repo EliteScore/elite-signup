@@ -134,24 +134,65 @@ export default function VerifyPage() {
       if (typeof window !== "undefined") {
         const storage = rememberChoice ? window.localStorage : window.sessionStorage
 
+        let resolvedAccessToken: string | null = null
+        let resolvedRefreshToken: string | null = null
+        let resolvedRole: string | null = userRole
+        let resolvedEmail: string | null = pendingEmail
+
         if (result?.data && typeof result.data === "object") {
           const dataObj = result.data as Record<string, unknown>
+
           if (typeof dataObj.accessToken === "string") {
-            storage.setItem("auth.accessToken", dataObj.accessToken)
+            resolvedAccessToken = dataObj.accessToken
+          } else if (typeof dataObj.token === "string") {
+            resolvedAccessToken = dataObj.token
+          } else if (typeof dataObj.jwt === "string") {
+            resolvedAccessToken = dataObj.jwt
           }
+
           if (typeof dataObj.refreshToken === "string") {
-            storage.setItem("auth.refreshToken", dataObj.refreshToken)
+            resolvedRefreshToken = dataObj.refreshToken
+          } else if (typeof dataObj.refresh === "string") {
+            resolvedRefreshToken = dataObj.refresh
+          }
+
+          if (!resolvedRole) {
+            if (typeof dataObj.userRole === "string") {
+              resolvedRole = dataObj.userRole
+            } else if (typeof dataObj.role === "string") {
+              resolvedRole = dataObj.role
+            }
+          }
+
+          if (!resolvedEmail && typeof dataObj.email === "string") {
+            resolvedEmail = dataObj.email
           }
         } else if (typeof result?.data === "string") {
-          storage.setItem("auth.accessToken", result.data)
+          resolvedAccessToken = result.data
         }
 
-        if (userRole) {
-          storage.setItem("auth.userRole", userRole)
+        if (!resolvedAccessToken) {
+          resolvedAccessToken = pendingToken
         }
 
-        if (pendingEmail) {
-          storage.setItem("auth.email", pendingEmail)
+        if (!resolvedAccessToken) {
+          setVerifyError("Verification completed, but we couldn't secure your session. Please sign in again.")
+          handleBackToLogin()
+          return
+        }
+
+        storage.setItem("auth.accessToken", resolvedAccessToken)
+
+        if (resolvedRefreshToken) {
+          storage.setItem("auth.refreshToken", resolvedRefreshToken)
+        }
+
+        if (resolvedRole) {
+          storage.setItem("auth.userRole", resolvedRole)
+        }
+
+        if (resolvedEmail) {
+          storage.setItem("auth.email", resolvedEmail)
         }
 
         // Clear verification session
@@ -164,9 +205,9 @@ export default function VerifyPage() {
 
       setInfoMessage(result?.message ?? "Verification successful! Redirecting...")
       setVerifyError(null)
-      
+
       setTimeout(() => {
-        router.push("/home")
+        router.replace("/home")
       }, 800)
     } catch (error) {
       setVerifyError("Failed to verify the code. Please try again.")
