@@ -53,6 +53,7 @@ export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -66,12 +67,48 @@ export default function ForgotPasswordPage() {
     setError(null)
 
     try {
-      // This endpoint would need to be implemented on backend
-      // For now, just show success message
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Quick availability check before requesting the reset
+      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+        method: "GET",
+      })
+
+      if (!statusResponse.ok) {
+        throw new Error("Service unavailable")
+      }
+
+      const response = await fetch(`${API_BASE_URL}/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email.trim(),
+        }),
+      })
+
+      const contentType = response.headers.get("content-type")
+      const isJson = contentType?.includes("application/json")
+      const result = isJson ? await response.json() : null
+
+      if (!response.ok || result?.success === false) {
+        let errorMessage =
+          result?.message ||
+          (response.status === 404
+            ? "We couldn't find an account with that email."
+            : response.status === 429
+                ? "Too many reset attempts. Please wait a few minutes and try again."
+                : "We couldn't process your request right now. Please try again.")
+
+        setError(errorMessage)
+        return
+      }
+
       setSuccess(true)
+      setSuccessMessage(result?.message || null)
+      setError(null)
     } catch (error) {
-      setError("Failed to send reset link. Please try again.")
+      setError("Failed to connect to the server. Please check your internet connection and try again.")
     } finally {
       setIsLoading(false)
     }
@@ -189,8 +226,14 @@ export default function ForgotPasswordPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-white">Check your email</h3>
                       <p className="mt-1 text-sm text-zinc-300">
-                        We've sent a password reset link to <strong>{form.getValues("email")}</strong>.
-                        Click the link in the email to reset your password.
+                        {successMessage
+                          ? successMessage
+                          : (
+                              <>
+                                We've sent a password reset link to <strong>{form.getValues("email")}</strong>. Click the
+                                link in the email to reset your password.
+                              </>
+                            )}
                       </p>
                     </div>
                   </div>

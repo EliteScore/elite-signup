@@ -160,6 +160,14 @@ export default function LoginPage() {
     setLoginError(null)
 
     try {
+      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+        method: "GET",
+      })
+
+      if (!statusResponse.ok) {
+        throw new Error("Service unavailable")
+      }
+
       const loginPayload = {
         username: formData.email,
         email: formData.email,

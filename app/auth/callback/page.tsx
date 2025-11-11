@@ -52,6 +52,18 @@ export default function GoogleCallbackPage() {
       }
 
       setStatus("loading")
+      setMessage("Checking service status...")
+
+      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+        method: "GET",
+      })
+
+      if (!statusResponse.ok) {
+        setStatus("error")
+        setMessage("The authentication service is unavailable right now. Please try again later.")
+        return
+      }
+
       setMessage("Exchanging Google authorization code...")
 
       const redirectUri = `${window.location.origin}/auth/callback`
