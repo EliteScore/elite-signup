@@ -502,15 +502,6 @@ export default function HomePage() {
   const [selectedLeaderboard, setSelectedLeaderboard] = useState<number | null>(null)
   const [postMessage, setPostMessage] = useState("")
 
-  // Don't render until auth check is complete
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
-
   // Check if it's the user's first visit
   useEffect(() => {
     const hasVisitedBefore = localStorage.getItem("hasVisitedBefore")
@@ -519,6 +510,15 @@ export default function HomePage() {
       localStorage.setItem("hasVisitedBefore", "true")
     }
   }, [])
+
+  // Don't render until auth check is complete
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   const toggleLike = (postId: number) => {
     if (likedPosts.includes(postId)) {
