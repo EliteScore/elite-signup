@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
         throw new Error("Service unavailable")
       }
 
-      const response = await fetch(`${API_BASE_URL}/forgot-password`, {
+      const response = await fetch(`${API_BASE_URL}/v1/auth/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
