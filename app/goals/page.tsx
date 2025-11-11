@@ -403,14 +403,6 @@ export default function GoalsPage() {
   const [currentScore, setCurrentScore] = useState(2650)
   const nextLevelXP = 12000
   const progress = (currentXP / nextLevelXP) * 100
-
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
   
   // State management for new onboarding flow
   const [onboardingStep, setOnboardingStep] = useState<'goal' | 'activities' | 'resume' | 'score' | 'complete'>('goal')
@@ -419,7 +411,6 @@ export default function GoalsPage() {
   const [showResumeUpload, setShowResumeUpload] = useState(false)
   const [resumeUploaded, setResumeUploaded] = useState(false)
   const [showAnalysis, setShowAnalysis] = useState(false)
-
   const [userScore, setUserScore] = useState<number | null>(null)
   const [resumeAnalysis, setResumeAnalysis] = useState(initialResumeAnalysis)
   const [isNewUser, setIsNewUser] = useState(true)
@@ -432,10 +423,17 @@ export default function GoalsPage() {
   const [newLeaderboardName, setNewLeaderboardName] = useState('')
   const [newLeaderboardDescription, setNewLeaderboardDescription] = useState('')
   const [joinedLeaderboards, setJoinedLeaderboards] = useState(['global', 'university'])
-
   const [createdGoals, setCreatedGoals] = useState<any[]>([])
   const [completedChallenges, setCompletedChallenges] = useState<number[]>([2, 5])
   const [activeTab, setActiveTab] = useState("overview")
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
