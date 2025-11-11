@@ -50,9 +50,6 @@ type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
 
 const resetPasswordSchema = z
   .object({
-    username: z.string().min(1, {
-      message: "Username is required.",
-    }),
     password: z
       .string()
       .min(8, {
@@ -77,6 +74,22 @@ export default function ForgotPasswordPage() {
   const searchParams = useSearchParams()
   const token = useMemo(() => searchParams.get("token"), [searchParams])
   const isResetMode = Boolean(token)
+  const tokenSubject = useMemo(() => {
+    if (!token) return null
+    const parts = token.split(".")
+    if (parts.length !== 3) return null
+
+    try {
+      let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+      while (payload.length % 4 !== 0) {
+        payload += "="
+      }
+      const decoded = JSON.parse(atob(payload))
+      return typeof decoded.sub === "string" ? decoded.sub : null
+    } catch (error) {
+      return null
+    }
+  }, [token])
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +110,6 @@ export default function ForgotPasswordPage() {
   const resetForm = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      username: "",
       password: "",
       confirmPassword: "",
     },
@@ -169,8 +181,8 @@ export default function ForgotPasswordPage() {
   }
 
   async function onResetSubmit(data: ResetPasswordFormValues) {
-    if (!token) {
-      setResetError("Reset link is missing or invalid. Please request a new password reset email.")
+    if (!token || !tokenSubject) {
+      setResetError("Reset link is invalid. Please request a new password reset email.")
       router.replace("/forgot-password")
       return
     }
@@ -194,7 +206,7 @@ export default function ForgotPasswordPage() {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          username: data.username.trim(),
+          username: tokenSubject,
           password: data.password,
         }),
       })
@@ -224,7 +236,10 @@ export default function ForgotPasswordPage() {
       }
 
       setResetSuccess(true)
-      setResetSuccessMessage(result?.message || "Password reset successfully. Redirecting to login...")
+      setResetSuccessMessage(
+        result?.message ||
+          `Password reset successfully for ${tokenSubject}. Redirecting you to the login page so you can sign in with your new credentials.`
+      )
 
       setTimeout(() => {
         router.push("/login")
@@ -289,28 +304,16 @@ export default function ForgotPasswordPage() {
                       )}
 
                       <p className="rounded-xl border border-[#2bbcff]/30 bg-black/40 p-4 text-xs text-zinc-300">
-                        Enter your username and choose a new password to complete the reset. If this link has expired,
-                        request a new reset email.
-                      </p>
-
-                      <FormField
-                        control={resetForm.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-white text-sm">Username</FormLabel>
-                            <FormControl>
-                              <Input
-                                className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
-                                placeholder="yourusername"
-                                autoComplete="username"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                        {tokenSubject ? (
+                          <>
+                            Resetting password for{" "}
+                            <span className="font-semibold text-white">{tokenSubject}</span>. Choose a new password to
+                            complete the reset. If this link has expired, request a new reset email.
+                          </>
+                        ) : (
+                          "We couldn't verify which account this reset is for. Please request a new link."
                         )}
-                      />
+                      </p>
 
                       <FormField
                         control={resetForm.control}
