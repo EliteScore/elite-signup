@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowLeft, Lock, Mail } from "lucide-react"
@@ -48,12 +48,44 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
 
+const resetPasswordSchema = z
+  .object({
+    username: z.string().min(1, {
+      message: "Username is required.",
+    }),
+    password: z
+      .string()
+      .min(8, {
+        message: "Password must be at least 8 characters.",
+      })
+      .max(128, {
+        message: "Password is too long.",
+      }),
+    confirmPassword: z.string().min(1, {
+      message: "Please confirm your password.",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  })
+
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
+
 export default function ForgotPasswordPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const token = useMemo(() => searchParams.get("token"), [searchParams])
+  const isResetMode = Boolean(token)
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [isResetLoading, setIsResetLoading] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetSuccess, setResetSuccess] = useState(false)
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null)
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -61,6 +93,28 @@ export default function ForgotPasswordPage() {
       email: "",
     },
   })
+
+  const resetForm = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      confirmPassword: "",
+    },
+  })
+
+  useEffect(() => {
+    // Reset state when switching modes
+    setError(null)
+    setSuccess(false)
+    setSuccessMessage(null)
+    setIsLoading(false)
+
+    setResetError(null)
+    setResetSuccess(false)
+    setResetSuccessMessage(null)
+    setIsResetLoading(false)
+  }, [isResetMode])
 
   async function onSubmit(data: ForgotPasswordFormValues) {
     setIsLoading(true)
@@ -114,6 +168,74 @@ export default function ForgotPasswordPage() {
     }
   }
 
+  async function onResetSubmit(data: ResetPasswordFormValues) {
+    if (!token) {
+      setResetError("Reset link is missing or invalid. Please request a new password reset email.")
+      router.replace("/forgot-password")
+      return
+    }
+
+    setIsResetLoading(true)
+    setResetError(null)
+
+    try {
+      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+        method: "GET",
+      })
+
+      if (!statusResponse.ok) {
+        throw new Error("Service unavailable")
+      }
+
+      const response = await fetch(`${API_BASE_URL}/v1/auth/forgot-password/${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          username: data.username.trim(),
+          password: data.password,
+        }),
+      })
+
+      const contentType = response.headers.get("content-type")
+      const isJson = contentType?.includes("application/json")
+      const result = isJson ? await response.json() : null
+
+      if (!response.ok || result?.success === false) {
+        const status = response.status
+        let errorMessage = result?.message || "Unable to reset your password. Please request a new link."
+
+        if (status === 401) {
+          errorMessage = result?.message || "Reset link expired or invalid. Please request a new password reset email."
+        } else if (status === 400) {
+          errorMessage = result?.message || "The username does not match the reset link. Please try again."
+        }
+
+        setResetError(errorMessage)
+
+        if (status === 400 || status === 401) {
+          // Redirect back to request form so user can start over
+          router.replace("/forgot-password")
+        }
+
+        return
+      }
+
+      setResetSuccess(true)
+      setResetSuccessMessage(result?.message || "Password reset successfully. Redirecting to login...")
+
+      setTimeout(() => {
+        router.push("/login")
+      }, 1500)
+    } catch (error) {
+      setResetError("Failed to connect to the server. Please check your internet connection and try again.")
+    } finally {
+      setIsResetLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-black p-4 py-12 overflow-x-hidden">
       {/* App name at the top */}
@@ -146,14 +268,146 @@ export default function ForgotPasswordPage() {
           <Card className="shadow-2xl rounded-2xl border-0 bg-card/90 backdrop-blur-lg">
             <CardHeader>
               <CardTitle className="text-lg font-extrabold tracking-widest uppercase bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
-                Reset your password
+                {isResetMode ? "Set a new password" : "Reset your password"}
               </CardTitle>
               <CardDescription className="text-white text-sm">
-                Enter your email address and we'll send you a link to reset your password
+                {isResetMode
+                  ? "Enter your username and a new password to finish resetting your account."
+                  : "Enter your email address and we'll send you a link to reset your password"}
               </CardDescription>
             </CardHeader>
 
-            {!success ? (
+            {isResetMode ? (
+              <Form {...resetForm}>
+                {!resetSuccess ? (
+                  <form onSubmit={resetForm.handleSubmit(onResetSubmit)} className="space-y-0">
+                    <CardContent className="space-y-4">
+                      {resetError && (
+                        <Alert variant="destructive" className="animate-shake">
+                          <AlertDescription>{resetError}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      <p className="rounded-xl border border-[#2bbcff]/30 bg-black/40 p-4 text-xs text-zinc-300">
+                        Enter your username and choose a new password to complete the reset. If this link has expired,
+                        request a new reset email.
+                      </p>
+
+                      <FormField
+                        control={resetForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white text-sm">Username</FormLabel>
+                            <FormControl>
+                              <Input
+                                className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
+                                placeholder="yourusername"
+                                autoComplete="username"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={resetForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white text-sm">New password</FormLabel>
+                            <FormControl>
+                              <Input
+                                className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder="Enter new password"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={resetForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white text-sm">Confirm password</FormLabel>
+                            <FormControl>
+                              <Input
+                                className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder="Confirm new password"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+
+                    <CardFooter className="flex flex-col space-y-4">
+                      <Button
+                        type="submit"
+                        className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] text-white shadow-lg hover:scale-[1.02] transition-transform"
+                        disabled={isResetLoading}
+                      >
+                        {isResetLoading ? (
+                          <>
+                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            Updating password...
+                          </>
+                        ) : (
+                          "Update password"
+                        )}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="text-xs text-zinc-400 hover:text-[#2bbcff] transition-colors"
+                        onClick={() => router.replace("/forgot-password")}
+                        disabled={isResetLoading}
+                      >
+                        Use a different email
+                      </Button>
+                    </CardFooter>
+                  </form>
+                ) : (
+                  <CardContent className="space-y-4 pb-6">
+                    <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-green-500/20 p-2">
+                          <Mail className="h-5 w-5 text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-white">Password updated</h3>
+                          <p className="mt-1 text-sm text-zinc-300">{resetSuccessMessage}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-center text-xs text-zinc-400">
+                      We are redirecting you to the login page. If nothing happens, use the button below.
+                    </p>
+
+                    <Button
+                      className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] text-white shadow-lg hover:scale-[1.02] transition-transform"
+                      onClick={() => router.push("/login")}
+                    >
+                      Back to login
+                    </Button>
+                  </CardContent>
+                )}
+              </Form>
+            ) : !success ? (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
                   <CardContent className="space-y-4">
