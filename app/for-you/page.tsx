@@ -163,6 +163,11 @@ const communities = [
 export default function ForYouPage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
+  const [selectedCommunity, setSelectedCommunity] = useState<number | null>(1)
+  const [activeTab, setActiveTab] = useState('announcements')
+  const [searchQuery, setSearchQuery] = useState('')
+  
+  const community = communities.find((c) => c.id === selectedCommunity) || communities[0] || null
 
   if (!isAuthorized) {
     return (
@@ -171,11 +176,6 @@ export default function ForYouPage() {
       </div>
     )
   }
-  const [selectedCommunity, setSelectedCommunity] = useState<number | null>(1)
-  const [activeTab, setActiveTab] = useState('announcements')
-  const [searchQuery, setSearchQuery] = useState('')
-  
-  const community = communities.find((c) => c.id === selectedCommunity) || communities[0] || null
 
   return (
     <DashboardLayout>

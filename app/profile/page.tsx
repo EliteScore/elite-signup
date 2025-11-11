@@ -32,14 +32,6 @@ import { LevelIndicator } from "@/components/level-indicator"
 export default function ProfilePage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
-
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
   const [activeTab, setActiveTab] = useState("overview")
   const [score, setScore] = useState(785)
   const [level, setLevel] = useState(4)
@@ -48,6 +40,14 @@ export default function ProfilePage() {
   const progress = (xp / nextLevelXp) * 100
   const resumeScore = 87
   const resumeDelta = 5
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   // Mock user data
   const user = {

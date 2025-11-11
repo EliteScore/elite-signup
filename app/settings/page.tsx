@@ -31,15 +31,6 @@ import { AnimatedSection } from "@/components/ui/animated-section"
 
 export default function SettingsPage() {
   const isAuthorized = useRequireAuth() // Protect this route
-  
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
-  
   const [theme, setTheme] = useState<"light" | "dark" | "system">("dark")
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(true)
@@ -52,6 +43,15 @@ export default function SettingsPage() {
     activityVisibility: "connections",
     searchVisibility: "everyone",
   })
+  const [activeSection, setActiveSection] = useState("account")
+  
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   // Settings sections
   const settingsSections = [
@@ -86,8 +86,6 @@ export default function SettingsPage() {
       description: "Manage your connected devices and active sessions",
     },
   ]
-
-  const [activeSection, setActiveSection] = useState("account")
 
   return (
     <DashboardLayout>

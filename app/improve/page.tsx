@@ -24,6 +24,11 @@ import { LevelIndicator } from "@/components/level-indicator"
 export default function ImprovePage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
+  const [currentLevel, setCurrentLevel] = useState(3)
+  const [currentXP, setCurrentXP] = useState(2450)
+  const nextLevelXP = 3000
+  const progress = (currentXP / nextLevelXP) * 100
+  const [level, setLevel] = useState(3)
 
   if (!isAuthorized) {
     return (
@@ -32,11 +37,6 @@ export default function ImprovePage() {
       </div>
     )
   }
-  const [currentLevel, setCurrentLevel] = useState(3)
-  const [currentXP, setCurrentXP] = useState(2450)
-  const nextLevelXP = 3000
-  const progress = (currentXP / nextLevelXP) * 100
-  const [level, setLevel] = useState(3)
 
   return (
     <AppShell title="Improve">

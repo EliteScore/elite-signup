@@ -160,6 +160,11 @@ const groupChallenges = [
 
 export default function ChallengesPage() {
   const isAuthorized = useRequireAuth() // Protect this route
+  const [activeTab, setActiveTab] = useState("daily")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dailyStreak, setDailyStreak] = useState(5)
+  const [showXpNotification, setShowXpNotification] = useState(false)
+  const router = useRouter()
   
   if (!isAuthorized) {
     return (
@@ -168,12 +173,6 @@ export default function ChallengesPage() {
       </div>
     )
   }
-  
-  const [activeTab, setActiveTab] = useState("daily")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [dailyStreak, setDailyStreak] = useState(5)
-  const [showXpNotification, setShowXpNotification] = useState(false)
-  const router = useRouter()
 
   // Filter challenges based on search query
   const filteredSkillChallenges = skillChallenges.filter(

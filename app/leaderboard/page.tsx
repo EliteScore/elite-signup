@@ -231,6 +231,9 @@ const friendLeaderboard = [
 
 export default function LeaderboardPage() {
   const isAuthorized = useRequireAuth() // Protect this route
+  const [activeTab, setActiveTab] = useState("global")
+  const [timeFilter, setTimeFilter] = useState("This Week")
+  const [searchQuery, setSearchQuery] = useState("")
   
   if (!isAuthorized) {
     return (
@@ -239,10 +242,6 @@ export default function LeaderboardPage() {
       </div>
     )
   }
-  
-  const [activeTab, setActiveTab] = useState("global")
-  const [timeFilter, setTimeFilter] = useState("This Week")
-  const [searchQuery, setSearchQuery] = useState("")
 
   const filteredGlobalLeaderboard = globalLeaderboard.filter(
     (user) =>

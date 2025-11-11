@@ -156,14 +156,6 @@ const interests = [
 export default function ImprovementJourneyPage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
-
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
   const [step, setStep] = useState(1)
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null)
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
@@ -181,6 +173,14 @@ export default function ImprovementJourneyPage() {
     skills: number
     total: number
   } | null>(null)
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100

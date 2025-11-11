@@ -174,6 +174,8 @@ const groupSessions = [
 
 export default function MentorshipPage() {
   const isAuthorized = useRequireAuth() // Protect this route
+  const [activeTab, setActiveTab] = useState("find")
+  const [searchQuery, setSearchQuery] = useState("")
   
   if (!isAuthorized) {
     return (
@@ -182,9 +184,6 @@ export default function MentorshipPage() {
       </div>
     )
   }
-  
-  const [activeTab, setActiveTab] = useState("find")
-  const [searchQuery, setSearchQuery] = useState("")
 
   // Filter mentors based on search query
   const filteredMentors = mentors.filter(

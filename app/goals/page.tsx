@@ -397,6 +397,12 @@ const leaderboardData = {
 export default function GoalsPage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [currentLevel, setCurrentLevel] = useState(7)
+  const [currentXP, setCurrentXP] = useState(10800)
+  const [currentScore, setCurrentScore] = useState(2650)
+  const nextLevelXP = 12000
+  const progress = (currentXP / nextLevelXP) * 100
 
   if (!isAuthorized) {
     return (
@@ -405,12 +411,6 @@ export default function GoalsPage() {
       </div>
     )
   }
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [currentLevel, setCurrentLevel] = useState(7)
-  const [currentXP, setCurrentXP] = useState(10800)
-  const [currentScore, setCurrentScore] = useState(2650)
-  const nextLevelXP = 12000
-  const progress = (currentXP / nextLevelXP) * 100
   
   // State management for new onboarding flow
   const [onboardingStep, setOnboardingStep] = useState<'goal' | 'activities' | 'resume' | 'score' | 'complete'>('goal')

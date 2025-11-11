@@ -15,15 +15,6 @@ import { Separator } from "@/components/ui/separator"
 
 export default function ResumePage() {
   const isAuthorized = useRequireAuth() // Protect this route
-  
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
-  
   const [uploadState, setUploadState] = useState<"initial" | "uploading" | "processing" | "complete" | "error">(
     "initial",
   )
@@ -37,6 +28,14 @@ export default function ResumePage() {
     skills: number
     total: number
   } | null>(null)
+  
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

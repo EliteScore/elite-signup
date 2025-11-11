@@ -214,14 +214,6 @@ const currentUser = {
 export default function ChatPage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
-
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [messageText, setMessageText] = useState("")
@@ -230,6 +222,14 @@ export default function ChatPage() {
   const [showConversations, setShowConversations] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   // Mobile detection
   useEffect(() => {

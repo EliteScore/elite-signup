@@ -97,6 +97,8 @@ const notifications = [
 
 export default function NotificationsPage() {
   const isAuthorized = useRequireAuth() // Protect this route
+  const [activeTab, setActiveTab] = useState("all")
+  const [notificationsList, setNotificationsList] = useState(notifications)
   
   if (!isAuthorized) {
     return (
@@ -105,9 +107,6 @@ export default function NotificationsPage() {
       </div>
     )
   }
-  
-  const [activeTab, setActiveTab] = useState("all")
-  const [notificationsList, setNotificationsList] = useState(notifications)
 
   const unreadCount = notificationsList.filter((n) => !n.read).length
 
