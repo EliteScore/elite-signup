@@ -80,7 +80,10 @@ export default function ForgotPasswordPage() {
     if (parts.length !== 3) return null
 
     try {
-      let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+      const payloadPart = parts[1]
+      if (!payloadPart) return null
+      
+      let payload = payloadPart.replace(/-/g, "+").replace(/_/g, "/")
       while (payload.length % 4 !== 0) {
         payload += "="
       }
