@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { syncProfileStateWithToken } from "@/lib/profile"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -131,90 +130,69 @@ export default function VerifyPage() {
         return
       }
 
-      let tokenStorage: Storage | null = null
-      let resolvedAccessToken: string | null = null
-      let resolvedRefreshToken: string | null = null
-      let resolvedRole: string | null = userRole
-      let resolvedEmail: string | null = pendingEmail
-
-      if (result?.data && typeof result.data === "object") {
-        const dataObj = result.data as Record<string, unknown>
-
-        if (typeof dataObj.accessToken === "string") {
-          resolvedAccessToken = dataObj.accessToken
-        } else if (typeof dataObj.token === "string") {
-          resolvedAccessToken = dataObj.token
-        } else if (typeof dataObj.jwt === "string") {
-          resolvedAccessToken = dataObj.jwt
-        }
-
-        if (typeof dataObj.refreshToken === "string") {
-          resolvedRefreshToken = dataObj.refreshToken
-        } else if (typeof dataObj.refresh === "string") {
-          resolvedRefreshToken = dataObj.refresh
-        }
-
-        if (!resolvedRole) {
-          if (typeof dataObj.userRole === "string") {
-            resolvedRole = dataObj.userRole
-          } else if (typeof dataObj.role === "string") {
-            resolvedRole = dataObj.role
-          }
-        }
-
-        if (!resolvedEmail && typeof dataObj.email === "string") {
-          resolvedEmail = dataObj.email
-        }
-      } else if (typeof result?.data === "string") {
-        resolvedAccessToken = result.data
-      }
-
-      if (!resolvedAccessToken) {
-        resolvedAccessToken = pendingToken
-      }
-
-      if (!resolvedAccessToken) {
-        setVerifyError("Verification completed, but we couldn't secure your session. Please sign in again.")
-        handleBackToLogin()
-        return
-      }
-
+      // Store final tokens
       if (typeof window !== "undefined") {
         const storage = rememberChoice ? window.localStorage : window.sessionStorage
-        tokenStorage = storage
 
-        try {
-          storage.setItem("auth.accessToken", resolvedAccessToken)
+        let resolvedAccessToken: string | null = null
+        let resolvedRefreshToken: string | null = null
+        let resolvedRole: string | null = userRole
+        let resolvedEmail: string | null = pendingEmail
 
-          if (resolvedRefreshToken) {
-            storage.setItem("auth.refreshToken", resolvedRefreshToken)
+        if (result?.data && typeof result.data === "object") {
+          const dataObj = result.data as Record<string, unknown>
+
+          if (typeof dataObj.accessToken === "string") {
+            resolvedAccessToken = dataObj.accessToken
+          } else if (typeof dataObj.token === "string") {
+            resolvedAccessToken = dataObj.token
+          } else if (typeof dataObj.jwt === "string") {
+            resolvedAccessToken = dataObj.jwt
           }
 
-          if (resolvedRole) {
-            storage.setItem("auth.userRole", resolvedRole)
+          if (typeof dataObj.refreshToken === "string") {
+            resolvedRefreshToken = dataObj.refreshToken
+          } else if (typeof dataObj.refresh === "string") {
+            resolvedRefreshToken = dataObj.refresh
           }
 
-          if (resolvedEmail) {
-            storage.setItem("auth.email", resolvedEmail)
-          }
-        } catch (error) {
-          try {
-            tokenStorage = window.sessionStorage
-            tokenStorage.setItem("auth.accessToken", resolvedAccessToken)
-            if (resolvedRefreshToken) {
-              tokenStorage.setItem("auth.refreshToken", resolvedRefreshToken)
+          if (!resolvedRole) {
+            if (typeof dataObj.userRole === "string") {
+              resolvedRole = dataObj.userRole
+            } else if (typeof dataObj.role === "string") {
+              resolvedRole = dataObj.role
             }
-            if (resolvedRole) {
-              tokenStorage.setItem("auth.userRole", resolvedRole)
-            }
-            if (resolvedEmail) {
-              tokenStorage.setItem("auth.email", resolvedEmail)
-            }
-          } catch (innerError) {
-            setVerifyError("We couldn't securely store your session. Please check your browser settings and try again.")
-            handleBackToLogin()
-            return
           }
+
+          if (!resolvedEmail && typeof dataObj.email === "string") {
+            resolvedEmail = dataObj.email
+          }
+        } else if (typeof result?.data === "string") {
+          resolvedAccessToken = result.data
+        }
+
+        if (!resolvedAccessToken) {
+          resolvedAccessToken = pendingToken
+        }
+
+        if (!resolvedAccessToken) {
+          setVerifyError("Verification completed, but we couldn't secure your session. Please sign in again.")
+          handleBackToLogin()
+          return
+        }
+
+        storage.setItem("auth.accessToken", resolvedAccessToken)
+
+        if (resolvedRefreshToken) {
+          storage.setItem("auth.refreshToken", resolvedRefreshToken)
+        }
+
+        if (resolvedRole) {
+          storage.setItem("auth.userRole", resolvedRole)
+        }
+
+        if (resolvedEmail) {
+          storage.setItem("auth.email", resolvedEmail)
         }
 
         // Clear verification session
@@ -225,15 +203,11 @@ export default function VerifyPage() {
         sessionStorage.removeItem("verify.message")
       }
 
-      const profileSyncResult = await syncProfileStateWithToken(resolvedAccessToken, tokenStorage)
-
       setInfoMessage(result?.message ?? "Verification successful! Redirecting...")
       setVerifyError(null)
 
-      const nextRoute = profileSyncResult?.needsSetup ? "/settings?firstTime=1" : "/home"
-
       setTimeout(() => {
-        router.replace(nextRoute)
+        router.replace("/home")
       }, 800)
     } catch (error) {
       setVerifyError("Failed to verify the code. Please try again.")
