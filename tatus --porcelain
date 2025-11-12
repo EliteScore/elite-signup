@@ -1,0 +1,341 @@
+warning: in the working copy of 'app/chat/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/login/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/chat-client.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.env.production b/.env.production[m
+[1mindex 54279bc..93b5fd6 100644[m
+[1m--- a/.env.production[m
+[1m+++ b/.env.production[m
+[36m@@ -1,7 +1,8 @@[m
+ # Production API Configuration[m
+ # Replace with your actual domain[m
+[32m+[m[32mNEXT_PUBLIC_API_URL=https://api.yourdomain.com[m
+ NEXT_PUBLIC_CHAT_WS_URL=ws://localhost:3001[m
+ NEXT_PUBLIC_CHAT_HTTP_URL=http://localhost:3001[m
+[31m-[m
+[32m+[m[32mNEXT_PUBLIC_AUTH_BASE_URL=http://localhost:8085[m
+ # Backend Server Port (for deployment)[m
+ PORT=8081[m
+\ No newline at end of file[m
+[1mdiff --git a/app/chat/page.tsx b/app/chat/page.tsx[m
+[1mindex 1c0e806..43acf64 100644[m
+[1m--- a/app/chat/page.tsx[m
+[1m+++ b/app/chat/page.tsx[m
+[36m@@ -1,6 +1,6 @@[m
+ "use client"[m
+ [m
+[31m-import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react"[m
+[32m+[m[32mimport { MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"[m
+ import { useRouter } from "next/navigation"[m
+ import {[m
+   ArrowLeft,[m
+[36m@@ -161,12 +161,37 @@[m [mtype GroupMemberInfo = {[m
+   role?: string[m
+ }[m
+ [m
+[31m-const TOKEN_STORAGE_KEYS = ["elite_jwt", "chat_jwt", "authToken", "accessToken", "token"][m
+[32m+[m[32mtype FollowerContact = {[m
+[32m+[m[32m  id: string[m
+[32m+[m[32m  username: string[m
+[32m+[m[32m  displayName: string[m
+[32m+[m[32m  avatar: string[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mtype ConversationHistoryState = {[m
+[32m+[m[32m  offset: number[m
+[32m+[m[32m  hasMore: boolean[m
+[32m+[m[32m  loading: boolean[m
+[32m+[m[32m  initialLoaded: boolean[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mconst PRIMARY_TOKEN_KEYS = ["chat_jwt", "elite_jwt"] as const[m
+[32m+[m[32mconst LEGACY_TOKEN_KEYS = ["authToken", "accessToken", "token"] as const[m
+ const DEFAULT_AVATAR =[m
+   "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=150&h=150&fit=crop&crop=faces"[m
+ const CONVERSATIONS_ENDPOINT = process.env.NEXT_PUBLIC_CHAT_CONVERSATIONS_URL || null[m
+[32m+[m[32mconst AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_BASE_URL || null[m
+[32m+[m[32mconst FOLLOWERS_ENDPOINT =[m
+[32m+[m[32m  process.env.NEXT_PUBLIC_CHAT_FOLLOWERS_URL ||[m
+[32m+[m[32m  (AUTH_BASE_URL ? `${AUTH_BASE_URL.replace(/\/$/, "")}/v1/users/get_own_followers` : null)[m
+[32m+[m[32mconst MESSAGE_PAGE_SIZE =[m
+[32m+[m[32m  Number.isFinite(Number(process.env.NEXT_PUBLIC_CHAT_PAGE_SIZE))[m
+[32m+[m[32m    ? Math.max(5, Number(process.env.NEXT_PUBLIC_CHAT_PAGE_SIZE))[m
+[32m+[m[32m    : 30[m
+[32m+[m[32mconst HISTORY_SCROLL_THRESHOLD = 120[m
+ const QUICK_EMOJIS = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "🔥", "🎉", "💯"][m
+ const REACTION_CHOICES = ["❤️", "👍", "😂", "🎉", "😮", "🔥", "😢"] as const[m
+[32m+[m[32mconst CONVERSATION_CACHE_KEY = "elite_chat_conversation_cache_v1"[m
+ [m
+ const getExistingConversationByServerId = ([m
+   serverConversationIdMapRef: MutableRefObject<Map<string, number>>,[m
+[36m@@ -212,10 +237,10 @@[m [mconst getCookie = (name: string): string | null => {[m
+   return value ? decodeURIComponent(value) : null[m
+ }[m
+ [m
+[31m-const resolveStoredToken = async (): Promise<string | null> => {[m
+[32m+[m[32mconst readTokenFromStorage = (keys: readonly string[]): string | null => {[m
+   if (typeof window === "undefined") return null[m
+ [m
+[31m-  for (const key of TOKEN_STORAGE_KEYS) {[m
+[32m+[m[32m  for (const key of keys) {[m
+     const fromLocal = window.localStorage?.getItem(key)[m
+     if (fromLocal) return fromLocal[m
+ [m
+[36m@@ -229,6 +254,32 @@[m [mconst resolveStoredToken = async (): Promise<string | null> => {[m
+   return null[m
+ }[m
+ [m
+[32m+[m[32mconst clearLegacyTokens = () => {[m
+[32m+[m[32m  if (typeof window === "undefined") return[m
+[32m+[m
+[32m+[m[32m  LEGACY_TOKEN_KEYS.forEach((key) => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      window.localStorage?.removeItem(key)[m
+[32m+[m[32m      window.sessionStorage?.removeItem(key)[m
+[32m+[m[32m      if (typeof document !== "undefined") {[m
+[32m+[m[32m        document.cookie = `${key}=; Path=/; Max-Age=0; SameSite=Lax`[m
+[32m+[m[32m      }[m
+[32m+[m[32m    } catch {[m
+[32m+[m[32m      // ignore storage cleanup errors[m
+[32m+[m[32m    }[m
+[32m+[m[32m  })[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mconst resolveStoredToken = async (): Promise<string | null> => {[m
+[32m+[m[32m  const primary = readTokenFromStorage(PRIMARY_TOKEN_KEYS)[m
+[32m+[m[32m  if (primary) {[m
+[32m+[m[32m    clearLegacyTokens()[m
+[32m+[m[32m    return primary[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return readTokenFromStorage(LEGACY_TOKEN_KEYS)[m
+[32m+[m[32m}[m
+[32m+[m
+ const REFRESH_ENDPOINTS = [[m
+   process.env.NEXT_PUBLIC_CHAT_REFRESH_URL,[m
+   process.env.NEXT_PUBLIC_AUTH_REFRESH_URL,[m
+[36m@@ -297,7 +348,7 @@[m [mexport default function ChatPage() {[m
+   const [searchQuery, setSearchQuery] = useState("")[m
+   const [messageText, setMessageText] = useState("")[m
+   const [showNewChatDialog, setShowNewChatDialog] = useState(false)[m
+[31m-  const [activeTab, setActiveTab] = useState<"all" | "groups" | "community">("all")[m
+[32m+[m[32m  const [activeTab, setActiveTab] = useState<"all" | "followers" | "groups" | "community">("all")[m
+   const [showConversations, setShowConversations] = useState(true)[m
+   const [isMobile, setIsMobile] = useState(false)[m
+   const [newChatSearch, setNewChatSearch] = useState("")[m
+[36m@@ -312,6 +363,7 @@[m [mexport default function ChatPage() {[m
+   const [messagesData, setMessagesData] = useState<MessageMap>({})[m
+   const serverConversationIdMapRef = useRef<Map<string, number>>(new Map())[m
+   const uiToServerConversationIdMapRef = useRef<Map<number, string>>(new Map())[m
+[32m+[m[32m  const skipNextConversationPersistRef = useRef(false)[m
+   const nextConversationIdRef = useRef<number>(1)[m
+   const currentUserIdRef = useRef<string | null>(null)[m
+   const onlineUsersRef = useRef<Record<string, boolean>>({})[m
+[36m@@ -353,10 +405,83 @@[m [mexport default function ChatPage() {[m
+     conversationId: number[m
+     messageId: string[m
+   } | null>(null)[m
+[32m+[m[32m  const [followers, setFollowers] = useState<FollowerContact[]>([])[m
+[32m+[m[32m  const [followersLoading, setFollowersLoading] = useState(false)[m
+   const [actionMenuTarget, setActionMenuTarget] = useState<{[m
+     conversationId: number[m
+     messageId: string[m
+   } | null>(null)[m
+[32m+[m[32m  const historyStateRef = useRef<Map<string, ConversationHistoryState>>(new Map())[m
+[32m+[m[32m  const [historyStateVersion, setHistoryStateVersion] = useState(0)[m
+[32m+[m[32m  const messagesContainerRef = useRef<HTMLDivElement | null>(null)[m
+[32m+[m[32m  const pendingScrollAdjustmentRef = useRef<{[m
+[32m+[m[32m    conversationId: number[m
+[32m+[m[32m    previousHeight: number[m
+[32m+[m[32m    previousScrollTop: number[m
+[32m+[m[32m  } | null>(null)[m
+[32m+[m
+[32m+[m[32m  const ensureHistoryState = useCallback((serverConversationId: string): ConversationHistoryState => {[m
+[32m+[m[32m    const existing = historyStateRef.current.get(serverConversationId)[m
+[32m+[m[32m    if (existing) return existing[m
+[32m+[m[32m    const initial: ConversationHistoryState = {[m
+[32m+[m[32m      offset: 0,[m
+[32m+[m[32m      hasMore: true,[m
+[32m+[m[32m      loading: false,[m
+[32m+[m[32m      initialLoaded: false,[m
+[32m+[m[32m    }[m
+[32m+[m[32m    historyStateRef.current.set(serverConversationId, initial)[m
+[32m+[m[32m    return initial[m
+[32m+[m[32m  }, [])[m
+[32m+[m
+[32m+[m[32m  const updateHistoryState = useCallback([m
+[32m+[m[32m    ([m
+[32m+[m[32m      serverConversationId: string,[m
+[32m+[m[32m      updater: (previous: ConversationHistoryState) => ConversationHistoryState,[m
+[32m+[m[32m    ) => {[m
+[32m+[m[32m      const previous = ensureHistoryState(serverConversationId)[m
+[32m+[m[32m      const next = updater(previous)[m
+[32m+[m[32m      historyStateRef.current.set(serverConversationId, next)[m
+[32m+[m[32m      setHistoryStateVersion((value) => value + 1)[m
+[32m+[m[32m    },[m
+[32m+[m[32m    [ensureHistoryState],[m
+[32m+[m[32m  )[m
+[32m+[m
+[32m+[m[32m  const getHistoryState = useCallback([m
+[32m+[m[32m    (serverConversationId: string): ConversationHistoryState | undefined => {[m
+[32m+[m[32m      return historyStateRef.current.get(serverConversationId)[m
+[32m+[m[32m    },[m
+[32m+[m[32m    [],[m
+[32m+[m[32m  )[m
+[32m+[m
+[32m+[m[32m  const persistConversationCache = useCallback(() => {[m
+[32m+[m[32m    if (typeof window === "undefined") return[m
+[32m+[m[32m    if (skipNextConversationPersistRef.current) {[m
+[32m+[m[32m      skipNextConversationPersistRef.current = false[m
+[32m+[m[32m      return[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const activeUserId = currentUserIdRef.current[m
+[32m+[m[32m    if (!activeUserId) return[m
+[32m+[m[32m    if (conversationMapRef.current.size === 0) return[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const payload = {[m
+[32m+[m[32m        conversations: Array.from(conversationMapRef.current.entries()),[m
+[32m+[m[32m        serverToUi: Array.from(serverConversationIdMapRef.current.entries()),[m
+[32m+[m[32m        uiToServer: Array.from(uiToServerConversationIdMapRef.current.entries()),[m
+[32m+[m[32m        lastMessageTimestamps: Array.from(lastMessageTimestampRef.current.entries()),[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const existingRaw = window.localStorage.getItem(CONVERSATION_CACHE_KEY)[m
+[32m+[m[32m      const existing =[m
+[32m+[m[32m        existingRaw && existingRaw.trim().length > 0 ? JSON.parse(existingRaw) : {}[m
+[32m+[m
+[32m+[m[32m      existing[String(activeUserId)] = payload[m
+[32m+[m[32m      window.localStorage.setItem(CONVERSATION_CACHE_KEY, JSON.stringify(existing))[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m      console.warn("Failed to persist conversation cache", error)[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }, [])[m
+ [m
+   const refreshConversations = useCallback(() => {[m
+     const conversations = Array.from(conversationMapRef.current.values()).sort((a, b) => {[m
+[36m@@ -368,7 +493,8 @@[m [mexport default function ChatPage() {[m
+       return new Date(timeB).getTime() - new Date(timeA).getTime()[m
+     })[m
+     setConversationsData(conversations)[m
+[31m-  }, [])[m
+[32m+[m[32m    persistConversationCache()[m
+[32m+[m[32m  }, [persistConversationCache])[m
+ [m
+   const refreshMessages = useCallback(() => {[m
+     const clone: MessageMap = {}[m
+[36m@@ -378,6 +504,70 @@[m [mexport default function ChatPage() {[m
+     setMessagesData(clone)[m
+   }, [])[m
+ [m
+[32m+[m[32m  const restoreConversationsFromCache = useCallback((): boolean => {[m
+[32m+[m[32m    if (typeof window === "undefined") return false[m
+[32m+[m
+[32m+[m[32m    const activeUserId = currentUserIdRef.current[m
+[32m+[m[32m    if (!activeUserId) return false[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const existingRaw = window.localStorage.getItem(CONVERSATION_CACHE_KEY)[m
+[32m+[m[32m      if (!existingRaw || existingRaw.trim().length === 0) return false[m
+[32m+[m
+[32m+[m[32m      const store = JSON.parse(existingRaw)[m
+[32m+[m[32m      const payload = store?.[String(activeUserId)][m
+[32m+[m[32m      if (!payload) return false[m
+[32m+[m
+[32m+[m[32m      const conversationEntries = Array.isArray(payload.conversations)[m
+[32m+[m[32m        ? payload.conversations.map(([key, value]: [number, ConversationType]) => [[m
+[32m+[m[32m            Number(key),[m
+[32m+[m[32m            value as ConversationType,[m
+[32m+[m[32m          ])[m
+[32m+[m[32m        : [][m
+[32m+[m[32m      conversationMapRef.current = new Map<number, ConversationType>(conversationEntries)[m
+[32m+[m[32m      serverConversationIdMapRef.current = new Map([m
+[32m+[m[32m        Array.isArray(payload.serverToUi)[m
+[32m+[m[32m          ? payload.serverToUi.map(([serverId, uiId]: [string, number]) => [[m
+[32m+[m[32m              String(serverId),[m
+[32m+[m[32m              Number(uiId),[m
+[32m+[m[32m            ])[m
+[32m+[m[32m          : [],[m
+[32m+[m[32m      )[m
+[32m+[m[32m      uiToServerConversationIdMapRef.current = new Map([m
+[32m+[m[32m        Array.isArray(payload.uiToServer)[m
+[32m+[m[32m          ? payload.uiToServer.map(([uiId, serverId]: [number, string]) => [[m
+[32m+[m[32m              Number(uiId),[m
+[32m+[m[32m              String(serverId),[m
+[32m+[m[32m            ])[m
+[32m+[m[32m          : [],[m
+[32m+[m[32m      )[m
+[32m+[m[32m      lastMessageTimestampRef.current = new Map([m
+[32m+[m[32m        Array.isArray(payload.lastMessageTimestamps)[m
+[32m+[m[32m          ? payload.lastMessageTimestamps.map(([uiId, timestamp]: [number, string]) => [[m
+[32m+[m[32m              Number(uiId),[m
+[32m+[m[32m              String(timestamp),[m
+[32m+[m[32m            ])[m
+[32m+[m[32m          : [],[m
+[32m+[m[32m      )[m
+[32m+[m
+[32m+[m[32m      if (conversationMapRef.current.size === 0) {[m
+[32m+[m[32m        return false[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const maxId = Math.max(...conversationMapRef.current.keys())[m
+[32m+[m[32m      if (Number.isFinite(maxId)) {[m
+[32m+[m[32m        nextConversationIdRef.current = Math.max(nextConversationIdRef.current, maxId + 1)[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      skipNextConversationPersistRef.current = true[m
+[32m+[m[32m      refreshConversations()[m
+[32m+[m[32m      return true[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m      console.warn("Failed to restore cached conversations", error)[m
+[32m+[m[32m      return false[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }, [refreshConversations])[m
+[32m+[m
+   const formatRelativeTime = useCallback((iso?: string) => {[m
+     if (!iso) return ""[m
+     const date = new Date(iso)[m
+[36m@@ -421,6 +611,7 @@[m [mexport default function ChatPage() {[m
+       username?: string[m
+       participantId?: string[m
+       groupId?: string[m
+[32m+[m[32m      displayName?: string[m
+     },[m
+   ) => {[m
+     let uiId = serverConversationIdMapRef.current.get(serverConversationId)[m
+[36m@@ -431,18 +622,24 @@[m [mexport default function ChatPage() {[m
+     uiToServerConversationIdMapRef.current.set(uiId, serverConversationId)[m
+ [m
+     const existing = conversationMapRef.current.get(uiId)[m
+[32m+[m[32m    const preferredName =[m
+[32m+[m[32m      data.displayName ??[m
+[32m+[m[32m      data.name ??[m
+[32m+[m[32m      data.username ??[m
+[32m+[m[32m      existing?.name ??[m
+[32m+[m[32m      humanizeIdentifier(serverConversationId, `Conversation ${uiId}`)[m
+[32m+[m
+[32m+[m[32m    const preferredUsername =[m
+[32m+[m[32m      data.username ??[m
+[32m+[m[32m      data.displayName ??[m
+[32m+[m[32m      existing?.username ??[m
+[32m+[m[32m      humanizeIdentifier(serverConversationId, `user-${uiId}`)[m
+[32m+[m
+     const updated: ConversationType = {[m
+       id: uiId,[m
+       type: data.type ?? existing?.type ?? "personal",[m
+[31m-      name:[m
+[31m-        data.name ??[m
+[31m-        existing?.name ??[m
+[31m-        data.username ??[m
+[31m-        humanizeIdentifier(serverConversationId, `Conversation ${uiId}`),[m
+[31m-      username:[m
+[31m-        data.username ??[m
+[31m-        existing?.username ??[m
+[31m-        humanizeIdentifier(serverConversationId, `user-${uiId}`),[m
+[32m+[m[32m      name: preferredName,[m
+[32m+[m[32m      username: preferredUsername,[m
+       avatar: data.avatar ?? existing?.avatar ?? DEFAULT_AVATAR,[m
+       lastMessage: data.lastMessage ?? existing?.lastMessage ?? "",[m
+       timestamp: data.timestamp ?? existing?.timestamp ?? "",[m
+[36m@@ -650,6 +847,8 @@[m [mexport default function ChatPage() {[m
+     

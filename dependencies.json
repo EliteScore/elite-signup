@@ -1,0 +1,12 @@
+{
+  "chat-server/security/jwtUtils.js": ["chat-server/config/database.js"],
+  "chat-server/handlers/messageHandlers.js": [
+    "chat-server/security/jwtUtils.js",
+    "chat-server/security/followingUtils.js",
+    "chat-server/database/messageOperations.js",
+    "chat-server/security/blockingUtils.js",
+    "chat-server/config/redis.js",
+    "chat-server/security/inputValidator.js",
+    "chat-server/config/database.js"
+  ]
+}

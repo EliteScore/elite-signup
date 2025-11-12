@@ -82,8 +82,12 @@ export default function LoginPage() {
         password: data.password,
       }
       
+      const authBaseUrl =
+        process.env.NEXT_PUBLIC_AUTH_BASE_URL?.replace(/\/$/, "") ||
+        "https://elite-score-a31a0334b58d.herokuapp.com"
+
       // Call the actual login API
-      const response = await fetch('https://elite-score-a31a0334b58d.herokuapp.com/v1/auth/login', {
+      const response = await fetch(`${authBaseUrl}/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +129,52 @@ export default function LoginPage() {
 
       // Parse successful response
       const result = isJson ? await response.json() : { success: true }
-      
+
+      const tokenCandidates: Array<string | undefined> = [
+        result?.data?.[1],
+        result?.data?.token,
+        result?.token,
+        result?.jwt,
+        result?.accessToken,
+        result?.access_token,
+      ]
+
+      const token = tokenCandidates.find(
+        (value): value is string => typeof value === "string" && value.trim().length > 0,
+      )
+
+      if (token && typeof window !== "undefined") {
+        try {
+          const storage = data.remember ? window.localStorage : window.sessionStorage
+          const backupStorage = data.remember ? window.sessionStorage : undefined
+          const keyVariants = ["chat_jwt", "elite_jwt", "authToken", "accessToken", "token"]
+
+          ;[storage, backupStorage].forEach((store) => {
+            if (!store) return
+            keyVariants.forEach((key) => {
+              try {
+                store.setItem(key, token)
+              } catch {
+                // Ignore storage write errors (quota, privacy mode, etc.)
+              }
+            })
+          })
+
+          const cookieAttributes = [
+            `chat_jwt=${encodeURIComponent(token)}`,
+            "Path=/",
+            "SameSite=Lax",
+            data.remember ? "Max-Age=2592000" : undefined,
+          ]
+            .filter(Boolean)
+            .join("; ")
+
+          document.cookie = cookieAttributes
+        } catch {
+          // Swallow token persistence errors so login can still proceed
+        }
+      }
+
       // Redirect to home page on success
       router.push("/home")
       

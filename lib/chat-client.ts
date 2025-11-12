@@ -176,8 +176,8 @@ export class ChatClient {
     })
   }
 
-  getGroupMessages(groupId: string, limit = 50): void {
-    this.send({ type: "get_group_messages", groupId, limit })
+  getGroupMessages(groupId: string, limit = 50, offset = 0): void {
+    this.send({ type: "get_group_messages", groupId, limit, offset })
   }
 
   editPrivateMessage(messageId: string, newContent: string): void {
