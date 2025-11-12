@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useRequireAuth } from "@/hooks/useRequireAuth"
-import { useProfileCheck } from "@/hooks/useProfileCheck"
 import {
   MessageCircle,
   Share2,
@@ -491,7 +490,6 @@ const userData = {
 
 export default function HomePage() {
   const isAuthorized = useRequireAuth() // Protect this route
-  const hasProfile = useProfileCheck() // Check if profile exists
   const router = useRouter()
   const [likedPosts, setLikedPosts] = useState<number[]>(posts.filter((p) => p.liked).map((p) => p.id))
   const [savedPosts, setSavedPosts] = useState<number[]>(posts.filter((p) => p.saved).map((p) => p.id))
@@ -513,8 +511,8 @@ export default function HomePage() {
     }
   }, [])
 
-  // Don't render until auth and profile checks are complete
-  if (!isAuthorized || !hasProfile) {
+  // Don't render until auth check is complete
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />

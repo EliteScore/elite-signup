@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { readNeedsProfileSetup } from "@/lib/profile"
 
 /**
  * Hook to protect routes that require authentication.
@@ -22,6 +23,16 @@ export function useRequireAuth(): boolean {
     if (!token) {
       // No token found - redirect to login
       router.replace("/login")
+      setIsAuthorized(false)
+      setHasChecked(true)
+      return
+    }
+
+    const pathname = window.location.pathname
+    const needsProfileSetup = readNeedsProfileSetup()
+
+    if (needsProfileSetup && !pathname.startsWith("/settings")) {
+      router.replace("/settings?firstTime=1")
       setIsAuthorized(false)
       setHasChecked(true)
       return

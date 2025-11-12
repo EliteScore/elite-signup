@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { syncProfileStateWithToken } from "@/lib/profile"
 
 const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
 
@@ -144,6 +145,7 @@ export default function GoogleCallbackPage() {
       }
 
       const storage = storagePreference === "local" ? window.localStorage : window.sessionStorage
+      let tokenStorage: Storage = storage
 
       try {
         storage.setItem("auth.accessToken", accessToken)
@@ -159,15 +161,16 @@ export default function GoogleCallbackPage() {
       } catch (error) {
         // If storage fails, fall back to session storage
         try {
-          window.sessionStorage.setItem("auth.accessToken", accessToken)
+          tokenStorage = window.sessionStorage
+          tokenStorage.setItem("auth.accessToken", accessToken)
           if (refreshToken) {
-            window.sessionStorage.setItem("auth.refreshToken", refreshToken)
+            tokenStorage.setItem("auth.refreshToken", refreshToken)
           }
           if (userRole) {
-            window.sessionStorage.setItem("auth.userRole", userRole)
+            tokenStorage.setItem("auth.userRole", userRole)
           }
           if (email) {
-            window.sessionStorage.setItem("auth.email", email)
+            tokenStorage.setItem("auth.email", email)
           }
         } catch (innerError) {
           setStatus("error")
@@ -182,11 +185,20 @@ export default function GoogleCallbackPage() {
         }
       }
 
+      const profileSyncResult = await syncProfileStateWithToken(accessToken, tokenStorage)
+
       setStatus("success")
-      setMessage(result.message || "Google sign-in successful! Redirecting to your dashboard...")
+      setMessage(
+        result.message ||
+          (profileSyncResult?.needsSetup
+            ? "Google sign-in successful! Let's finish setting up your profile..."
+            : "Google sign-in successful! Redirecting to your dashboard...")
+      )
+
+      const nextRoute = profileSyncResult?.needsSetup ? "/settings?firstTime=1" : "/home"
 
       redirectTimeout = window.setTimeout(() => {
-        router.push("/home")
+        router.push(nextRoute)
       }, 1200)
     }
 

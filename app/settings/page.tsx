@@ -1,9 +1,7 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { useRequireAuth } from "@/hooks/useRequireAuth"
-import { useState } from "react"
-import { ProfileEditDialog } from "@/components/profile-edit-dialog"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   Settings,
   User,
@@ -19,6 +17,9 @@ import {
   Save,
 } from "lucide-react"
 import { motion } from "framer-motion"
+import { z } from "zod"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { EnhancedCard, EnhancedCardContent, EnhancedCardHeader, EnhancedCardTitle } from "@/components/ui/enhanced-card"
@@ -29,11 +30,87 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { AnimatedSection } from "@/components/ui/animated-section"
+import { useRequireAuth } from "@/hooks/useRequireAuth"
+import { useToast } from "@/hooks/use-toast"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { syncProfileStateWithToken } from "@/lib/profile"
+
+const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+
+const profileSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, { message: "First name is required." })
+    .max(120, { message: "First name is too long." }),
+  lastName: z
+    .string()
+    .min(1, { message: "Last name is required." })
+    .max(120, { message: "Last name is too long." }),
+  phoneNumber: z
+    .string()
+    .min(1, { message: "Phone number is required." })
+    .max(40, { message: "Phone number is too long." }),
+  bio: z
+    .string()
+    .max(500, { message: "Bio must be 500 characters or fewer." })
+    .optional()
+    .nullable()
+    .transform((val) => val ?? ""),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
+})
+
+type ProfileFormValues = z.infer<typeof profileSchema>
+
+type AuthContext = {
+  token: string | null
+  storage: Storage | null
+}
+
+function getAuthContext(): AuthContext {
+  if (typeof window === "undefined") {
+    return { token: null, storage: null }
+  }
+
+  const localToken = window.localStorage.getItem("auth.accessToken")
+  if (localToken) {
+    return { token: localToken, storage: window.localStorage }
+  }
+
+  const sessionToken = window.sessionStorage.getItem("auth.accessToken")
+  if (sessionToken) {
+    return { token: sessionToken, storage: window.sessionStorage }
+  }
+
+  return { token: null, storage: null }
+}
 
 export default function SettingsPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
   const isAuthorized = useRequireAuth() // Protect this route
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [profileSuccessMessage, setProfileSuccessMessage] = useState<string | null>(null)
+  const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const isFirstTime = searchParams?.get("firstTime") === "1"
+  const profileForm = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+      bio: "",
+      visibility: "PUBLIC",
+    },
+  })
+
   const [theme, setTheme] = useState<"light" | "dark" | "system">("dark")
-  const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(true)
   const [weeklyDigest, setWeeklyDigest] = useState(true)
@@ -46,8 +123,67 @@ export default function SettingsPage() {
     searchVisibility: "everyone",
   })
   const [activeSection, setActiveSection] = useState("account")
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const { token, storage } = getAuthContext()
+    if (!token) {
+      router.replace("/login")
+      return
+    }
+
+    let isMounted = true
+    setProfileLoading(true)
+    setProfileError(null)
+    setProfileSuccessMessage(null)
+
+    syncProfileStateWithToken(token, storage)
+      .then((result) => {
+        if (!isMounted) return
+        const profile = result?.profile ?? null
+        const visibilityValue =
+          profile && typeof profile.visibility === "string" && profile.visibility.toUpperCase() === "PRIVATE"
+            ? "PRIVATE"
+            : "PUBLIC"
+
+        profileForm.reset({
+          firstName: (profile?.firstName as string) ?? "",
+          lastName: (profile?.lastName as string) ?? "",
+          phoneNumber: (profile?.phoneNumber as string) ?? "",
+          bio: typeof profile?.bio === "string" ? profile.bio : "",
+          visibility: visibilityValue,
+        })
+
+        setNeedsProfileSetup(result?.needsSetup ?? false)
+        setPrivacySettings((prev) => ({
+          ...prev,
+          profileVisibility: visibilityValue.toLowerCase(),
+        }))
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setProfileError("We couldn't load your profile information. Please try again.")
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setProfileLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [router, profileForm])
   
   if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
@@ -89,16 +225,121 @@ export default function SettingsPage() {
     },
   ]
 
+  const profileExists = !needsProfileSetup
+
+  async function handleProfileSubmit(values: ProfileFormValues) {
+    if (typeof window === "undefined") return
+
+    const { token, storage } = getAuthContext()
+    if (!token) {
+      router.replace("/login")
+      return
+    }
+
+    const trimmedValues = {
+      firstName: values.firstName.trim(),
+      lastName: values.lastName.trim(),
+      phoneNumber: values.phoneNumber.trim(),
+      bio: values.bio ? values.bio.trim() : "",
+      visibility: values.visibility,
+    }
+
+    setProfileError(null)
+    setProfileSuccessMessage(null)
+    setIsSavingProfile(true)
+
+    const wasProfileIncomplete = !profileExists
+    const endpoint = profileExists ? "/v1/users/profile/update_profile" : "/v1/users/profile/add_profile"
+    const method = profileExists ? "PATCH" : "POST"
+    const payload: Record<string, unknown> = {
+      ...trimmedValues,
+    }
+
+    if (!profileExists) {
+      payload.resume = null
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const contentType = response.headers.get("content-type")
+      const isJson = contentType?.includes("application/json")
+      const result = isJson ? await response.json().catch(() => null) : null
+
+      if (!response.ok || result?.success === false) {
+        const errorMessage =
+          result?.message ||
+          (response.status === 204
+            ? "Please complete all required profile fields."
+            : "We couldn't save your profile. Please try again.")
+
+        setProfileError(errorMessage)
+        toast({
+          title: "Profile update failed",
+          description: errorMessage,
+          variant: "destructive",
+        })
+        return
+      }
+
+      const syncResult = await syncProfileStateWithToken(token, storage)
+      const updatedProfile = syncResult?.profile ?? null
+      const updatedVisibility =
+        updatedProfile && typeof updatedProfile.visibility === "string" && updatedProfile.visibility.toUpperCase() === "PRIVATE"
+          ? "PRIVATE"
+          : trimmedValues.visibility
+
+      profileForm.reset({
+        firstName: (updatedProfile?.firstName as string) ?? trimmedValues.firstName,
+        lastName: (updatedProfile?.lastName as string) ?? trimmedValues.lastName,
+        phoneNumber: (updatedProfile?.phoneNumber as string) ?? trimmedValues.phoneNumber,
+        bio: typeof updatedProfile?.bio === "string" ? updatedProfile.bio : trimmedValues.bio,
+        visibility: updatedVisibility,
+      })
+
+      setNeedsProfileSetup(syncResult?.needsSetup ?? false)
+      setProfileSuccessMessage(
+        result?.message ||
+          (wasProfileIncomplete ? "Profile created successfully! Welcome aboard." : "Profile updated successfully.")
+      )
+
+      toast({
+        title: wasProfileIncomplete ? "Profile created" : "Profile updated",
+        description:
+          syncResult?.needsSetup === false
+            ? "You're all set. Let's continue your journey!"
+            : "Profile saved successfully.",
+      })
+
+      if (syncResult?.needsSetup === false) {
+        setTimeout(() => {
+          if (isFirstTime || wasProfileIncomplete) {
+            router.replace("/home")
+          }
+        }, 800)
+      }
+    } catch (error) {
+      setProfileError("An unexpected error occurred while saving your profile. Please try again.")
+      toast({
+        title: "Network error",
+        description: "We couldn't reach the server. Check your connection and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
   return (
-    <>
-      <ProfileEditDialog
-        open={showProfileEdit}
-        onOpenChange={setShowProfileEdit}
-        onSuccess={() => {
-          // Optionally refresh profile data or show success message
-        }}
-      />
-      <DashboardLayout>
+    <DashboardLayout>
       {/* Background Elements */}
       <div className="absolute inset-0 z-0">
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-radial from-blue-500/20 via-purple-700/15 to-transparent rounded-full blur-3xl" />
@@ -133,7 +374,14 @@ export default function SettingsPage() {
                       >
                         <div className="mr-3">{section.icon}</div>
                         <div className="flex-1">
-                          <div className="font-bold text-sm text-white">{section.title}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-bold text-sm text-white">{section.title}</div>
+                            {section.id === "account" && needsProfileSetup && (
+                              <Badge className="bg-orange-500/20 text-orange-200 border-orange-500/40 text-[10px] uppercase tracking-wide">
+                                Setup
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-xs text-zinc-500 hidden md:block">{section.description}</div>
                         </div>
                         <ChevronRight
@@ -174,45 +422,162 @@ export default function SettingsPage() {
                   </EnhancedCardHeader>
                   <EnhancedCardContent className="p-4">
                     <div className="space-y-6">
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold text-white">Profile Information</h3>
-                        <p className="text-xs text-zinc-400">
-                          Manage your personal information and how it appears on your profile
-                        </p>
-                        <div className="bg-zinc-800/60 border border-blue-700/30 rounded-lg p-4 mt-2 shadow-[0_0_8px_0_rgba(80,0,255,0.2)]">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-sm font-bold text-white">Personal Information</div>
-                              <div className="text-xs text-zinc-500">Name, email, bio, and profile picture</div>
-                            </div>
+                      {needsProfileSetup && (
+                        <Alert className="bg-blue-900/20 border border-blue-700/40 text-blue-100">
+                          <AlertDescription>
+                            Welcome! Let’s add your name, phone number, and bio so the community can get to know you.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      <Form {...profileForm}>
+                        <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
+                          {profileError && (
+                            <Alert variant="destructive" className="bg-red-900/30 border-red-800/60 text-red-200">
+                              <AlertDescription>{profileError}</AlertDescription>
+                            </Alert>
+                          )}
+
+                          {profileSuccessMessage && (
+                            <Alert className="bg-green-900/20 border border-green-800/40 text-green-200">
+                              <AlertDescription>{profileSuccessMessage}</AlertDescription>
+                            </Alert>
+                          )}
+
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <FormField
+                              control={profileForm.control}
+                              name="firstName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-white text-sm">First name</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Alex"
+                                      className="bg-zinc-900/60 border-zinc-700 text-white"
+                                      disabled={isSavingProfile}
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={profileForm.control}
+                              name="lastName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-white text-sm">Last name</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Johnson"
+                                      className="bg-zinc-900/60 border-zinc-700 text-white"
+                                      disabled={isSavingProfile}
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={profileForm.control}
+                              name="phoneNumber"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-white text-sm">Phone number</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="tel"
+                                      placeholder="+1 (555) 123-4567"
+                                      className="bg-zinc-900/60 border-zinc-700 text-white"
+                                      disabled={isSavingProfile}
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={profileForm.control}
+                              name="visibility"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-white text-sm">Profile visibility</FormLabel>
+                                  <FormControl>
+                                    <RadioGroup
+                                      onValueChange={field.onChange}
+                                      value={field.value}
+                                      className="flex flex-col space-y-2"
+                                      disabled={isSavingProfile}
+                                    >
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="PUBLIC" id="visibility-public" />
+                                        <Label htmlFor="visibility-public" className="text-white font-medium">
+                                          Public — anyone can view your profile
+                                        </Label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="PRIVATE" id="visibility-private" />
+                                        <Label htmlFor="visibility-private" className="text-white font-medium">
+                                          Private — only approved connections
+                                        </Label>
+                                      </div>
+                                    </RadioGroup>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={profileForm.control}
+                            name="bio"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-white text-sm">Bio</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Tell the community about your interests, background, and goals."
+                                    className="bg-zinc-900/60 border-zinc-700 text-white min-h-[120px]"
+                                    disabled={isSavingProfile}
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="flex justify-end">
                             <EnhancedButton
-                              variant="outline"
-                              size="sm"
+                              type="submit"
+                              variant="gradient"
                               rounded="full"
-                              className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)]"
-                              onClick={() => setShowProfileEdit(true)}
+                              animation="shimmer"
+                              disabled={isSavingProfile}
+                              className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
                             >
-                              Edit
+                              {isSavingProfile ? (
+                                <>
+                                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                  Saving...
+                                </>
+                              ) : profileExists ? (
+                                "Save profile"
+                              ) : (
+                                "Create profile"
+                              )}
                             </EnhancedButton>
                           </div>
-                        </div>
-                        <div className="bg-zinc-800/60 border border-purple-700/30 rounded-lg p-4 shadow-[0_0_8px_0_rgba(147,51,234,0.2)]">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-sm font-bold text-white">Professional Information</div>
-                              <div className="text-xs text-zinc-500">Work experience, education, and skills</div>
-                            </div>
-                            <EnhancedButton
-                              variant="outline"
-                              size="sm"
-                              rounded="full"
-                              className="bg-zinc-800/80 border-purple-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(147,51,234,0.3)]"
-                            >
-                              Edit
-                            </EnhancedButton>
-                          </div>
-                        </div>
-                      </div>
+                        </form>
+                      </Form>
 
                       <div className="h-px bg-gradient-to-r from-transparent via-blue-700/50 to-transparent" />
 
@@ -723,7 +1088,6 @@ export default function SettingsPage() {
         </div>
       </div>
     </DashboardLayout>
-    </>
   )
 }
 
