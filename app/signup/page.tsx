@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import Script from "next/script"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -16,6 +17,16 @@ import { Progress } from "@/components/ui/progress"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 // Removed import of Separator due to missing module
+
+const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+
+type GoogleOAuthConfig = {
+  clientId: string
+  redirectUris: string[]
+  javascriptOrigins?: string[]
+  authUri?: string
+  tokenUri?: string
+}
 
 // Animation variants
 const containerVariants = {
@@ -83,6 +94,12 @@ export default function SignupPage() {
   const [passwordStrength, setPasswordStrength] = useState(0)
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 2
+  const [isGoogleScriptLoaded, setIsGoogleScriptLoaded] = useState(false)
+  const [googleConfig, setGoogleConfig] = useState<GoogleOAuthConfig | null>(null)
+  const [isGoogleConfigLoading, setIsGoogleConfigLoading] = useState(false)
+  const [googleConfigError, setGoogleConfigError] = useState<string | null>(null)
+  const [googleSignInError, setGoogleSignInError] = useState<string | null>(null)
+  const codeClientRef = useRef<any>(null)
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -116,6 +133,131 @@ export default function SignupPage() {
 
     setPasswordStrength(strength)
   }, [form.watch("password")])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function fetchGoogleConfig() {
+      setIsGoogleConfigLoading(true)
+      setGoogleConfigError(null)
+      setGoogleSignInError(null)
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/v1/auth/google/config`, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        })
+
+        const result = await response
+          .json()
+          .catch(() => ({ success: false, message: "Invalid response from Google config endpoint." }))
+
+        if (!response.ok || result?.success === false || !result?.data) {
+          if (!isCancelled) {
+            setGoogleConfig(null)
+            setGoogleConfigError(result?.message || "Google sign-in is unavailable right now.")
+          }
+          return
+        }
+
+        const data = result.data as Partial<GoogleOAuthConfig>
+        const redirectUris = Array.isArray(data.redirectUris) ? data.redirectUris : []
+        const clientId = typeof data.clientId === "string" ? data.clientId : ""
+
+        if (!clientId) {
+          if (!isCancelled) {
+            setGoogleConfig(null)
+            setGoogleConfigError("Google sign-in is not configured.")
+          }
+          return
+        }
+
+        if (!isCancelled) {
+          setGoogleConfig({
+            clientId,
+            redirectUris: redirectUris.length > 0 ? redirectUris : [`${window.location.origin}/auth/callback`],
+            javascriptOrigins: Array.isArray(data.javascriptOrigins) ? data.javascriptOrigins : undefined,
+            authUri: typeof data.authUri === "string" ? data.authUri : undefined,
+            tokenUri: typeof data.tokenUri === "string" ? data.tokenUri : undefined,
+          })
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setGoogleConfigError("Unable to reach Google sign-in service.")
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsGoogleConfigLoading(false)
+        }
+      }
+    }
+
+    fetchGoogleConfig()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    codeClientRef.current = null
+  }, [googleConfig?.clientId])
+
+  const handleGoogleScriptLoaded = useCallback(() => {
+    setIsGoogleScriptLoaded(true)
+  }, [])
+
+  const handleGoogleScriptError = useCallback(() => {
+    setIsGoogleScriptLoaded(false)
+    setGoogleConfigError("Google sign-in script failed to load. Please refresh the page and try again.")
+  }, [])
+
+  const handleGoogleSignIn = useCallback(() => {
+    setGoogleSignInError(null)
+
+    if (googleConfigError) {
+      setGoogleSignInError(googleConfigError)
+      return
+    }
+
+    if (!googleConfig) {
+      setGoogleSignInError("Google sign-in is not available right now. Please try again later.")
+      return
+    }
+
+    if (!googleConfig.clientId) {
+      setGoogleSignInError("Google sign-in is misconfigured. Please contact support.")
+      return
+    }
+
+    if (!isGoogleScriptLoaded) {
+      setGoogleSignInError("Google sign-in is still loading. Please wait a moment and try again.")
+      return
+    }
+
+    const googleAuth = (window as any)?.google?.accounts?.oauth2
+    if (!googleAuth) {
+      setGoogleSignInError("Unable to initialize Google sign-in. Please refresh the page and try again.")
+      return
+    }
+
+    if (!codeClientRef.current) {
+      const redirectUri =
+        googleConfig.redirectUris.find((uri) => uri.startsWith(window.location.origin)) ??
+        `${window.location.origin}/auth/callback`
+
+      codeClientRef.current = googleAuth.initCodeClient({
+        client_id: googleConfig.clientId,
+        scope: "openid email profile",
+        ux_mode: "redirect",
+        redirect_uri: redirectUri,
+      })
+    }
+
+    codeClientRef.current.requestCode()
+  }, [googleConfig, googleConfigError, isGoogleScriptLoaded])
 
   // Get strength color
   const getStrengthColor = () => {
@@ -199,7 +341,14 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black p-4 py-12 overflow-x-hidden">
+    <>
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={handleGoogleScriptLoaded}
+        onError={handleGoogleScriptError}
+      />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black p-4 py-12 overflow-x-hidden">
       {/* App name at the top */}
       <div className="w-full flex justify-center pt-8 pb-6">
         <span className="text-2xl font-extrabold tracking-widest uppercase bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">ELITESCORE</span>
@@ -451,40 +600,64 @@ export default function SignupPage() {
 
               <div className="relative w-full flex items-center my-2">
                 <div className="flex-grow border-t border-zinc-700"></div>
-                <span className="mx-2 bg-card px-2 text-xs text-zinc-400">OR CONTINUE WITH</span>
+                <span className="mx-2 bg-black px-2 text-xs text-zinc-400">OR</span>
                 <div className="flex-grow border-t border-zinc-700"></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="w-full" disabled={isLoading}>
-                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    />
-                    <path d="M1 1h22v22H1z" fill="none" />
-                  </svg>
-                  Google
-                </Button>
-                <Button variant="outline" className="w-full" disabled={isLoading}>
-                  <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                  </svg>
-                  GitHub
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-xl border-zinc-700 text-white hover:bg-zinc-900 transition-colors"
+                onClick={handleGoogleSignIn}
+                disabled={
+                  isLoading ||
+                  isGoogleConfigLoading ||
+                  !googleConfig ||
+                  !isGoogleScriptLoaded ||
+                  Boolean(googleConfigError)
+                }
+              >
+                {isGoogleConfigLoading ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="mr-2 h-4 w-4"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        fill="#EA4335"
+                      />
+                      <path d="M1 1h22v22H1z" fill="none" />
+                    </svg>
+                    {googleConfigError ? "Google unavailable" : "Sign in with Google"}
+                  </>
+                )}
+              </Button>
+
+              {(googleSignInError || (!isGoogleConfigLoading && googleConfigError)) && (
+                <p className="text-center text-xs text-red-400">
+                  {googleSignInError || googleConfigError}
+                </p>
+              )}
 
               <div className="text-center text-sm text-zinc-400">
                 Already have an account?{" "}
@@ -494,75 +667,6 @@ export default function SignupPage() {
               </div>
             </CardFooter>
           </Card>
-        </motion.div>
-
-        <motion.div
-          className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          transition={{ delay: 0.4 }}
-        >
-          <motion.div
-            className="flex items-center space-x-2 rounded-lg border border-zinc-700 bg-card/80 p-4 backdrop-blur-sm"
-            variants={itemVariants}
-          >
-            <div className="rounded-full bg-primary/20 p-2">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-primary"
-              >
-                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor" />
-              </svg>
-            </div>
-            <span className="text-sm">Personalized improvement plans</span>
-          </motion.div>
-          <motion.div
-            className="flex items-center space-x-2 rounded-lg border border-zinc-700 bg-card/80 p-4 backdrop-blur-sm"
-            variants={itemVariants}
-          >
-            <div className="rounded-full bg-primary/20 p-2">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-primary"
-              >
-                <path
-                  d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.59L18 11l-6 6z"
-                  fill="currentColor"
-                />
-              </svg>
-            </div>
-            <span className="text-sm">Track your progress with analytics</span>
-          </motion.div>
-          <motion.div
-            className="flex items-center space-x-2 rounded-lg border border-zinc-700 bg-card/80 p-4 backdrop-blur-sm"
-            variants={itemVariants}
-          >
-            <div className="rounded-full bg-primary/20 p-2">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-primary"
-              >
-                <path
-                  d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
-                  fill="currentColor"
-                />
-              </svg>
-            </div>
-            <span className="text-sm">Connect with like-minded people</span>
-          </motion.div>
         </motion.div>
 
         {/* Security badge */}
@@ -577,6 +681,7 @@ export default function SignupPage() {
         </motion.div>
       </motion.div>
     </div>
+    </>
   )
 }
 

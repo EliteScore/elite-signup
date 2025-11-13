@@ -9,9 +9,7 @@ import {
   Bell,
   Lock,
   Globe,
-  Moon,
-  Sun,
-  Smartphone,
+  // Moon, Sun, Smartphone removed as their related sections are no longer rendered
   LogOut,
   ChevronRight,
   Check,
@@ -73,18 +71,7 @@ export default function SettingsPage() {
       icon: <Lock className="h-5 w-5" />,
       description: "Manage your security settings and privacy preferences",
     },
-    {
-      id: "appearance",
-      title: "Appearance",
-      icon: <Moon className="h-5 w-5" />,
-      description: "Customize how Strivio looks for you",
-    },
-    {
-      id: "devices",
-      title: "Devices & Sessions",
-      icon: <Smartphone className="h-5 w-5" />,
-      description: "Manage your connected devices and active sessions",
-    },
+    // Appearance and Devices sections removed per requirement
   ]
 
   return (
@@ -203,45 +190,7 @@ export default function SettingsPage() {
                         </div>
                       </div>
 
-                      <div className="h-px bg-gradient-to-r from-transparent via-blue-700/50 to-transparent" />
-
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold text-white">Account Preferences</h3>
-                        <p className="text-xs text-zinc-400">Manage your account settings and preferences</p>
-                        <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-4 mt-2 shadow-[0_0_8px_0_rgba(34,197,94,0.2)]">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-sm font-bold text-white">Language</div>
-                              <div className="text-xs text-zinc-500">English (United States)</div>
-                            </div>
-                            <EnhancedButton
-                              variant="outline"
-                              size="sm"
-                              rounded="full"
-                              className="bg-zinc-800/80 border-green-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(34,197,94,0.3)]"
-                            >
-                              Change
-                            </EnhancedButton>
-                          </div>
-                        </div>
-                        <div className="bg-zinc-800/60 border border-fuchsia-700/30 rounded-lg p-4 shadow-[0_0_8px_0_rgba(217,70,239,0.2)]">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-sm font-bold text-white">Time Zone</div>
-                              <div className="text-xs text-zinc-500">Pacific Time (US & Canada)</div>
-                            </div>
-                            <EnhancedButton
-                              variant="outline"
-                              size="sm"
-                              rounded="full"
-                              className="bg-zinc-800/80 border-fuchsia-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(217,70,239,0.3)]"
-                            >
-                              Change
-                            </EnhancedButton>
-                          </div>
-                        </div>
-                      </div>
-
+                      {/* Divider before Danger Zone */}
                       <div className="h-px bg-gradient-to-r from-transparent via-red-700/50 to-transparent" />
 
                       <div className="space-y-2">
@@ -479,235 +428,7 @@ export default function SettingsPage() {
               </AnimatedSection>
             )}
 
-            {/* Appearance Settings */}
-            {activeSection === "appearance" && (
-              <AnimatedSection delay={0.2}>
-                <EnhancedCard variant="default" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]">
-                  <EnhancedCardHeader className="pb-2">
-                    <EnhancedCardTitle className="text-lg flex items-center">
-                      <Moon className="h-5 w-5 mr-2 text-blue-400" />
-                      <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">Appearance</span>
-                    </EnhancedCardTitle>
-                  </EnhancedCardHeader>
-                  <EnhancedCardContent className="p-4">
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold text-white">Theme</h3>
-                        <p className="text-xs text-zinc-400">Choose how EliteScore looks for you</p>
-                        <div className="grid grid-cols-3 gap-3 mt-3">
-                          <motion.div
-                            className={cn(
-                              "border rounded-lg p-4 cursor-pointer transition-all relative",
-                              theme === "light"
-                                ? "border-blue-500 bg-blue-900/20 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]"
-                                : "border-zinc-700/50 bg-zinc-900/60 hover:bg-zinc-900 hover:border-blue-700/40",
-                            )}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setTheme("light")}
-                          >
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="bg-white text-black rounded-full p-2">
-                                <Sun className="h-5 w-5" />
-                              </div>
-                              <span className="text-sm font-bold text-white">Light</span>
-                              {theme === "light" && (
-                                <div className="absolute top-2 right-2 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <Check className="h-3 w-3 text-white" />
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-
-                          <motion.div
-                            className={cn(
-                              "border rounded-lg p-4 cursor-pointer transition-all relative",
-                              theme === "dark"
-                                ? "border-blue-500 bg-blue-900/20 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]"
-                                : "border-zinc-700/50 bg-zinc-900/60 hover:bg-zinc-900 hover:border-blue-700/40",
-                            )}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setTheme("dark")}
-                          >
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="bg-zinc-900 text-white rounded-full p-2">
-                                <Moon className="h-5 w-5" />
-                              </div>
-                              <span className="text-sm font-bold text-white">Dark</span>
-                              {theme === "dark" && (
-                                <div className="absolute top-2 right-2 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <Check className="h-3 w-3 text-white" />
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-
-                          <motion.div
-                            className={cn(
-                              "border rounded-lg p-4 cursor-pointer transition-all relative",
-                              theme === "system"
-                                ? "border-blue-500 bg-blue-900/20 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]"
-                                : "border-zinc-700/50 bg-zinc-900/60 hover:bg-zinc-900 hover:border-blue-700/40",
-                            )}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setTheme("system")}
-                          >
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="bg-gradient-to-r from-white to-zinc-900 rounded-full p-2">
-                                <Globe className="h-5 w-5" />
-                              </div>
-                              <span className="text-sm font-bold text-white">System</span>
-                              {theme === "system" && (
-                                <div className="absolute top-2 right-2 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <Check className="h-3 w-3 text-white" />
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        </div>
-                      </div>
-
-                      <div className="h-px bg-gradient-to-r from-transparent via-blue-700/50 to-transparent" />
-
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold text-white">Accent Color</h3>
-                        <p className="text-xs text-zinc-400">Choose your preferred accent color</p>
-                        <div className="grid grid-cols-5 gap-3 mt-3">
-                          {["purple", "blue", "green", "red", "orange"].map((color) => (
-                            <motion.div
-                              key={color}
-                              className={cn(
-                                "h-10 rounded-lg cursor-pointer transition-all border-2 shadow-lg",
-                                color === "purple"
-                                  ? "bg-purple-500 border-purple-300 shadow-[0_0_8px_0_rgba(147,51,234,0.5)]"
-                                  : color === "blue"
-                                    ? "bg-blue-500 border-blue-300 shadow-[0_0_8px_0_rgba(59,130,246,0.5)]"
-                                    : color === "green"
-                                      ? "bg-green-500 border-green-300 shadow-[0_0_8px_0_rgba(34,197,94,0.5)]"
-                                      : color === "red"
-                                        ? "bg-red-500 border-red-300 shadow-[0_0_8px_0_rgba(239,68,68,0.5)]"
-                                        : "bg-orange-500 border-orange-300 shadow-[0_0_8px_0_rgba(249,115,22,0.5)]",
-                              )}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end">
-                        <EnhancedButton
-                          variant="gradient"
-                          rounded="full"
-                          animation="shimmer"
-                          className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
-                          leftIcon={<Save className="h-4 w-4" />}
-                        >
-                          Save Changes
-                        </EnhancedButton>
-                      </div>
-                    </div>
-                  </EnhancedCardContent>
-                </EnhancedCard>
-              </AnimatedSection>
-            )}
-
-            {/* Devices & Sessions Settings */}
-            {activeSection === "devices" && (
-              <AnimatedSection delay={0.2}>
-                <EnhancedCard variant="default" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_24px_0_rgba(80,0,255,0.3)]">
-                  <EnhancedCardHeader className="pb-2">
-                    <EnhancedCardTitle className="text-lg flex items-center">
-                      <Smartphone className="h-5 w-5 mr-2 text-blue-400" />
-                      <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">Devices & Sessions</span>
-                    </EnhancedCardTitle>
-                  </EnhancedCardHeader>
-                  <EnhancedCardContent className="p-4">
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold text-white">Current Session</h3>
-                        <div className="bg-blue-900/20 border border-blue-800/40 rounded-lg p-4 mt-2 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]">
-                          <div className="flex items-start">
-                            <div className="bg-blue-900/40 p-2 rounded-full mr-3 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]">
-                              <Smartphone className="h-5 w-5 text-blue-400" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center">
-                                <div className="text-sm font-bold text-white">Chrome on MacBook Pro</div>
-                                <Badge className="ml-2 bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
-                                  Current
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-zinc-400 mt-1">San Francisco, CA, USA</div>
-                              <div className="text-xs text-zinc-500 mt-1">Last active: Just now</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold text-white">Active Sessions</h3>
-                        <div className="space-y-3 mt-2">
-                          <div className="bg-zinc-800/60 border border-purple-700/30 rounded-lg p-4 shadow-[0_0_8px_0_rgba(147,51,234,0.2)]">
-                            <div className="flex items-start">
-                              <div className="bg-purple-900/40 p-2 rounded-full mr-3 shadow-[0_0_8px_0_rgba(147,51,234,0.3)]">
-                                <Smartphone className="h-5 w-5 text-purple-400" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-sm font-bold text-white">Safari on iPhone 13</div>
-                                <div className="text-xs text-zinc-400 mt-1">San Francisco, CA, USA</div>
-                                <div className="text-xs text-zinc-500 mt-1">Last active: 2 hours ago</div>
-                              </div>
-                              <EnhancedButton
-                                variant="outline"
-                                size="sm"
-                                rounded="full"
-                                className="bg-zinc-800/80 border-purple-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(147,51,234,0.3)]"
-                              >
-                                Log Out
-                              </EnhancedButton>
-                            </div>
-                          </div>
-
-                          <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-4 shadow-[0_0_8px_0_rgba(34,197,94,0.2)]">
-                            <div className="flex items-start">
-                              <div className="bg-green-900/40 p-2 rounded-full mr-3 shadow-[0_0_8px_0_rgba(34,197,94,0.3)]">
-                                <Smartphone className="h-5 w-5 text-green-400" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-sm font-bold text-white">Firefox on Windows PC</div>
-                                <div className="text-xs text-zinc-400 mt-1">New York, NY, USA</div>
-                                <div className="text-xs text-zinc-500 mt-1">Last active: 3 days ago</div>
-                              </div>
-                              <EnhancedButton
-                                variant="outline"
-                                size="sm"
-                                rounded="full"
-                                className="bg-zinc-800/80 border-green-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(34,197,94,0.3)]"
-                              >
-                                Log Out
-                              </EnhancedButton>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end">
-                        <EnhancedButton
-                          variant="outline"
-                          rounded="full"
-                          className="bg-red-900/30 border-red-800/40 text-red-400 hover:bg-red-900/40 hover:shadow-[0_0_8px_0_rgba(239,68,68,0.4)]"
-                        >
-                          Log Out of All Devices
-                        </EnhancedButton>
-                      </div>
-                    </div>
-                  </EnhancedCardContent>
-                </EnhancedCard>
-              </AnimatedSection>
-            )}
+            {/* Notifications and Security sections retained; Appearance and Devices sections removed */}
           </div>
         </div>
       </div>

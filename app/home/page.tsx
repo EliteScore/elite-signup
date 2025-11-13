@@ -631,17 +631,13 @@ export default function HomePage() {
 
   return (
     <DashboardLayout>
-      {/* Logo */}
-      <div className="absolute top-4 left-4 z-20">
-        <div className="flex items-center">
-          <div className="relative">
-            <img 
-              src="/logo.png" 
-              alt="EliteScore Logo" 
-              className="h-12 w-12 sm:h-14 sm:w-14 object-contain"
-            />
-          </div>
-        </div>
+      {/* Logo – slightly smaller & inset for phones */}
+      <div className="fixed top-2 left-2 sm:top-4 sm:left-4 z-20">
+        <img
+          src="/logo.png"
+          alt="EliteScore Logo"
+          className="h-9 w-9 sm:h-12 sm:w-12 object-contain"
+        />
       </div>
 
       {/* Onboarding Tutorial */}
@@ -731,7 +727,8 @@ export default function HomePage() {
       </AnimatePresence>
 
       <div className="min-h-screen">
-        <div className="max-w-4xl mx-auto px-3 py-6 sm:px-4 sm:py-6 overflow-x-hidden scroll-smooth">
+        {/* Full width on phones, centred & capped on tablets/desktops */}
+        <div className="w-full sm:max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden scroll-smooth">
           {/* Main Feed */}
           <div className="space-y-6 sm:space-y-6">
 
