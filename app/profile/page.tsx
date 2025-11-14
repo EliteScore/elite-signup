@@ -31,13 +31,35 @@ import { LevelIndicator } from "@/components/level-indicator"
 
 const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
 
+type ResumeEducationItem = {
+  id: number | string
+  institution: string
+  degree: string
+  years?: string
+  gpa?: string
+  logo?: string
+}
+
+type ResumeExperienceItem = {
+  id: number | string
+  company: string
+  position: string
+  years?: string
+  description?: string
+  logo?: string
+}
+
 type ProfileData = {
   userId: number
   phoneNumber: string | null
   firstName: string | null
   lastName: string | null
   bio: string | null
-  resume: any | null
+  resume: {
+    education?: ResumeEducationItem[]
+    experience?: ResumeExperienceItem[]
+    [key: string]: unknown
+  } | null
   followersCount: number | null
   followingCount: number | null
   visibility: "PUBLIC" | "PRIVATE"
@@ -232,7 +254,7 @@ export default function ProfilePage() {
   // Extract education and experience from resume data
   const resumeData = profileData?.resume || {}
   
-  const education = resumeData.education || [
+  const education: ResumeEducationItem[] = resumeData.education || [
     {
       id: 1,
       institution: "Add your education",
@@ -243,7 +265,7 @@ export default function ProfilePage() {
     },
   ]
 
-  const experience = resumeData.experience || [
+  const experience: ResumeExperienceItem[] = resumeData.experience || [
     {
       id: 1,
       company: "Add your experience",
