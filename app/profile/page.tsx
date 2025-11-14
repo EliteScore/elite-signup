@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useRequireAuth } from "@/hooks/useRequireAuth"
 import {
@@ -29,10 +29,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { LevelIndicator } from "@/components/level-indicator"
 
+const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+
+type ProfileData = {
+  userId: number
+  phoneNumber: string | null
+  firstName: string | null
+  lastName: string | null
+  bio: string | null
+  resume: any | null
+  followersCount: number | null
+  followingCount: number | null
+  visibility: "PUBLIC" | "PRIVATE"
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+type ProfileApiResponse = {
+  username?: string
+  email?: string
+  profile: ProfileData
+}
+
 export default function ProfilePage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
+  const [isLoading, setIsLoading] = useState(true)
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
+  const [username, setUsername] = useState<string>("user")
+  const [profilePicture, setProfilePicture] = useState<string>("")
+  
+  // Mock data for now (will be replaced with resume data from API)
   const [score, setScore] = useState(785)
   const [level, setLevel] = useState(4)
   const [xp, setXp] = useState(3450)
@@ -41,7 +69,76 @@ export default function ProfilePage() {
   const resumeScore = 87
   const resumeDelta = 5
 
-  if (!isAuthorized) {
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!isAuthorized) return
+
+      const accessToken =
+        localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+
+      if (!accessToken) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+
+          if (result.success && result.data) {
+            const responseData = result.data as ProfileApiResponse
+            const profile = responseData.profile || (result.data as ProfileData)
+            setProfileData(profile)
+
+            if (responseData.username) {
+              setUsername(responseData.username)
+              try {
+                localStorage.setItem("auth.username", responseData.username)
+              } catch (error) {
+                // ignore storage errors
+              }
+            }
+
+            if (responseData.email) {
+              try {
+                localStorage.setItem("auth.email", responseData.email)
+              } catch (error) {
+                // ignore storage errors
+              }
+            }
+
+            // Try to get profile picture from localStorage
+            const storedPicture = localStorage.getItem("profile.picture")
+            if (storedPicture) {
+              setProfilePicture(storedPicture)
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProfile()
+    
+    // Also get profile picture on mount
+    const storedPicture = localStorage.getItem("profile.picture")
+    if (storedPicture) {
+      setProfilePicture(storedPicture)
+    }
+  }, [isAuthorized])
+
+  if (!isAuthorized || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
@@ -49,20 +146,22 @@ export default function ProfilePage() {
     )
   }
 
-  // Mock user data
+  // Build user object from profile data
   const user = {
-    name: "Alex Johnson",
-    username: "alex_improvement",
-    bio: "Computer Science student at Stanford University | Passionate about AI and machine learning | Looking to improve my leadership skills",
-    location: "Stanford, CA",
-    education: "Stanford University",
-    major: "Computer Science",
+    name: profileData?.firstName && profileData?.lastName 
+      ? `${profileData.firstName} ${profileData.lastName}`
+      : "User",
+    username,
+    bio: profileData?.bio || "No bio added yet",
+    location: "Location not set",
+    education: "Education not set",
+    major: "",
     graduationYear: 2025,
-    image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces",
+    image: profilePicture || "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces",
     verified: true,
     connections: 248,
-    following: 156,
-    followers: 312,
+    following: profileData?.followingCount || 0,
+    followers: profileData?.followersCount || 0,
   }
 
   // Mock achievements data
@@ -130,43 +229,28 @@ export default function ProfilePage() {
     },
   ]
 
-  // Mock education data
-  const education = [
+  // Extract education and experience from resume data
+  const resumeData = profileData?.resume || {}
+  
+  const education = resumeData.education || [
     {
       id: 1,
-      institution: "Stanford University",
-      degree: "Bachelor of Science in Computer Science",
-      years: "2021 - 2025",
-      gpa: "3.8/4.0",
+      institution: "Add your education",
+      degree: "Go to Settings to update your profile",
+      years: "",
+      gpa: "",
       logo: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=150&h=150&fit=crop",
-    },
-    {
-      id: 2,
-      institution: "Westlake High School",
-      degree: "High School Diploma",
-      years: "2017 - 2021",
-      gpa: "4.0/4.0",
-      logo: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=150&h=150&fit=crop",
     },
   ]
 
-  // Mock experience data
-  const experience = [
+  const experience = resumeData.experience || [
     {
       id: 1,
-      company: "Google",
-      position: "Software Engineering Intern",
-      years: "Summer 2023",
-      description: "Worked on machine learning algorithms for Google Search",
+      company: "Add your experience",
+      position: "Go to Settings to update your profile",
+      years: "",
+      description: "",
       logo: "https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=150&h=150&fit=crop",
-    },
-    {
-      id: 2,
-      company: "Stanford AI Lab",
-      position: "Research Assistant",
-      years: "2022 - Present",
-      description: "Conducting research on natural language processing",
-      logo: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=150&h=150&fit=crop",
     },
   ]
 
@@ -245,7 +329,16 @@ export default function ProfilePage() {
               </div>
               
               <div className="flex gap-2 mt-2">
-                <EnhancedButton size="sm" rounded="full" variant="gradient" animation="shimmer" className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]">Edit Profile</EnhancedButton>
+                <EnhancedButton 
+                  size="sm" 
+                  rounded="full" 
+                  variant="gradient" 
+                  animation="shimmer" 
+                  className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                  onClick={() => router.push("/settings")}
+                >
+                  Edit Profile
+                </EnhancedButton>
               </div>
             </div>
             {/* Stats Row */}
