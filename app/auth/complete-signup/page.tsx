@@ -141,15 +141,73 @@ export default function CompleteSignupPage() {
       const result = isJson ? await response.json() : { success: true }
       console.log("Google signup successful:", result)
 
-      // Clear Google signup data
+      // Now login with the same credentials to get access token
+      console.log("[Google Signup] Logging in automatically...")
+      
+      const loginResponse = await fetch(`${API_BASE_URL}/v1/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: googleEmail.toLowerCase(),
+          password: randomPassword,
+        }),
+      })
+
+      const loginContentType = loginResponse.headers.get("content-type")
+      const isLoginJson = loginContentType?.includes("application/json")
+      const loginResult = isLoginJson ? await loginResponse.json() : null
+
+      if (loginResponse.ok && loginResult?.success && loginResult?.data) {
+        // Extract tokens from login response
+        const [userRole, accessToken, refreshToken] = Array.isArray(loginResult.data)
+          ? loginResult.data
+          : [null, null, null]
+
+        if (accessToken) {
+          console.log("[Google Signup] Auto-login successful, storing tokens")
+          
+          // Store tokens in sessionStorage (or localStorage based on preference)
+          try {
+            sessionStorage.setItem("auth.accessToken", accessToken)
+            if (refreshToken) {
+              sessionStorage.setItem("auth.refreshToken", refreshToken)
+            }
+            if (userRole) {
+              sessionStorage.setItem("auth.userRole", userRole)
+            }
+            sessionStorage.setItem("auth.email", googleEmail.toLowerCase())
+            sessionStorage.setItem("auth.username", data.username.toLowerCase())
+          } catch (error) {
+            console.error("Failed to store auth tokens:", error)
+          }
+
+          // Clear Google signup data
+          try {
+            sessionStorage.removeItem("google.signup.email")
+            sessionStorage.removeItem("google.signup.sub")
+            sessionStorage.removeItem("google.signup.code")
+          } catch (error) {
+            console.error("Failed to clear Google signup data:", error)
+          }
+
+          // Redirect to home
+          router.push("/home")
+          return
+        }
+      }
+
+      // If auto-login failed, clear signup data and redirect to login
+      console.warn("[Google Signup] Auto-login failed, redirecting to login page")
       try {
         sessionStorage.removeItem("google.signup.email")
         sessionStorage.removeItem("google.signup.sub")
+        sessionStorage.removeItem("google.signup.code")
       } catch (error) {
         console.error("Failed to clear Google signup data:", error)
       }
-
-      // Redirect to login to complete authentication
+      
       router.push("/login")
     } catch (error) {
       console.error("Error during Google signup:", error)
