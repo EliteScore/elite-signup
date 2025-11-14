@@ -55,12 +55,21 @@ const itemVariants = {
 // Form schema with validation
 const signupSchema = z
   .object({
-    name: z.string().min(2, {
-      message: "Name must be at least 2 characters.",
-    }),
-    email: z.string().email({
-      message: "Please enter a valid email address.",
-    }),
+    username: z
+      .string()
+      .min(2, {
+        message: "Username must be at least 2 characters.",
+      })
+      .regex(/^[a-z0-9._-]+$/, {
+        message: "Only lowercase letters, numbers, dots, underscores, or hyphens.",
+      })
+      .transform((value) => value.toLowerCase()),
+    email: z
+      .string()
+      .email({
+        message: "Please enter a valid email address.",
+      })
+      .transform((value) => value.trim().toLowerCase()),
     password: z
       .string()
       .min(8, {
@@ -104,7 +113,7 @@ export default function SignupPage() {
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      name: "",
+    username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -287,7 +296,7 @@ export default function SignupPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: data.name,
+          username: data.username,
           email: data.email,
           password: data.password,
         }),
@@ -331,7 +340,7 @@ export default function SignupPage() {
 
   // Handle next step
   const handleNextStep = async () => {
-    const isValid = await form.trigger(["name", "email"])
+    const isValid = await form.trigger(["username", "email"])
     if (isValid) setCurrentStep(2)
   }
 
@@ -386,12 +395,20 @@ export default function SignupPage() {
                     <>
                       <FormField
                         control={form.control}
-                        name="name"
+                        name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white text-sm">User Name</FormLabel>
+                            <FormLabel className="text-white text-sm">Username</FormLabel>
                             <FormControl>
-                              <Input placeholder="JohnDoe123" className="py-3 text-base" {...field} />
+                              <Input
+                                placeholder="johndoe123"
+                                className="py-3 text-base lowercase"
+                                {...field}
+                                onChange={(event) => {
+                                  const sanitized = event.target.value.replace(/[^a-zA-Z0-9._-]/g, "")
+                                  field.onChange(sanitized.toLowerCase())
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -405,7 +422,15 @@ export default function SignupPage() {
                           <FormItem>
                             <FormLabel className="text-white text-sm">Email</FormLabel>
                             <FormControl>
-                              <Input placeholder="john@example.com" type="email" className="py-3 text-base" {...field} />
+                              <Input
+                                placeholder="john@example.com"
+                                type="email"
+                                className="py-3 text-base lowercase"
+                                {...field}
+                                onChange={(event) => {
+                                  field.onChange(event.target.value.trim().toLowerCase())
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

@@ -94,7 +94,71 @@ export default function GoogleCallbackPage() {
 
       if (!isMounted) return
 
+      // Check if user needs to complete signup (no account exists yet)
       if (!responseOk || !result || result.success === false) {
+        console.log("[Google Callback] Error response:", {
+          responseOk,
+          status: responseOk ? "N/A" : "error",
+          result,
+          message: result?.message,
+        })
+        
+        // Check multiple possible error indicators for new users
+        const errorMsg = result?.message?.toLowerCase() || ""
+        const needsSignup = 
+          errorMsg.includes("user not found") || 
+          errorMsg.includes("no account") ||
+          errorMsg.includes("not registered") ||
+          errorMsg.includes("does not exist") ||
+          result?.success === false // Treat any failure as potential new user
+        
+        if (needsSignup) {
+          // Try to extract Google email from response data or make another attempt
+          let googleEmail: string | null = null
+          let googleSub: string | null = null
+          
+          if (result?.data && typeof result.data === "object") {
+            const dataObj = result.data as Record<string, unknown>
+            googleEmail = typeof dataObj.email === "string" ? dataObj.email : null
+            googleSub = typeof dataObj.sub === "string" ? dataObj.sub : null
+          }
+          
+          // If we have the email, proceed to signup completion
+          if (googleEmail) {
+            console.log("[Google Callback] New user detected, redirecting to complete signup")
+            
+            // Store Google data temporarily for signup completion
+            try {
+              sessionStorage.setItem("google.signup.email", googleEmail.toLowerCase())
+              if (googleSub) {
+                sessionStorage.setItem("google.signup.sub", googleSub)
+              }
+              
+              // Also store the code temporarily in case we need to retry
+              sessionStorage.setItem("google.signup.code", code)
+            } catch (error) {
+              console.error("Failed to store Google signup data:", error)
+            }
+            
+            // Redirect to username selection page
+            router.push("/auth/complete-signup")
+            return
+          }
+          
+          // If no email in response, try to get it from Google directly
+          console.log("[Google Callback] No email in error response, attempting to fetch from Google API")
+          
+          try {
+            // Store the code and redirect to complete-signup, which will handle fetching user info
+            sessionStorage.setItem("google.signup.code", code)
+            sessionStorage.setItem("google.signup.needsFetch", "true")
+            router.push("/auth/complete-signup")
+            return
+          } catch (error) {
+            console.error("Failed to store code for retry:", error)
+          }
+        }
+        
         setStatus("error")
         setMessage(result?.message || "Google sign-in failed. Please try again.")
         return

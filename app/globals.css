@@ -43,6 +43,9 @@
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
   html {
     overflow-x: hidden;
@@ -50,6 +53,12 @@
   }
   #__next {
     overflow-x: hidden;
+  }
+
+  .mobile-scroll-region {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
   }
   
   /* Hide scrollbar for all browsers */

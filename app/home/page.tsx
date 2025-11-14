@@ -501,6 +501,7 @@ export default function HomePage() {
   const [selectedChallenge, setSelectedChallenge] = useState<number | null>(null)
   const [selectedLeaderboard, setSelectedLeaderboard] = useState<number | null>(null)
   const [postMessage, setPostMessage] = useState("")
+  const [showFloatingLogo, setShowFloatingLogo] = useState(true)
 
   // Check if it's the user's first visit
   useEffect(() => {
@@ -508,6 +509,19 @@ export default function HomePage() {
     if (!hasVisitedBefore) {
       setShowOnboarding(true)
       localStorage.setItem("hasVisitedBefore", "true")
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowFloatingLogo(window.scrollY < 80)
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
     }
   }, [])
 
@@ -631,14 +645,30 @@ export default function HomePage() {
 
   return (
     <DashboardLayout>
-      {/* Logo – slightly smaller & inset for phones */}
-      <div className="fixed top-2 left-2 sm:top-4 sm:left-4 z-20">
-        <img
-          src="/logo.png"
-          alt="EliteScore Logo"
-          className="h-9 w-9 sm:h-12 sm:w-12 object-contain"
-        />
-      </div>
+      {/* Floating Logo – only visible near top for better mobile UX */}
+      <AnimatePresence>
+        {showFloatingLogo && (
+          <motion.div
+            key="floating-logo"
+            className="fixed left-2 sm:left-4 z-20 pointer-events-none"
+            style={{
+              top: "max(env(safe-area-inset-top, 0.5rem), 0.5rem)",
+            }}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="rounded-full border border-white/10 bg-black/70 backdrop-blur-md p-1.5 shadow-lg shadow-blue-500/20">
+              <img
+                src="/logo.png"
+                alt="EliteScore Logo"
+                className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Onboarding Tutorial */}
       <AnimatePresence>
@@ -726,9 +756,9 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen">
+      <div className="min-h-screen mobile-scroll-region">
         {/* Full width on phones, centred & capped on tablets/desktops */}
-        <div className="w-full sm:max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden scroll-smooth">
+        <div className="w-full sm:max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden scroll-smooth mobile-scroll-region touch-pan-y">
           {/* Main Feed */}
           <div className="space-y-6 sm:space-y-6">
 
