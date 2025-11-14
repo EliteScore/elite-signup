@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useRequireAuth } from "@/hooks/useRequireAuth"
 import {
@@ -16,6 +16,7 @@ import {
   Users,
   Award,
   ArrowLeft,
+  User,
 } from "lucide-react"
 import { motion } from "framer-motion"
 
@@ -25,23 +26,99 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { EnhancedCard, EnhancedCardContent } from "@/components/ui/enhanced-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// Removed import of Separator due to missing module
 import { cn } from "@/lib/utils"
 import { LevelIndicator } from "@/components/level-indicator"
 
+const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+
+type ProfileData = {
+  userId: number
+  phoneNumber: string | null
+  firstName: string | null
+  lastName: string | null
+  bio: string | null
+  resume: any | null
+  followersCount: number | null
+  followingCount: number | null
+  visibility: "PUBLIC" | "PRIVATE"
+  createdAt: string | null
+  updatedAt: string | null
+}
+
 export default function ProfilePage() {
-  const isAuthorized = useRequireAuth() // Protect this route
+  const isAuthorized = useRequireAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("overview")
-  const [score, setScore] = useState(785)
-  const [level, setLevel] = useState(4)
-  const [xp, setXp] = useState(3450)
-  const [nextLevelXp, setNextLevelXp] = useState(5000)
-  const progress = (xp / nextLevelXp) * 100
-  const resumeScore = 87
-  const resumeDelta = 5
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
 
-  if (!isAuthorized) {
+  // Fetch profile data on mount
+  useEffect(() => {
+    if (!isAuthorized) return
+
+    async function fetchProfile() {
+      try {
+        const token =
+          localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+
+        if (!token) {
+          setProfileError("no_auth")
+          setIsLoadingProfile(false)
+          return
+        }
+
+        console.log("[Profile] Fetching profile data...")
+
+        const response = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.status === 401 || response.status === 404) {
+          console.log("[Profile] No profile found")
+          setProfileError("no_profile")
+          setIsLoadingProfile(false)
+          return
+        }
+
+        if (!response.ok) {
+          console.error("[Profile] Failed to fetch profile:", response.status)
+          setProfileError("fetch_error")
+          setIsLoadingProfile(false)
+          return
+        }
+
+        const result = await response.json()
+
+        // Some endpoints respond with { success, data }, others return the profile directly.
+        const possibleProfile = result && typeof result === "object"
+          ? (result.data && typeof result.data === "object" ? result.data : result)
+          : null
+
+        if (possibleProfile && possibleProfile.userId) {
+          console.log("[Profile] Profile loaded:", possibleProfile)
+          setProfileData(possibleProfile)
+          setProfileError(null)
+        } else {
+          console.error("[Profile] Invalid response format:", result)
+          setProfileError("no_profile")
+        }
+      } catch (error) {
+        console.error("[Profile] Error fetching profile:", error)
+        setProfileError("fetch_error")
+      } finally {
+        setIsLoadingProfile(false)
+      }
+    }
+
+    fetchProfile()
+  }, [isAuthorized])
+
+  if (!isAuthorized || isLoadingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
@@ -49,126 +126,83 @@ export default function ProfilePage() {
     )
   }
 
-  // Mock user data
-  const user = {
-    name: "Alex Johnson",
-    username: "alex_improvement",
-    bio: "Computer Science student at Stanford University | Passionate about AI and machine learning | Looking to improve my leadership skills",
-    location: "Stanford, CA",
-    education: "Stanford University",
-    major: "Computer Science",
-    graduationYear: 2025,
-    image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=faces",
-    verified: true,
-    connections: 248,
-    following: 156,
-    followers: 312,
+  // Show blank state if no profile exists
+  if (profileError === "no_profile") {
+    return (
+      <AppShell title="Profile" showBackButton={true} backUrl="/home">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-radial from-blue-500/20 via-purple-700/15 to-transparent rounded-full blur-3xl" />
+          <div className="absolute top-1/2 -left-24 w-72 h-72 bg-gradient-radial from-purple-700/20 via-pink-600/15 to-transparent rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
+          <motion.div
+            className="text-center space-y-6 max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex justify-center">
+              <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-[0_0_32px_0_rgba(80,0,255,0.5)]">
+                <User className="h-12 w-12 text-white" />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-2xl font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
+                Setup Your Profile
+              </h2>
+              <p className="mt-2 text-zinc-400 text-sm">
+                Complete your profile to unlock all features and start your journey
+              </p>
+            </div>
+            <EnhancedButton
+              variant="gradient"
+              rounded="full"
+              animation="shimmer"
+              className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] px-8 py-3"
+              onClick={() => router.push("/profile/setup")}
+            >
+              Setup Profile
+            </EnhancedButton>
+          </motion.div>
+        </div>
+      </AppShell>
+    )
   }
 
-  // Mock achievements data
-  const achievements = [
-    {
-      id: 1,
-      title: "Coding Master",
-      description: "Completed 50 coding challenges",
-      icon: <FileText className="h-5 w-5 text-primary-400" />,
-      date: "2 weeks ago",
-      xp: 500,
-    },
-    {
-      id: 2,
-      title: "Public Speaker",
-      description: "Delivered 5 presentations",
-      icon: <Users className="h-5 w-5 text-primary-400" />,
-      date: "1 month ago",
-      xp: 350,
-    },
-    {
-      id: 3,
-      title: "Team Leader",
-      description: "Led a group project to completion",
-      icon: <Users className="h-5 w-5 text-primary-400" />,
-      date: "2 months ago",
-      xp: 450,
-    },
-  ]
+  if (profileError === "fetch_error") {
+    return (
+      <AppShell title="Profile" showBackButton={true} backUrl="/home">
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center space-y-4">
+            <p className="text-red-400">Failed to load profile. Please try again.</p>
+            <EnhancedButton onClick={() => window.location.reload()}>Retry</EnhancedButton>
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
 
-  // Mock skills data
-  const skills = [
-    { name: "Python", level: 85 },
-    { name: "Machine Learning", level: 70 },
-    { name: "Web Development", level: 65 },
-    { name: "Public Speaking", level: 60 },
-    { name: "Leadership", level: 55 },
-  ]
+  if (!profileData) {
+    return null
+  }
 
-  // Mock badges data
-  const badges = [
-    {
-      id: 1,
-      name: "Coding Expert",
-      icon: <FileText className="h-6 w-6" />,
-      color: "bg-secondary-500",
-    },
-    {
-      id: 2,
-      name: "Team Player",
-      icon: <Users className="h-6 w-6" />,
-      color: "bg-accent-success",
-    },
-    {
-      id: 3,
-      name: "Fast Learner",
-      icon: <TrendingUp className="h-6 w-6" />,
-      color: "bg-primary-500",
-    },
-    {
-      id: 4,
-      name: "Problem Solver",
-      icon: <Star className="h-6 w-6" />,
-      color: "bg-accent-warning",
-    },
-  ]
+  // Extract user data from profile
+  const fullName = `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim() || "User"
+  const username = localStorage.getItem("auth.username") || "user"
+  const bio = profileData.bio || "No bio added yet"
+  const followers = profileData.followersCount || 0
+  const following = profileData.followingCount || 0
 
-  // Mock education data
-  const education = [
-    {
-      id: 1,
-      institution: "Stanford University",
-      degree: "Bachelor of Science in Computer Science",
-      years: "2021 - 2025",
-      gpa: "3.8/4.0",
-      logo: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=150&h=150&fit=crop",
-    },
-    {
-      id: 2,
-      institution: "Westlake High School",
-      degree: "High School Diploma",
-      years: "2017 - 2021",
-      gpa: "4.0/4.0",
-      logo: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=150&h=150&fit=crop",
-    },
-  ]
+  // Extract resume data
+  const resume = profileData.resume || {}
+  const resumeSkills = Array.isArray(resume.skills) ? resume.skills : []
+  const resumeCompany = resume.company || null
+  const resumeRole = resume.currentRole || null
+  const resumeSummary = resume.summary || null
 
-  // Mock experience data
-  const experience = [
-    {
-      id: 1,
-      company: "Google",
-      position: "Software Engineering Intern",
-      years: "Summer 2023",
-      description: "Worked on machine learning algorithms for Google Search",
-      logo: "https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=150&h=150&fit=crop",
-    },
-    {
-      id: 2,
-      company: "Stanford AI Lab",
-      position: "Research Assistant",
-      years: "2022 - Present",
-      description: "Conducting research on natural language processing",
-      logo: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=150&h=150&fit=crop",
-    },
-  ]
+  const level = 4 // TODO: Get from user stats
+  const resumeScore = 87 // TODO: Calculate from resume
+  const resumeDelta = 5 // TODO: Calculate delta
 
   // Animation variants
   const containerVariants = {
@@ -200,7 +234,13 @@ export default function ProfilePage() {
       showBackButton={true}
       backUrl="/home"
       rightElement={
-        <EnhancedButton variant="ghost" size="icon" rounded="full" className="hover:bg-zinc-800 h-8 w-8">
+        <EnhancedButton
+          variant="ghost"
+          size="icon"
+          rounded="full"
+          className="hover:bg-zinc-800 h-8 w-8"
+          onClick={() => router.push("/settings")}
+        >
           <Settings className="h-4 w-4" />
         </EnhancedButton>
       }
@@ -218,19 +258,18 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center text-center gap-3">
           {/* Avatar */}
           <Avatar className="h-24 w-24 sm:h-32 sm:w-32 border-4 border-black ring-2 ring-blue-500 rounded-full object-cover shadow-[0_0_24px_0_rgba(80,0,255,0.5)]">
-            <AvatarImage src={user.image} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">{user.name.charAt(0)}</AvatarFallback>
+            <AvatarImage src={localStorage.getItem("profile.picture") || undefined} />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
+              {fullName.charAt(0).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
           {/* Profile Info */}
           <div className="flex-1 w-full">
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center justify-center gap-2 text-xl sm:text-2xl font-extrabold">
-                <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">{user.name}</span>
-                {user.verified && (
-                  <svg className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
-                )}
+                <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">{fullName}</span>
               </div>
-              <span className="text-zinc-400 text-sm sm:text-base font-medium">@{user.username}</span>
+              <span className="text-zinc-400 text-sm sm:text-base font-medium">@{username}</span>
               
               {/* Quick Stats: Resume Score + Level */}
               <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
@@ -245,34 +284,35 @@ export default function ProfilePage() {
               </div>
               
               <div className="flex gap-2 mt-2">
-                <EnhancedButton size="sm" rounded="full" variant="gradient" animation="shimmer" className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]">Edit Profile</EnhancedButton>
+                <EnhancedButton
+                  size="sm"
+                  rounded="full"
+                  variant="gradient"
+                  animation="shimmer"
+                  className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                  onClick={() => router.push("/settings")}
+                >
+                  Edit Profile
+                </EnhancedButton>
               </div>
             </div>
             {/* Stats Row */}
             <div className="flex gap-6 sm:gap-8 mt-5 justify-center">
               <div className="text-center">
-                <span className="font-extrabold text-base sm:text-lg text-white">12</span>
+                <span className="font-extrabold text-base sm:text-lg text-white">0</span>
                 <div className="text-xs text-zinc-400 font-medium">Posts</div>
               </div>
               <div className="text-center">
-                <span className="font-extrabold text-base sm:text-lg text-white">{user.followers}</span>
+                <span className="font-extrabold text-base sm:text-lg text-white">{followers}</span>
                 <div className="text-xs text-zinc-400 font-medium">Followers</div>
               </div>
               <div className="text-center">
-                <span className="font-extrabold text-base sm:text-lg text-white">{user.following}</span>
+                <span className="font-extrabold text-base sm:text-lg text-white">{following}</span>
                 <div className="text-xs text-zinc-400 font-medium">Following</div>
               </div>
             </div>
             {/* Bio */}
-            <div className="mt-5 text-xs sm:text-sm text-zinc-300 max-w-md mx-auto">{user.bio}</div>
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-3 text-xs sm:text-sm text-zinc-400 font-medium">
-              <div className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" /> {user.location}
-              </div>
-              <div className="flex items-center gap-1">
-                <GraduationCap className="h-3.5 w-3.5" /> {user.education}, {user.major}
-              </div>
-            </div>
+            <div className="mt-5 text-xs sm:text-sm text-zinc-300 max-w-md mx-auto">{bio}</div>
           </div>
         </div>
       </div>
@@ -319,113 +359,84 @@ export default function ProfilePage() {
                 <Award className="h-4 w-4 mr-2 text-blue-400" />
                 <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">Recent Achievements</span>
               </motion.h2>
-              <EnhancedButton variant="link" className="text-blue-400 text-xs p-0 hover:text-blue-300 font-bold">
-                See All
-              </EnhancedButton>
             </div>
-            <div className="space-y-2.5">
-              {achievements.slice(0, 2).map((achievement, index) => (
-                <motion.div key={achievement.id} variants={itemVariants}>
-                  <EnhancedCard variant="gradient" hover="lift" className="border-blue-700/40 bg-zinc-900/80 shadow-[0_0_16px_0_rgba(80,0,255,0.3)] rounded-xl">
-                    <EnhancedCardContent className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <div className="bg-blue-900/40 p-2 rounded-full shadow-[0_0_8px_0_rgba(59,130,246,0.3)]">{achievement.icon}</div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="font-bold text-white text-xs">{achievement.title}</h3>
-                            <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
-                              +{achievement.xp} XP
-                            </Badge>
-                          </div>
-                          <p className="text-[10px] text-zinc-400 mt-1">{achievement.description}</p>
-                          <div className="text-[9px] text-zinc-500 mt-0.5">{achievement.date}</div>
-                        </div>
-                      </div>
-                    </EnhancedCardContent>
-                  </EnhancedCard>
-                </motion.div>
-              ))}
+            <div className="text-center py-8 bg-zinc-900/40 rounded-xl border border-zinc-800">
+              <Trophy className="h-10 w-10 text-zinc-600 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500">No achievements yet. Start your journey!</p>
             </div>
           </motion.div>
         </TabsContent>
 
         {/* Resume Tab */}
         <TabsContent value="resume" className="mt-0 px-3 py-4 space-y-4 max-w-2xl mx-auto">
-          {/* Education */}
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            <motion.h2 className="text-sm font-semibold mb-3 flex items-center" variants={itemVariants}>
-              <GraduationCap className="h-4 w-4 mr-2 text-blue-400" />
-              <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">Education</span>
-            </motion.h2>
-            <div className="space-y-3">
-              {education.map((edu, index) => (
-                <motion.div key={edu.id} variants={itemVariants} custom={index}>
-                  <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_16px_0_rgba(80,0,255,0.3)] rounded-xl">
-                    <EnhancedCardContent className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <Avatar className="h-10 w-10 rounded-lg shadow-lg border border-blue-700/30">
-                          <AvatarImage src={edu.logo} />
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold">{edu.institution.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="font-bold text-white text-xs">{edu.institution}</h3>
-                          <p className="text-[10px] text-zinc-300 mt-0.5">{edu.degree}</p>
-                          <div className="flex items-center text-[9px] text-zinc-400 mt-1">
-                            <span>{edu.years}</span>
-                            <span className="mx-1.5">•</span>
-                            <span>GPA: {edu.gpa}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </EnhancedCardContent>
-                  </EnhancedCard>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+          {/* Professional Info */}
+          {(resumeRole || resumeCompany || resumeSummary) && (
+            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+              <motion.h2 className="text-sm font-semibold mb-3 flex items-center" variants={itemVariants}>
+                <Briefcase className="h-4 w-4 mr-2 text-purple-400" />
+                <span className="bg-gradient-to-r from-[#a259ff] to-[#d946ef] bg-clip-text text-transparent font-extrabold">
+                  Professional Info
+                </span>
+              </motion.h2>
+              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-purple-700/40 shadow-[0_0_16px_0_rgba(147,51,234,0.3)] rounded-xl">
+                <EnhancedCardContent className="p-3">
+                  {resumeRole && (
+                    <div className="mb-2">
+                      <h3 className="font-bold text-white text-xs">{resumeRole}</h3>
+                      {resumeCompany && <p className="text-[10px] text-zinc-300 mt-0.5">{resumeCompany}</p>}
+                    </div>
+                  )}
+                  {resumeSummary && <p className="text-[10px] text-zinc-300 mt-2">{resumeSummary}</p>}
+                </EnhancedCardContent>
+              </EnhancedCard>
+            </motion.div>
+          )}
 
-          {/* Experience */}
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            <motion.h2 className="text-sm font-semibold mb-3 flex items-center" variants={itemVariants}>
-              <Briefcase className="h-4 w-4 mr-2 text-purple-400" />
-              <span className="bg-gradient-to-r from-[#a259ff] to-[#d946ef] bg-clip-text text-transparent font-extrabold">Experience</span>
-            </motion.h2>
-            <div className="space-y-3">
-              {experience.map((exp, index) => (
-                <motion.div key={exp.id} variants={itemVariants} custom={index}>
-                  <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-purple-700/40 shadow-[0_0_16px_0_rgba(147,51,234,0.3)] rounded-xl">
-                    <EnhancedCardContent className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <Avatar className="h-10 w-10 rounded-lg shadow-lg border border-purple-700/30">
-                          <AvatarImage src={exp.logo} />
-                          <AvatarFallback className="bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white font-bold">{exp.company.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-white text-xs">{exp.position}</h3>
-                          <p className="text-[10px] text-zinc-300 mt-0.5">{exp.company}</p>
-                          <div className="text-[9px] text-zinc-400 mt-0.5">{exp.years}</div>
-                          <p className="text-[10px] text-zinc-300 mt-1.5">{exp.description}</p>
-                        </div>
-                      </div>
-                    </EnhancedCardContent>
-                  </EnhancedCard>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+          {/* Skills */}
+          {resumeSkills.length > 0 && (
+            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+              <motion.h2 className="text-sm font-semibold mb-3 flex items-center" variants={itemVariants}>
+                <Star className="h-4 w-4 mr-2 text-blue-400" />
+                <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">
+                  Skills
+                </span>
+              </motion.h2>
+              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_16px_0_rgba(80,0,255,0.3)] rounded-xl">
+                <EnhancedCardContent className="p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {resumeSkills.map((skill: string, index: number) => (
+                      <Badge
+                        key={index}
+                        className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]"
+                      >
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </EnhancedCardContent>
+              </EnhancedCard>
+            </motion.div>
+          )}
 
-          {/* Download Resume */}
-          <div className="text-center mt-5">
-            <EnhancedButton
-              variant="gradient"
-              rounded="full"
-              animation="shimmer"
-              className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] text-xs px-5 py-2"
-              leftIcon={<FileText className="h-3.5 w-3.5" />}
-            >
-              Download Full Resume
-            </EnhancedButton>
-          </div>
+          {/* Empty state if no resume data */}
+          {!resumeRole && !resumeCompany && !resumeSummary && resumeSkills.length === 0 && (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-zinc-400 mb-2">No Resume Data</h3>
+              <p className="text-sm text-zinc-500 mb-4">
+                Add your professional information in settings
+              </p>
+              <EnhancedButton
+                variant="gradient"
+                rounded="full"
+                animation="shimmer"
+                className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] text-xs px-5 py-2"
+                onClick={() => router.push("/settings")}
+              >
+                Add Resume Info
+              </EnhancedButton>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
       </div>
