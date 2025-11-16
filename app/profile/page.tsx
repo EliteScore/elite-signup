@@ -71,6 +71,9 @@ export default function ProfilePage() {
   const [profileError, setProfileError] = useState<string | null>(null)
   const [username, setUsername] = useState<string | null>(null)
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
+  const [ownFollowersIds, setOwnFollowersIds] = useState<number[] | null>(null)
+  const [ownFollowingIds, setOwnFollowingIds] = useState<number[] | null>(null)
+  const [isUpdatingFollow, setIsUpdatingFollow] = useState(false)
 
   const getProfilePictureKey = (id?: number | null) =>
     id ? `profile.picture.${id}` : "profile.picture.default"
@@ -287,6 +290,61 @@ export default function ProfilePage() {
     }
   }, [isAuthorized, profileData?.userId])
 
+  // Fetch OWN followers / following lists (IDs) for the authenticated user.
+  useEffect(() => {
+    if (!isAuthorized) return
+
+    async function fetchOwnFollowStats() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) {
+          console.warn("[Profile] No token, cannot fetch own followers/following")
+          return
+        }
+
+        const [followersRes, followingRes] = await Promise.all([
+          fetch(`${API_BASE_URL}v1/users/get_own_followers`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${API_BASE_URL}v1/users/get_own_following`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+        ])
+
+        if (followersRes.ok) {
+          const followersResult = await followersRes.json()
+          const followersData: number[] = followersResult?.data || []
+          const normalizedFollowers = Array.isArray(followersData) ? followersData : []
+          console.log("[Profile] Own followers fetched:", normalizedFollowers.length)
+          setOwnFollowersIds(normalizedFollowers)
+        }
+
+        if (followingRes.ok) {
+          const followingResult = await followingRes.json()
+          const followingData: number[] = followingResult?.data || []
+          const normalizedFollowing = Array.isArray(followingData) ? followingData : []
+          console.log("[Profile] Own following fetched:", normalizedFollowing.length)
+          setOwnFollowingIds(normalizedFollowing)
+        }
+      } catch (error) {
+        console.warn("[Profile] Failed to fetch own followers/following stats:", error)
+      }
+    }
+
+    fetchOwnFollowStats()
+  }, [isAuthorized])
+
+  // We no longer call public getFollowers/getFollowing endpoints because they currently 500.
+  // For viewed users, we rely on ProfileInfo counts plus local follow/unfollow adjustments.
+
   // Fetch profile data on mount
   useEffect(() => {
     if (!isAuthorized) return
@@ -451,8 +509,31 @@ export default function ProfilePage() {
     ? derivedOtherUsername
     : username || storedUsername || fallbackUsernameFromEmail || "user"
   const bio = profileData.bio || "No bio added yet"
-  const followers = profileData.followersCount || 0
-  const following = profileData.followingCount || 0
+
+  // Convenience: numeric ID for viewed user (if any)
+  const numericViewingUserId = viewingUserId ? Number(viewingUserId) : null
+
+  // Determine if the acting user is following the viewed profile (when viewing another user)
+  const isFollowingViewedUser =
+    !!numericViewingUserId && Array.isArray(ownFollowingIds)
+      ? ownFollowingIds.includes(numericViewingUserId)
+      : false
+
+  // Prefer live counts from dedicated own followers/following endpoints for your profile.
+  // For other users' profiles, start from ProfileInfo counts and adjust by whether YOU follow them.
+  const baseFollowersCount = profileData.followersCount || 0
+  const followers = viewingUserId
+    ? baseFollowersCount + (isFollowingViewedUser ? 1 : 0)
+    : ownFollowersIds
+      ? ownFollowersIds.length
+      : baseFollowersCount
+
+  const baseFollowingCount = profileData.followingCount || 0
+  const following = viewingUserId
+    ? baseFollowingCount
+    : ownFollowingIds
+      ? ownFollowingIds.length
+      : baseFollowingCount
 
   // Extract resume data
   const resume: ResumeData = profileData.resume ?? {}
@@ -487,6 +568,55 @@ export default function ProfilePage() {
         damping: 24,
       },
     },
+  }
+
+  const handleToggleFollow = async () => {
+    if (!isAuthorized || !numericViewingUserId || isUpdatingFollow) return
+
+    const token = getStoredAccessToken()
+    if (!token) {
+      console.warn("[Profile] No token available for follow/unfollow")
+      return
+    }
+
+    setIsUpdatingFollow(true)
+
+    const isCurrentlyFollowing = isFollowingViewedUser
+    const endpoint = isCurrentlyFollowing
+      ? `${API_BASE_URL}v1/users/unfollow`
+      : `${API_BASE_URL}v1/users/follow`
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: numericViewingUserId }),
+      })
+
+      if (!response.ok) {
+        console.warn("[Profile] Follow/unfollow failed with status:", response.status)
+        return
+      }
+
+      // Update local following list so UI reflects the change immediately
+      setOwnFollowingIds((prev) => {
+        const current = Array.isArray(prev) ? prev : []
+        if (isCurrentlyFollowing) {
+          return current.filter((id) => id !== numericViewingUserId)
+        }
+        if (!current.includes(numericViewingUserId)) {
+          return [...current, numericViewingUserId]
+        }
+        return current
+      })
+    } catch (error) {
+      console.warn("[Profile] Error during follow/unfollow:", error)
+    } finally {
+      setIsUpdatingFollow(false)
+    }
   }
 
   return (
@@ -559,6 +689,7 @@ export default function ProfilePage() {
               </div>
               
               <div className="flex gap-2 mt-2">
+                {/* Own profile: show Edit Profile */}
                 {!viewingUserId && (
                   <EnhancedButton
                     size="sm"
@@ -569,6 +700,26 @@ export default function ProfilePage() {
                     onClick={() => router.push("/settings")}
                   >
                     Edit Profile
+                  </EnhancedButton>
+                )}
+
+                {/* Viewing someone else: show Follow / Unfollow */}
+                {viewingUserId && numericViewingUserId && (
+                  <EnhancedButton
+                    size="sm"
+                    rounded="full"
+                    variant={isFollowingViewedUser ? "outline" : "gradient"}
+                    animation={isFollowingViewedUser ? undefined : "shimmer"}
+                    className={cn(
+                      "px-5 py-1.5 text-xs sm:text-sm font-bold",
+                      isFollowingViewedUser
+                        ? "border-zinc-600 text-zinc-200 bg-transparent"
+                        : "bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]",
+                    )}
+                    disabled={isUpdatingFollow}
+                    onClick={handleToggleFollow}
+                  >
+                    {isFollowingViewedUser ? "Unfollow" : "Follow"}
                   </EnhancedButton>
                 )}
               </div>

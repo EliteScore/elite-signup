@@ -106,12 +106,6 @@ const mapProfileInfoToResult = (profile: ProfileInfo): SearchResult => {
     profile.resume?.avatarUrl ||
     null
 
-  console.log(`[Search] Mapping profile ${profile.userId}:`, {
-    name: fullName,
-    imageUrl: image,
-    resume: profile.resume,
-  })
-
   return {
     userId: profile.userId,
     name: fullName,
@@ -128,7 +122,6 @@ const getSearchUrl = (input: string) => {
   const trimmed = input.trim()
   const encoded = encodeURIComponent(trimmed)
   const url = `${API_BASE_URL}/v1/users/search/${encoded}`
-  console.log("[Search] getSearchUrl:", { input, trimmed, encoded, url })
   return url
 }
 
@@ -136,7 +129,6 @@ const getSearchUrl = (input: string) => {
 async function enrichResultsWithProfiles(results: SearchResult[]): Promise<SearchResult[]> {
   const token = getStoredAccessToken()
   if (!token) {
-    console.log("[Search] No token for enrichment, returning base results")
     return results
   }
 
@@ -144,7 +136,6 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
     results.map(async (user) => {
       try {
         const url = `${API_BASE_URL}/v1/users/profile/get_profile/${user.userId}`
-        console.log("[Search] Enriching profile from:", url)
 
         const resp = await fetch(url, {
           method: "GET",
@@ -161,15 +152,9 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
 
         const result = await resp.json()
         const profile = result?.data || result
-
-        console.log("[Search] Enrichment profile payload:", profile)
         if (!profile) return user
 
         const picture = resolvePictureFromApiProfile(profile)
-        console.log("[Search] Enrichment resolved picture:", {
-          userId: user.userId,
-          fromApi: picture,
-        })
 
         let finalImage = picture ?? user.image
 
@@ -179,11 +164,10 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
           try {
             const cached = window.localStorage.getItem(key)
             if (cached && cached.trim().length > 0) {
-              console.log("[Search] Using cached profile picture for user", user.userId)
               finalImage = cached
             }
           } catch (error) {
-            console.warn("[Search] Failed to read cached profile picture for user", user.userId, error)
+            // ignore cache read errors in production
           }
         }
 
@@ -192,7 +176,7 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
           image: finalImage,
         }
       } catch (error) {
-        console.error("[Search] Enrichment error for user", user.userId, error)
+        // swallow enrichment errors; base search results will still render
         return user
       }
     }),
@@ -210,23 +194,18 @@ export default function SearchPage() {
   const performSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim()
 
-    console.log("[Search] performSearch called with query:", trimmedQuery)
-
     if (!trimmedQuery) {
-      console.log("[Search] Empty query, clearing results")
       setSearchResults([])
       setSearchError(null)
       setIsSearching(false)
       return
     }
 
-    console.log("[Search] Starting search for:", trimmedQuery)
     setIsSearching(true)
     setSearchError(null)
 
     try {
       const url = getSearchUrl(trimmedQuery)
-      console.log("[Search] Search URL:", url)
       
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -235,28 +214,14 @@ export default function SearchPage() {
       const token = getStoredAccessToken()
       if (token) {
         headers.Authorization = `Bearer ${token}`
-        console.log("[Search] Auth token present:", token.substring(0, 20) + "...")
-      } else {
-        console.log("[Search] No auth token found")
       }
-
-      console.log("[Search] Request headers:", { ...headers, Authorization: token ? "Bearer ***" : "none" })
-      console.log("[Search] Making fetch request...")
 
       const response = await fetch(url, {
         method: "GET",
         headers,
       })
 
-      console.log("[Search] Response received:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-      })
-
       if (response.status === 204) {
-        console.log("[Search] 204 No Content - no results found")
         setSearchResults([])
         return
       }
@@ -266,35 +231,20 @@ export default function SearchPage() {
       
       try {
         responseText = await response.text()
-        console.log("[Search] Raw response body:", responseText)
         
         if (responseText) {
           payload = JSON.parse(responseText) as ApiResponse<ProfileInfo[]>
-          console.log("[Search] Parsed payload:", payload)
-        } else {
-          console.log("[Search] Empty response body")
         }
       } catch (error) {
-        console.error("[Search] Failed to parse response JSON", error)
-        console.error("[Search] Response text was:", responseText)
         throw new Error(`Failed to parse response: ${error instanceof Error ? error.message : String(error)}`)
       }
 
       if (!response.ok) {
         const message = payload?.message || `Search failed with status ${response.status}`
-        console.error("[Search] Request failed:", {
-          status: response.status,
-          statusText: response.statusText,
-          message,
-          payload,
-        })
         throw new Error(message)
       }
 
       if (payload?.success && payload.data) {
-        console.log("[Search] Success! Found", payload.data.length, "results (before deduplication)")
-        console.log("[Search] Raw profile data:", payload.data)
-        
         const mappedResults = payload.data.map(mapProfileInfoToResult)
         
         // Deduplicate by userId (keep the most complete profile - prefer ones with images)
@@ -318,50 +268,34 @@ export default function SearchPage() {
               (result.bio ? 1 : 0) + 
               (result.title ? 1 : 0)
             
-            if (newScore > existingScore) {
-              console.log(`[Search] Replacing userId ${result.userId} with better version`)
+              if (newScore > existingScore) {
               userMap.set(result.userId, result)
             }
           }
         }
         
         const dedupedResults = Array.from(userMap.values())
-        console.log("[Search] After userId dedupe (pre-enrich):", dedupedResults)
 
         const uniqueResults = await enrichResultsWithProfiles(dedupedResults)
         
-        console.log("[Search] Final enriched results:", uniqueResults)
-        console.log("[Search] Deduplicated from", mappedResults.length, "to", uniqueResults.length, "unique users")
-        
         setSearchResults(uniqueResults)
       } else {
-        console.log("[Search] No data in response:", payload)
         setSearchResults([])
       }
     } catch (error) {
-      console.error("[Search] Failed to fetch users:", error)
-      console.error("[Search] Error details:", {
-        name: error instanceof Error ? error.name : "Unknown",
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      })
       setSearchError("We couldn't complete your search. Please try again.")
       setSearchResults([])
     } finally {
-      console.log("[Search] Search complete, setting isSearching to false")
       setIsSearching(false)
     }
   }, [])
 
   useEffect(() => {
-    console.log("[Search] useEffect triggered, searchQuery:", searchQuery)
     const timer = setTimeout(() => {
-      console.log("[Search] Debounce timer fired, calling performSearch")
       performSearch(searchQuery)
     }, 300)
 
     return () => {
-      console.log("[Search] Cleaning up debounce timer")
       clearTimeout(timer)
     }
   }, [searchQuery, performSearch])
