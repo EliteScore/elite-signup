@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowLeft, Lock, Mail } from "lucide-react"
+import { ArrowLeft, Lock, Mail, Eye, EyeOff, Check, X } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -57,6 +58,15 @@ const resetPasswordSchema = z
       })
       .max(128, {
         message: "Password is too long.",
+      })
+      .regex(/[A-Z]/, {
+        message: "Password must contain at least one uppercase letter.",
+      })
+      .regex(/[a-z]/, {
+        message: "Password must contain at least one lowercase letter.",
+      })
+      .regex(/[0-9]/, {
+        message: "Password must contain at least one number.",
       }),
     confirmPassword: z.string().min(1, {
       message: "Please confirm your password.",
@@ -108,7 +118,10 @@ export default function ForgotPasswordPage() {
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetSuccess, setResetSuccess] = useState(false)
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null)
-
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState(0)
+  
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
@@ -122,7 +135,43 @@ export default function ForgotPasswordPage() {
       password: "",
       confirmPassword: "",
     },
+    mode: "onChange",
   })
+
+  // Calculate password strength
+  useEffect(() => {
+    const password = resetForm.watch("password")
+    if (!password) {
+      setPasswordStrength(0)
+      return
+    }
+
+    let strength = 0
+    // Length check
+    if (password.length >= 8) strength += 25
+    // Uppercase check
+    if (/[A-Z]/.test(password)) strength += 25
+    // Lowercase check
+    if (/[a-z]/.test(password)) strength += 25
+    // Number check
+    if (/[0-9]/.test(password)) strength += 25
+
+    setPasswordStrength(strength)
+  }, [resetForm.watch("password")])
+
+  const getStrengthColor = () => {
+    if (passwordStrength <= 25) return "bg-red-500"
+    if (passwordStrength <= 50) return "bg-orange-500"
+    if (passwordStrength <= 75) return "bg-yellow-500"
+    return "bg-green-500"
+  }
+
+  const getStrengthText = () => {
+    if (passwordStrength <= 25) return "Weak"
+    if (passwordStrength <= 50) return "Fair"
+    if (passwordStrength <= 75) return "Good"
+    return "Strong"
+  }
 
   useEffect(() => {
     // Reset state when switching modes
@@ -158,7 +207,7 @@ export default function ForgotPasswordPage() {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          email: data.email.trim(),
+          email: data.email.trim().toLowerCase(),
         }),
       })
 
@@ -367,14 +416,98 @@ export default function ForgotPasswordPage() {
                           <FormItem>
                             <FormLabel className="text-white text-sm">New password</FormLabel>
                             <FormControl>
-                              <Input
-                                className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
-                                type="password"
-                                autoComplete="new-password"
-                                placeholder="Enter new password"
-                                {...field}
-                              />
+                              <div className="relative">
+                                <Input
+                                  className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
+                                  type={showPassword ? "text" : "password"}
+                                  autoComplete="new-password"
+                                  placeholder="Enter new password"
+                                  {...field}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-0 top-0 h-full px-3 text-zinc-400 hover:text-white transition-colors"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                >
+                                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
                             </FormControl>
+
+                            {/* Password strength indicator */}
+                            {field.value && (
+                              <div className="mt-2 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-zinc-400">Password strength:</span>
+                                  <span className="text-xs font-medium">{getStrengthText()}</span>
+                                </div>
+                                <Progress
+                                  value={passwordStrength}
+                                  className="h-1"
+                                  indicatorClassName={getStrengthColor()}
+                                />
+
+                                {/* Password requirements */}
+                                <div className="mt-2 grid grid-cols-2 gap-1">
+                                  <div className="flex items-center text-xs">
+                                    {/[A-Z]/.test(field.value) ? (
+                                      <Check className="h-3 w-3 text-green-500 mr-1" />
+                                    ) : (
+                                      <X className="h-3 w-3 text-zinc-400 mr-1" />
+                                    )}
+                                    <span
+                                      className={
+                                        /[A-Z]/.test(field.value) ? "text-white" : "text-zinc-400"
+                                      }
+                                    >
+                                      Uppercase letter
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center text-xs">
+                                    {/[a-z]/.test(field.value) ? (
+                                      <Check className="h-3 w-3 text-green-500 mr-1" />
+                                    ) : (
+                                      <X className="h-3 w-3 text-zinc-400 mr-1" />
+                                    )}
+                                    <span
+                                      className={
+                                        /[a-z]/.test(field.value) ? "text-white" : "text-zinc-400"
+                                      }
+                                    >
+                                      Lowercase letter
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center text-xs">
+                                    {/[0-9]/.test(field.value) ? (
+                                      <Check className="h-3 w-3 text-green-500 mr-1" />
+                                    ) : (
+                                      <X className="h-3 w-3 text-zinc-400 mr-1" />
+                                    )}
+                                    <span
+                                      className={
+                                        /[0-9]/.test(field.value) ? "text-white" : "text-zinc-400"
+                                      }
+                                    >
+                                      Number
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center text-xs">
+                                    {field.value.length >= 8 ? (
+                                      <Check className="h-3 w-3 text-green-500 mr-1" />
+                                    ) : (
+                                      <X className="h-3 w-3 text-zinc-400 mr-1" />
+                                    )}
+                                    <span
+                                      className={field.value.length >= 8 ? "text-white" : "text-zinc-400"}
+                                    >
+                                      8+ characters
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
@@ -387,13 +520,24 @@ export default function ForgotPasswordPage() {
                           <FormItem>
                             <FormLabel className="text-white text-sm">Confirm password</FormLabel>
                             <FormControl>
-                              <Input
-                                className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
-                                type="password"
-                                autoComplete="new-password"
-                                placeholder="Confirm new password"
-                                {...field}
-                              />
+                              <div className="relative">
+                                <Input
+                                  className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
+                                  type={showConfirmPassword ? "text" : "password"}
+                                  autoComplete="new-password"
+                                  placeholder="Confirm new password"
+                                  {...field}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-0 top-0 h-full px-3 text-zinc-400 hover:text-white transition-colors"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                >
+                                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -473,12 +617,15 @@ export default function ForgotPasswordPage() {
                           <FormLabel className="text-white text-sm">Email</FormLabel>
                           <FormControl>
                             <Input
-                              className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
+                              className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all lowercase"
                               placeholder="john@example.com"
                               type="email"
                               autoComplete="email"
                               autoFocus
                               {...field}
+                              onChange={(event) => {
+                                field.onChange(event.target.value.trim().toLowerCase())
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
