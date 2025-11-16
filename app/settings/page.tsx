@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { AnimatedSection } from "@/components/ui/animated-section"
+import { getStoredAccessToken } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
@@ -92,14 +93,7 @@ export default function SettingsPage() {
     return id ? `profile.picture.${id}` : "profile.picture.default"
   }, [userId])
 
-  const getStoredToken = () => {
-    if (typeof window === "undefined") {
-      return null
-    }
-    return (
-      localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
-    )
-  }
+  const getStoredToken = () => getStoredAccessToken()
 
   const parseApiResponse = async (response: Response) => {
     if (response.status === 204) {
@@ -200,8 +194,7 @@ export default function SettingsPage() {
       return
     }
 
-    const accessToken =
-      localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+    const accessToken = getStoredAccessToken()
 
     if (!accessToken) {
       setIsLoadingProfile(false)

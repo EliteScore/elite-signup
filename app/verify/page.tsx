@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { clearAuthKeys } from "@/lib/auth-storage"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -132,6 +133,7 @@ export default function VerifyPage() {
 
       // Store final tokens
       if (typeof window !== "undefined") {
+        clearAuthKeys(["auth.accessToken", "auth.refreshToken", "auth.userRole", "auth.email"])
         const storage = rememberChoice ? window.localStorage : window.sessionStorage
 
         let resolvedAccessToken: string | null = null

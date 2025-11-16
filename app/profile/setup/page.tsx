@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { getStoredAccessToken } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
@@ -98,8 +99,7 @@ export default function ProfileSetupPage() {
     setErrorMessage(null)
 
     try {
-      const token =
-        localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+      const token = getStoredAccessToken()
 
       if (!token) {
         setErrorMessage("Authentication required. Please log in again.")

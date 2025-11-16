@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
+import { getStoredAccessToken } from "@/lib/auth-storage"
+
 /**
  * Hook to protect routes that require authentication.
  * Redirects to /login if no valid token is found.
@@ -16,8 +18,7 @@ export function useRequireAuth(): boolean {
     if (typeof window === "undefined") return
 
     // Check both localStorage and sessionStorage for token
-    const token =
-      localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+    const token = getStoredAccessToken()
 
     if (!token) {
       // No token found - redirect to login

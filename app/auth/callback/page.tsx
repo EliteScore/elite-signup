@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { clearAuthKeys } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
@@ -208,6 +209,8 @@ export default function GoogleCallbackPage() {
       }
 
       const storage = storagePreference === "local" ? window.localStorage : window.sessionStorage
+
+      clearAuthKeys(["auth.accessToken", "auth.refreshToken", "auth.userRole", "auth.email"])
 
       try {
         storage.setItem("auth.accessToken", accessToken)

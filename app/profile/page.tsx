@@ -28,8 +28,20 @@ import { EnhancedCard, EnhancedCardContent } from "@/components/ui/enhanced-card
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { LevelIndicator } from "@/components/level-indicator"
+import { getStoredAccessToken, getStoredAuthValue } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
+
+type ResumeData = {
+  skills?: string[]
+  company?: string | null
+  currentRole?: string | null
+  summary?: string | null
+  profilePicture?: string | null
+  profilePictureUrl?: string | null
+  avatarUrl?: string | null
+  [key: string]: unknown
+}
 
 type ProfileData = {
   userId: number
@@ -37,12 +49,15 @@ type ProfileData = {
   firstName: string | null
   lastName: string | null
   bio: string | null
-  resume: any | null
+  resume: ResumeData | null
   followersCount: number | null
   followingCount: number | null
   visibility: "PUBLIC" | "PRIVATE"
   createdAt: string | null
   updatedAt: string | null
+  profilePictureUrl?: string | null
+  profilePicture?: string | null
+  avatarUrl?: string | null
 }
 
 export default function ProfilePage() {
@@ -53,6 +68,73 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [username, setUsername] = useState<string | null>(null)
+  const [profilePicture, setProfilePicture] = useState<string | null>(null)
+
+  const getProfilePictureKey = (id?: number | null) =>
+    id ? `profile.picture.${id}` : "profile.picture.default"
+
+  const cacheProfilePicture = (picture: string, userId?: number | null) => {
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem(getProfilePictureKey(userId), picture)
+    } catch (error) {
+      console.warn("[Profile] Failed to cache profile picture:", error)
+    }
+  }
+
+  const loadCachedProfilePicture = (userId?: number | null) => {
+    if (typeof window === "undefined") return null
+    try {
+      return window.localStorage.getItem(getProfilePictureKey(userId))
+    } catch (error) {
+      console.warn("[Profile] Failed to load cached profile picture:", error)
+      return null
+    }
+  }
+
+  const pickFirstValidPicture = (...candidates: Array<string | null | undefined>) => {
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim().length > 0) {
+        return candidate
+      }
+    }
+    return null
+  }
+
+  const resolvePictureFromProfile = (profile: ProfileData): string | null => {
+    const directPicture = pickFirstValidPicture(
+      profile.profilePictureUrl,
+      profile.profilePicture,
+      profile.avatarUrl,
+    )
+
+    if (directPicture) {
+      return directPicture
+    }
+
+    if (profile.resume) {
+      return pickFirstValidPicture(
+        profile.resume.profilePictureUrl,
+        profile.resume.profilePicture,
+        profile.resume.avatarUrl,
+      )
+    }
+
+    return null
+  }
+
+  const updateProfilePictureFromProfile = (profile: ProfileData) => {
+    const pictureFromApi = resolvePictureFromProfile(profile)
+
+    if (pictureFromApi) {
+      cacheProfilePicture(pictureFromApi, profile.userId)
+      setProfilePicture(pictureFromApi)
+      return
+    }
+
+    const cached = loadCachedProfilePicture(profile.userId)
+    setProfilePicture(cached)
+  }
 
   // Fetch username from /v1/auth/me
   useEffect(() => {
@@ -65,8 +147,7 @@ export default function ProfilePage() {
       try {
         console.log("[Profile] ===== Starting username fetch =====")
         
-        const token =
-          localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+        const token = getStoredAccessToken()
 
         console.log("[Profile] Token found:", token ? "Yes (length: " + token.length + ")" : "No")
 
@@ -155,9 +236,9 @@ export default function ProfilePage() {
           console.warn("[Profile] ✗ Failed to fetch username. Status:", response.status, "Body:", errorBody)
           
           // Fallback: Try to get username from localStorage/sessionStorage
-          const fallbackUsername = 
-            localStorage.getItem("auth.username") || 
-            sessionStorage.getItem("auth.username")
+          const storedUsername = getStoredAuthValue("auth.username")
+          const storedEmail = getStoredAuthValue("auth.email")
+          const fallbackUsername = storedUsername || (storedEmail ? storedEmail.split("@")[0] : null)
           
           if (fallbackUsername) {
             console.log("[Profile] Using fallback username from storage:", fallbackUsername)
@@ -186,12 +267,12 @@ export default function ProfilePage() {
 
     async function fetchProfile() {
       try {
-        const token =
-          localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+        const token = getStoredAccessToken()
 
         if (!token) {
           setProfileError("no_auth")
           setIsLoadingProfile(false)
+          setProfilePicture(null)
           return
         }
 
@@ -210,6 +291,7 @@ export default function ProfilePage() {
         if (response.status === 401 || response.status === 404) {
           console.log("[Profile] No profile found (401/404)")
           setProfileError("no_profile")
+          setProfilePicture(null)
           setIsLoadingProfile(false)
           return
         }
@@ -217,6 +299,7 @@ export default function ProfilePage() {
         if (!response.ok) {
           console.error("[Profile] Failed to fetch profile:", response.status)
           setProfileError("fetch_error")
+          setProfilePicture(null)
           setIsLoadingProfile(false)
           return
         }
@@ -225,9 +308,12 @@ export default function ProfilePage() {
         console.log("[Profile] API response:", result)
 
         // Some endpoints respond with { success, data }, others return the profile directly.
-        const possibleProfile = result && typeof result === "object"
-          ? (result.data && typeof result.data === "object" ? result.data : result)
-          : null
+        const possibleProfile =
+          result && typeof result === "object"
+            ? result.data && typeof result.data === "object"
+              ? result.data
+              : result
+            : null
 
         console.log("[Profile] Extracted profile:", possibleProfile)
 
@@ -235,13 +321,16 @@ export default function ProfilePage() {
           console.log("[Profile] Profile loaded successfully")
           setProfileData(possibleProfile)
           setProfileError(null)
+          updateProfilePictureFromProfile(possibleProfile)
         } else {
           console.log("[Profile] No valid profile data, marking as no_profile")
           setProfileError("no_profile")
+          setProfilePicture(null)
         }
       } catch (error) {
         console.error("[Profile] Error fetching profile:", error)
         setProfileError("fetch_error")
+        setProfilePicture(null)
       } finally {
         setIsLoadingProfile(false)
       }
@@ -320,22 +409,17 @@ export default function ProfilePage() {
 
   // Extract user data from profile
   const fullName = `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim() || "User"
-  const displayUsername = username || 
-    localStorage.getItem("auth.username") || 
-    sessionStorage.getItem("auth.username") || 
-    localStorage.getItem("auth.email")?.split("@")[0] ||
-    "user"
+  const storedUsername = getStoredAuthValue("auth.username")
+  const storedEmail = getStoredAuthValue("auth.email")
+  const fallbackUsernameFromEmail = storedEmail ? storedEmail.split("@")[0] : null
+  const displayUsername =
+    username || storedUsername || fallbackUsernameFromEmail || "user"
   const bio = profileData.bio || "No bio added yet"
   const followers = profileData.followersCount || 0
   const following = profileData.followingCount || 0
 
-  // Get user-specific profile picture
-  const userId = profileData.userId
-  const profilePictureKey = userId ? `profile.picture.${userId}` : "profile.picture.default"
-  const profilePicture = typeof window !== "undefined" ? localStorage.getItem(profilePictureKey) : null
-
   // Extract resume data
-  const resume = profileData.resume || {}
+  const resume: ResumeData = profileData.resume ?? {}
   const resumeSkills = Array.isArray(resume.skills) ? resume.skills : []
   const resumeCompany = resume.company || null
   const resumeRole = resume.currentRole || null
