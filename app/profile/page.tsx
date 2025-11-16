@@ -31,6 +31,7 @@ import { LevelIndicator } from "@/components/level-indicator"
 import { getStoredAccessToken, getStoredAuthValue } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
+const BLOCKED_BIO_MESSAGE = "You have blocked this user"
 
 type ResumeData = {
   skills?: string[]
@@ -74,6 +75,9 @@ export default function ProfilePage() {
   const [ownFollowersIds, setOwnFollowersIds] = useState<number[] | null>(null)
   const [ownFollowingIds, setOwnFollowingIds] = useState<number[] | null>(null)
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false)
+  const [isUpdatingBlock, setIsUpdatingBlock] = useState(false)
+  const [isBlockedViewedUser, setIsBlockedViewedUser] = useState(false)
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0)
 
   const getProfilePictureKey = (id?: number | null) =>
     id ? `profile.picture.${id}` : "profile.picture.default"
@@ -418,7 +422,29 @@ export default function ProfilePage() {
     }
 
     fetchProfile()
-  }, [isAuthorized, viewingUserId])
+  }, [isAuthorized, viewingUserId, profileRefreshKey])
+
+  useEffect(() => {
+    if (!viewingUserId || !profileData) {
+      console.log("[Profile] Block state reset (no viewingUserId or profileData)", {
+        viewingUserId,
+        hasProfileData: !!profileData,
+      })
+      setIsBlockedViewedUser(false)
+      return
+    }
+
+    const normalizedBio = profileData.bio?.trim()
+    const blockedFromProfile = normalizedBio === BLOCKED_BIO_MESSAGE
+    console.log("[Profile] Derived block state from profile", {
+      viewingUserId,
+      bio: profileData.bio,
+      normalizedBio,
+      BLOCKED_BIO_MESSAGE,
+      blockedFromProfile,
+    })
+    setIsBlockedViewedUser(Boolean(blockedFromProfile))
+  }, [viewingUserId, profileData])
 
   if (!isAuthorized || isLoadingProfile) {
     return (
@@ -572,6 +598,14 @@ export default function ProfilePage() {
 
   const handleToggleFollow = async () => {
     if (!isAuthorized || !numericViewingUserId || isUpdatingFollow) return
+    if (isBlockedViewedUser) {
+      console.warn("[Profile] Cannot follow while user is blocked", {
+        viewingUserId,
+        numericViewingUserId,
+        isBlockedViewedUser,
+      })
+      return
+    }
 
     const token = getStoredAccessToken()
     if (!token) {
@@ -586,6 +620,13 @@ export default function ProfilePage() {
       ? `${API_BASE_URL}v1/users/unfollow`
       : `${API_BASE_URL}v1/users/follow`
 
+    console.log("[Profile] Follow/unfollow starting", {
+      viewingUserId,
+      numericViewingUserId,
+      isCurrentlyFollowing,
+      endpoint,
+    })
+
     try {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -597,9 +638,60 @@ export default function ProfilePage() {
       })
 
       if (!response.ok) {
-        console.warn("[Profile] Follow/unfollow failed with status:", response.status)
+        let errorBody: unknown = null
+        try {
+          errorBody = await response.json()
+        } catch {
+          try {
+            errorBody = await response.text()
+          } catch {
+            errorBody = "Unable to read error body"
+          }
+        }
+
+        console.warn("[Profile] Follow/unfollow failed", {
+          status: response.status,
+          statusText: response.statusText,
+          endpoint,
+          errorBody,
+        })
+
+        // Gracefully handle known 400 messages to keep UI in sync
+        if (
+          response.status === 400 &&
+          typeof errorBody === "object" &&
+          errorBody !== null &&
+          "message" in errorBody
+        ) {
+          const msg = (errorBody as any).message as string
+          if (/already\s+following/i.test(msg)) {
+            setOwnFollowingIds((prev) => {
+              const current = Array.isArray(prev) ? prev : []
+              return current.includes(numericViewingUserId) ? current : [...current, numericViewingUserId]
+            })
+            return
+          }
+          if (/not\s+following/i.test(msg)) {
+            setOwnFollowingIds((prev) => {
+              const current = Array.isArray(prev) ? prev : []
+              return current.filter((id) => id !== numericViewingUserId)
+            })
+            return
+          }
+        }
         return
       }
+
+      let successBody: unknown = null
+      try {
+        successBody = await response.json()
+      } catch {
+        successBody = "Non-JSON success body"
+      }
+      console.log("[Profile] Follow/unfollow succeeded", {
+        endpoint,
+        successBody,
+      })
 
       // Update local following list so UI reflects the change immediately
       setOwnFollowingIds((prev) => {
@@ -616,6 +708,89 @@ export default function ProfilePage() {
       console.warn("[Profile] Error during follow/unfollow:", error)
     } finally {
       setIsUpdatingFollow(false)
+    }
+  }
+
+  const handleToggleBlock = async () => {
+    if (!isAuthorized || !numericViewingUserId || isUpdatingBlock) return
+
+    const token = getStoredAccessToken()
+    if (!token) {
+      console.warn("[Profile] No token available for block/unblock")
+      return
+    }
+
+    const isCurrentlyBlocked = isBlockedViewedUser
+    const endpoint = isCurrentlyBlocked
+      ? `${API_BASE_URL}v1/users/unblock`
+      : `${API_BASE_URL}v1/users/block`
+
+    console.log("[Profile] Block/unblock starting", {
+      viewingUserId,
+      numericViewingUserId,
+      isCurrentlyBlocked,
+      endpoint,
+    })
+
+    setIsUpdatingBlock(true)
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: numericViewingUserId }),
+      })
+
+      if (!response.ok) {
+        let errorBody: unknown = null
+        try {
+          errorBody = await response.json()
+        } catch {
+          try {
+            errorBody = await response.text()
+          } catch {
+            errorBody = "Unable to read error body"
+          }
+        }
+        console.warn("[Profile] Block/unblock failed", {
+          status: response.status,
+          statusText: response.statusText,
+          endpoint,
+          errorBody,
+        })
+        return
+      }
+
+      let successBody: unknown = null
+      try {
+        successBody = await response.json()
+      } catch {
+        successBody = "Non-JSON success body"
+      }
+      console.log("[Profile] Block/unblock succeeded", {
+        endpoint,
+        successBody,
+      })
+
+      setIsBlockedViewedUser(!isCurrentlyBlocked)
+
+      if (!isCurrentlyBlocked) {
+        setOwnFollowingIds((prev) => {
+          if (!Array.isArray(prev)) {
+            return prev
+          }
+          return prev.filter((id) => id !== numericViewingUserId)
+        })
+      }
+
+      setProfileRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      console.warn("[Profile] Error during block/unblock:", error)
+    } finally {
+      setIsUpdatingBlock(false)
     }
   }
 
@@ -703,24 +878,45 @@ export default function ProfilePage() {
                   </EnhancedButton>
                 )}
 
-                {/* Viewing someone else: show Follow / Unfollow */}
+                {/* Viewing someone else: show Follow / Unfollow & Block */}
                 {viewingUserId && numericViewingUserId && (
-                  <EnhancedButton
-                    size="sm"
-                    rounded="full"
-                    variant={isFollowingViewedUser ? "outline" : "gradient"}
-                    animation={isFollowingViewedUser ? undefined : "shimmer"}
-                    className={cn(
-                      "px-5 py-1.5 text-xs sm:text-sm font-bold",
-                      isFollowingViewedUser
-                        ? "border-zinc-600 text-zinc-200 bg-transparent"
-                        : "bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]",
-                    )}
-                    disabled={isUpdatingFollow}
-                    onClick={handleToggleFollow}
-                  >
-                    {isFollowingViewedUser ? "Unfollow" : "Follow"}
-                  </EnhancedButton>
+                  <>
+                    <EnhancedButton
+                      size="sm"
+                      rounded="full"
+                      variant={isFollowingViewedUser ? "outline" : "gradient"}
+                      animation={isFollowingViewedUser ? undefined : "shimmer"}
+                      className={cn(
+                        "px-5 py-1.5 text-xs sm:text-sm font-bold",
+                        isFollowingViewedUser
+                          ? "border-zinc-600 text-zinc-200 bg-transparent"
+                          : "bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]",
+                      )}
+                      disabled={isUpdatingFollow || isBlockedViewedUser}
+                      isLoading={isUpdatingFollow}
+                      onClick={handleToggleFollow}
+                    >
+                      {isFollowingViewedUser ? "Unfollow" : "Follow"}
+                    </EnhancedButton>
+
+                    <EnhancedButton
+                      size="sm"
+                      rounded="full"
+                      variant={isBlockedViewedUser ? "outline" : "gradient"}
+                      animation={isBlockedViewedUser ? undefined : "shimmer"}
+                      className={cn(
+                        "px-5 py-1.5 text-xs sm:text-sm font-bold",
+                        isBlockedViewedUser
+                          ? "border-red-600 text-red-300 hover:bg-red-600/10"
+                          : "bg-gradient-to-r from-red-500 via-red-600 to-rose-600 text-white shadow-[0_0_16px_0_rgba(255,0,0,0.45)]",
+                      )}
+                      disabled={isUpdatingBlock}
+                      isLoading={isUpdatingBlock}
+                      onClick={handleToggleBlock}
+                    >
+                      {isBlockedViewedUser ? "Unblock" : "Block"}
+                    </EnhancedButton>
+                  </>
                 )}
               </div>
             </div>
