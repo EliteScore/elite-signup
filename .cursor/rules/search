@@ -1,0 +1,107 @@
+# EliteScore API — v1 (Extract: User Search)
+
+Base URL
+--------
+All endpoints are prefixed with `/v1`.
+
+Content Types
+-------------
+- Request: application/json
+- Response: application/json
+
+Response Envelope
+-----------------
+Schema: ApiResponse<T>
+{
+"success": boolean,
+"message": string | null,
+"data": T | null
+}
+
+==================================================
+# Resource Path: /v1/users/search
+(Search API for users — flexible query endpoint.)
+
+## GET /v1/users/search/{input}
+Summary: Search for users by username, first name, last name, or both.  
+The endpoint automatically determines which search type to use based on the input provided.
+
+Auth: none (public search)
+Produces: application/json
+
+Path Params:
+- input (string) — The search term.
+    - May be one or more words.
+    - Backend determines if it’s a username or a name-based query.
+
+Behavior:
+- Checks for username match in the usernames table first.
+- If no username match found, attempts:
+    1. First name only
+    2. Last name only
+    3. First + last name combination (when input contains spaces)
+- Always returns profile info objects (linked via `user_id`).
+- The profile data includes all fields available in `ProfileInfoHandler.getByUserId()` output, e.g.:
+  {
+  "userId": int,
+  "phoneNumber": string | null,
+  "firstName": string | null,
+  "lastName": string | null,
+  "bio": string | null,
+  "resume": object | null,
+  "followersCount": int | null,
+  "followingCount": int | null,
+  "visibility": "PUBLIC"|"PRIVATE",
+  "createdAt": string | null,
+  "updatedAt": string | null
+  }
+
+Responses:
+- 200 OK — "Search completed" (or similar success message)
+  Body: ApiResponse<ProfileInfo[]>
+- 204 No Content — "No users found" (if search returns empty result)
+- 400 Bad Request — Invalid or malformed path input
+- 500 Internal Server Error — Unexpected database or handler issue
+
+Notes:
+- This is a single endpoint handling multiple internal search modes.
+- Results are unified and deduplicated before returning.
+- Useful for name-based discovery and profile lookups.
+- The output includes visibility and follower/following counts but **not** credentials.
+
+==================================================
+
+Examples — cURL
+---------------
+
+# Search by username
+curl -X GET "$BASE/v1/users/search/alice"
+
+# Search by first name
+curl -X GET "$BASE/v1/users/search/Alice"
+
+# Search by first + last name
+curl -X GET "$BASE/v1/users/search/Alice%20Smith"
+
+# Search by last name
+curl -X GET "$BASE/v1/users/search/Smith"
+
+--------------------------------------------------
+## GET /v1/users/profile/get_profile/{userId}
+Summary: Get a user’s profile by user ID, with visibility adjusted by block/follow relations.
+Auth: required (reads acting `userId` from request)
+
+Path Params:
+- userId (int) — target user ID
+
+Behavior:
+- Loads target profile.
+- If acting user has blocked target **or** is blocked by target, sets:
+    - `bio` to "You have blocked this user"
+    - `visibility` to PRIVATE
+- If acting user follows target, forces `visibility` to PUBLIC (overrides). :contentReference[oaicite:8]{index=8}
+
+Responses:
+- 200 OK — "Profile retrieved"; data: ProfileInfo
+- (Exceptions are thrown on handler errors; no explicit 404 path here.) :contentReference[oaicite:9]{index=9}
+

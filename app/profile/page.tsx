@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useRequireAuth } from "@/hooks/useRequireAuth"
 import {
   Briefcase,
@@ -63,6 +63,8 @@ type ProfileData = {
 export default function ProfilePage() {
   const isAuthorized = useRequireAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const viewingUserId = searchParams?.get("userId")
   const [activeTab, setActiveTab] = useState("overview")
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
@@ -145,10 +147,11 @@ export default function ProfilePage() {
     }
   }
 
-  // Fetch username from /v1/auth/me
+  // Fetch username from /v1/auth/me (only for own profile)
   useEffect(() => {
-    if (!isAuthorized) {
-      console.log("[Profile] Not authorized, skipping username fetch")
+    // If viewing another user, do NOT overwrite username with /v1/auth/me
+    if (!isAuthorized || viewingUserId) {
+      console.log("[Profile] Skipping username fetch (either not authorized or viewing another user)")
       return
     }
 
@@ -268,7 +271,7 @@ export default function ProfilePage() {
     }
 
     fetchUsername()
-  }, [isAuthorized])
+  }, [isAuthorized, viewingUserId])
 
   // Try to load cached picture immediately on mount (before API call)
   useEffect(() => {
@@ -289,19 +292,29 @@ export default function ProfilePage() {
     if (!isAuthorized) return
 
     async function fetchProfile() {
+      setIsLoadingProfile(true)
+      setProfileError(null)
+
       try {
         const token = getStoredAccessToken()
 
         if (!token) {
-          setProfileError("no_auth")
+          console.warn("[Profile] No token, cannot fetch profile")
           setIsLoadingProfile(false)
-          setProfilePicture(null)
           return
         }
 
         console.log("[Profile] Fetching profile data...")
 
-        const response = await fetch(`${API_BASE_URL}v1/users/profile/get_own_profile`, {
+        // Determine which endpoint to use
+        const endpoint = viewingUserId
+          ? `${API_BASE_URL}v1/users/profile/get_profile/${viewingUserId}`
+          : `${API_BASE_URL}v1/users/profile/get_own_profile`
+
+        console.log("[Profile] Endpoint:", endpoint)
+        console.log("[Profile] Viewing userId:", viewingUserId || "own profile")
+
+        const response = await fetch(endpoint, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -311,18 +324,14 @@ export default function ProfilePage() {
 
         console.log("[Profile] Response status:", response.status)
 
-        if (response.status === 401 || response.status === 404) {
-          console.log("[Profile] No profile found (401/404)")
-          setProfileError("no_profile")
-          setProfilePicture(null)
-          setIsLoadingProfile(false)
-          return
-        }
-
         if (!response.ok) {
-          console.error("[Profile] Failed to fetch profile:", response.status)
-          setProfileError("fetch_error")
-          setProfilePicture(null)
+          if (response.status === 401 || response.status === 404) {
+            console.log("[Profile] No profile found (401/404)")
+            setProfileError("no_profile")
+          } else {
+            console.error("[Profile] Failed to fetch profile:", response.status)
+            setProfileError("fetch_error")
+          }
           setIsLoadingProfile(false)
           return
         }
@@ -330,37 +339,28 @@ export default function ProfilePage() {
         const result = await response.json()
         console.log("[Profile] API response:", result)
 
-        // Some endpoints respond with { success, data }, others return the profile directly.
-        const possibleProfile =
-          result && typeof result === "object"
-            ? result.data && typeof result.data === "object"
-              ? result.data
-              : result
-            : null
+        // Extract profile from response
+        const possibleProfile = result?.data || result
 
         console.log("[Profile] Extracted profile:", possibleProfile)
 
         if (possibleProfile && possibleProfile.userId) {
-          console.log("[Profile] Profile loaded successfully")
-          setProfileData(possibleProfile)
-          setProfileError(null)
+          setProfileData(possibleProfile as ProfileData)
           updateProfilePictureFromProfile(possibleProfile)
         } else {
           console.log("[Profile] No valid profile data, marking as no_profile")
           setProfileError("no_profile")
-          setProfilePicture(null)
         }
       } catch (error) {
         console.error("[Profile] Error fetching profile:", error)
         setProfileError("fetch_error")
-        setProfilePicture(null)
       } finally {
         setIsLoadingProfile(false)
       }
     }
 
     fetchProfile()
-  }, [isAuthorized])
+  }, [isAuthorized, viewingUserId])
 
   if (!isAuthorized || isLoadingProfile) {
     return (
@@ -432,11 +432,24 @@ export default function ProfilePage() {
 
   // Extract user data from profile
   const fullName = `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim() || "User"
+
+  // For your own profile, prefer the real username from auth/me or stored auth data
   const storedUsername = getStoredAuthValue("auth.username")
   const storedEmail = getStoredAuthValue("auth.email")
   const fallbackUsernameFromEmail = storedEmail ? storedEmail.split("@")[0] : null
-  const displayUsername =
-    username || storedUsername || fallbackUsernameFromEmail || "user"
+
+  // For other users (when viewingUserId is set), backend does not yet return a username field.
+  // As a UX fallback, derive a handle from their name or userId so the UI still shows an @handle.
+  const derivedOtherUsername =
+    viewingUserId && fullName
+      ? fullName.toLowerCase().replace(/\s+/g, "")
+      : viewingUserId
+        ? `user${profileData.userId}`
+        : null
+
+  const displayUsername = viewingUserId
+    ? derivedOtherUsername
+    : username || storedUsername || fallbackUsernameFromEmail || "user"
   const bio = profileData.bio || "No bio added yet"
   const followers = profileData.followersCount || 0
   const following = profileData.followingCount || 0
@@ -482,15 +495,27 @@ export default function ProfilePage() {
       showBackButton={true}
       backUrl="/home"
       rightElement={
-        <EnhancedButton
-          variant="ghost"
-          size="icon"
-          rounded="full"
-          className="hover:bg-zinc-800 h-8 w-8"
-          onClick={() => router.push("/settings")}
-        >
-          <Settings className="h-4 w-4" />
-        </EnhancedButton>
+        viewingUserId ? (
+          <EnhancedButton
+            variant="ghost"
+            size="sm"
+            rounded="full"
+            className="hover:bg-zinc-800"
+            onClick={() => router.back()}
+          >
+            ← Back
+          </EnhancedButton>
+        ) : (
+          <EnhancedButton
+            variant="ghost"
+            size="icon"
+            rounded="full"
+            className="hover:bg-zinc-800 h-8 w-8"
+            onClick={() => router.push("/settings")}
+          >
+            <Settings className="h-4 w-4" />
+          </EnhancedButton>
+        )
       }
     >
       {/* Background Elements */}
@@ -517,7 +542,9 @@ export default function ProfilePage() {
               <div className="flex items-center justify-center gap-2 text-xl sm:text-2xl font-extrabold">
                 <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">{fullName}</span>
               </div>
-              <span className="text-zinc-400 text-sm sm:text-base font-medium">@{displayUsername}</span>
+              {displayUsername && (
+                <span className="text-zinc-400 text-sm sm:text-base font-medium">@{displayUsername}</span>
+              )}
               
               {/* Quick Stats: Resume Score + Level */}
               <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
@@ -532,16 +559,18 @@ export default function ProfilePage() {
               </div>
               
               <div className="flex gap-2 mt-2">
-                <EnhancedButton
-                  size="sm"
-                  rounded="full"
-                  variant="gradient"
-                  animation="shimmer"
-                  className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
-                  onClick={() => router.push("/settings")}
-                >
-                  Edit Profile
-                </EnhancedButton>
+                {!viewingUserId && (
+                  <EnhancedButton
+                    size="sm"
+                    rounded="full"
+                    variant="gradient"
+                    animation="shimmer"
+                    className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                    onClick={() => router.push("/settings")}
+                  >
+                    Edit Profile
+                  </EnhancedButton>
+                )}
               </div>
             </div>
             {/* Stats Row */}

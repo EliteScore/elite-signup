@@ -140,3 +140,21 @@ curl -X GET "$BASE/v1/users/profile/get_profile/42" \
 # Get my profile
 curl -X GET "$BASE/v1/users/profile/get_own_profile" \
 -H "Authorization: Bearer <token>"
+
+
+
+------------------------------------------------
+## GET /v1/auth/me
+Summary: Get current authenticated user's basic info.
+Auth: required
+
+Responses:
+- 200 OK — User info retrieved
+  Body: ApiResponse<Map<String, Object>>
+  data = { "userId": int, "username": string, "email": string, "role": string }
+- 401 Unauthorized — User does not exist
+  Body: ApiResponse<Void>
+
+Notes:
+- Returns basic user information for the authenticated user.
+- Useful for displaying username in profile or navigation.
