@@ -169,8 +169,8 @@ export default function LoginPage() {
       }
 
       const loginPayload = {
-        username: formData.email,
-        email: formData.email,
+        username: formData.email.trim().toLowerCase(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
       }
 
@@ -375,11 +375,14 @@ export default function LoginPage() {
                           <FormLabel className="text-white text-sm">Email</FormLabel>
                           <FormControl>
                             <Input
-                              className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all"
+                              className="py-3 text-base rounded-xl border border-zinc-700 bg-black/60 text-white focus:ring-2 focus:ring-[#2bbcff] focus:border-[#2bbcff] transition-all lowercase"
                               placeholder="john@example.com"
                               type="email"
                               autoComplete="email"
                               {...field}
+                              onChange={(event) => {
+                                field.onChange(event.target.value.trim().toLowerCase())
+                              }}
                             />
                           </FormControl>
                           <FormMessage />

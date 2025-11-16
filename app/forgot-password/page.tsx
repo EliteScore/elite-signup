@@ -88,8 +88,14 @@ export default function ForgotPasswordPage() {
         payload += "="
       }
       const decoded = JSON.parse(atob(payload))
+      console.log("[Forgot Password] Decoded JWT payload:", decoded)
+      console.log("[Forgot Password] Token subject (sub):", decoded.sub)
+      console.log("[Forgot Password] Token email (if present):", decoded.email)
+      
+      // The token's 'sub' field should contain the username
       return typeof decoded.sub === "string" ? decoded.sub : null
     } catch (error) {
+      console.error("[Forgot Password] Error decoding token:", error)
       return null
     }
   }, [token])
@@ -202,42 +208,77 @@ export default function ForgotPasswordPage() {
         throw new Error("Service unavailable")
       }
 
-      const response = await fetch(`${API_BASE_URL}v1/auth/forgot-password/${encodeURIComponent(token)}`, {
+      // Use the hyphen format (as per API docs)
+      const apiUrl = `${API_BASE_URL}v1/auth/forgot_password-${encodeURIComponent(token)}`
+      console.log("[Forgot Password] ===== Password Reset Request =====")
+      console.log("[Forgot Password] API URL:", apiUrl)
+      console.log("[Forgot Password] Token subject (username from JWT):", tokenSubject)
+      console.log("[Forgot Password] New password length:", data.password.length)
+
+      const requestBody = {
+        username: tokenSubject,
+        password: data.password,
+      }
+      console.log("[Forgot Password] Request body (password hidden):", {
+        username: tokenSubject,
+        password: "***"
+      })
+
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({
-          username: tokenSubject,
-          password: data.password,
-        }),
+        body: JSON.stringify(requestBody),
       })
+
+      console.log("[Forgot Password] Response status:", response.status)
+      console.log("[Forgot Password] Response ok:", response.ok)
 
       const contentType = response.headers.get("content-type")
       const isJson = contentType?.includes("application/json")
-      const result = isJson ? await response.json() : null
+      let result = null
+      
+      if (isJson) {
+        result = await response.json()
+        console.log("[Forgot Password] Response JSON:", result)
+      } else {
+        const text = await response.text()
+        console.log("[Forgot Password] Response text (non-JSON):", text)
+        console.warn("[Forgot Password] ⚠️ Non-JSON response received!")
+      }
 
       if (!response.ok || result?.success === false) {
         const status = response.status
         let errorMessage = result?.message || "Unable to reset your password. Please request a new link."
 
+        console.error("[Forgot Password] ✗ Error - Status:", status)
+        console.error("[Forgot Password] Error message:", errorMessage)
+        console.error("[Forgot Password] Full error response:", result)
+
         if (status === 401) {
           errorMessage = result?.message || "Reset link expired or invalid. Please request a new password reset email."
         } else if (status === 400) {
-          errorMessage = result?.message || "The username does not match the reset link. Please try again."
+          errorMessage = result?.message || `The username "${tokenSubject}" does not match the reset link. Please verify your username and try again.`
+          console.error("[Forgot Password] Username mismatch! Token subject:", tokenSubject)
         }
 
         setResetError(errorMessage)
 
-        if (status === 400 || status === 401) {
-          // Redirect back to request form so user can start over
-          router.replace("/forgot-password")
+        if (status === 401) {
+          setTimeout(() => {
+            router.replace("/forgot-password")
+          }, 2000)
         }
 
         return
       }
 
+      console.log("[Forgot Password] ✓ Password reset successful!")
+      console.log("[Forgot Password] Success message:", result?.message)
+      console.log("[Forgot Password] ===== Password Reset Complete =====")
+      
       setResetSuccess(true)
       setResetSuccessMessage(
         result?.message ||
@@ -248,6 +289,7 @@ export default function ForgotPasswordPage() {
         router.push("/login")
       }, 1500)
     } catch (error) {
+      console.error("[Forgot Password] ✗ Exception:", error)
       setResetError("Failed to connect to the server. Please check your internet connection and try again.")
     } finally {
       setIsResetLoading(false)
