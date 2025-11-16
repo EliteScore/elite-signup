@@ -987,8 +987,9 @@ export default function HomePage() {
                       )}
 
                       <div>
-                        <label className="text-xs sm:text-sm text-zinc-400 mb-1.5 block">Add a personal message (optional)</label>
+                        <label htmlFor="post-message" className="text-xs sm:text-sm text-zinc-400 mb-1.5 block">Add a personal message (optional)</label>
                         <textarea
+                          id="post-message"
                           placeholder="Share your thoughts, tips, or motivation..."
                           value={postMessage}
                           onChange={(e) => setPostMessage(e.target.value)}

@@ -261,7 +261,7 @@ export default function HomePage() {
 
     try {
       // Call the backend API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "https://elitescore-auth-fafc42d40d58.herokuapp.com/").replace(/\/$/, "")
       const response = await fetch(`${apiUrl}/v1/auth/pre-signup`, {
         method: 'POST',
         headers: {

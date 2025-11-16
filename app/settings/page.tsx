@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { AnimatedSection } from "@/components/ui/animated-section"
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 type SettingsSection = {
   id: string
@@ -81,7 +81,14 @@ export default function SettingsPage() {
   const [personalStatus, setPersonalStatus] = useState<StatusMessage | null>(null)
   const [professionalStatus, setProfessionalStatus] = useState<StatusMessage | null>(null)
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>("")
+  const [userId, setUserId] = useState<number | null>(null)
   const PHONE_REGEX = /^\+?[0-9()\s-]{7,15}$/
+
+  // Helper function to get user-specific profile picture key
+  const getProfilePictureKey = useCallback((targetUserId?: number | null): string => {
+    const id = targetUserId ?? userId
+    return id ? `profile.picture.${id}` : "profile.picture.default"
+  }, [userId])
 
   const getStoredToken = () => {
     if (typeof window === "undefined") {
@@ -127,7 +134,7 @@ export default function SettingsPage() {
       throw new Error("Authentication required. Please log in again.")
     }
 
-    const { method = "PATCH", endpoint = `${API_BASE_URL}/v1/users/profile/update_profile` } = options
+    const { method = "PATCH", endpoint = `${API_BASE_URL}v1/users/profile/update_profile` } = options
 
     console.groupCollapsed("[Profile API] Request")
     console.log("Method:", method)
@@ -196,7 +203,8 @@ export default function SettingsPage() {
 
     if (!accessToken) {
       setIsLoadingProfile(false)
-      const storedPicture = localStorage.getItem("profile.picture")
+      const pictureKey = getProfilePictureKey()
+      const storedPicture = localStorage.getItem(pictureKey)
       if (storedPicture) {
         setProfilePicturePreview(storedPicture)
       }
@@ -204,7 +212,7 @@ export default function SettingsPage() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+      const response = await fetch(`${API_BASE_URL}v1/users/profile/get_own_profile`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -222,6 +230,11 @@ export default function SettingsPage() {
 
           if (result.success && result.data) {
             const profileData = result.data
+
+            // Store userId for user-specific profile picture key
+            if (profileData.userId) {
+              setUserId(profileData.userId)
+            }
 
             setPersonalInfo((prev) => ({
               ...prev,
@@ -241,7 +254,9 @@ export default function SettingsPage() {
             if (typeof pictureFromApi === "string" && pictureFromApi.length > 0) {
               setProfilePicturePreview(pictureFromApi)
             } else {
-              const storedPicture = localStorage.getItem("profile.picture")
+              // Use userId from profileData if available, otherwise use state
+              const pictureKey = getProfilePictureKey(profileData.userId)
+              const storedPicture = localStorage.getItem(pictureKey)
               if (storedPicture) {
                 setProfilePicturePreview(storedPicture)
               }
@@ -256,7 +271,8 @@ export default function SettingsPage() {
         console.log("No profile found or unauthorized")
         setProfileExists(false)
         localStorage.removeItem("profile.exists")
-        const storedPicture = localStorage.getItem("profile.picture")
+        const pictureKey = getProfilePictureKey()
+        const storedPicture = localStorage.getItem(pictureKey)
         if (storedPicture) {
           setProfilePicturePreview(storedPicture)
         }
@@ -264,7 +280,8 @@ export default function SettingsPage() {
         console.warn("Failed to fetch profile:", response.status)
         setProfileExists(false)
         localStorage.removeItem("profile.exists")
-        const storedPicture = localStorage.getItem("profile.picture")
+        const pictureKey = getProfilePictureKey()
+        const storedPicture = localStorage.getItem(pictureKey)
         if (storedPicture) {
           setProfilePicturePreview(storedPicture)
         }
@@ -273,14 +290,15 @@ export default function SettingsPage() {
       console.error("Error fetching profile:", error)
       setProfileExists(false)
       localStorage.removeItem("profile.exists")
-      const storedPicture = localStorage.getItem("profile.picture")
+      const pictureKey = getProfilePictureKey()
+      const storedPicture = localStorage.getItem(pictureKey)
       if (storedPicture) {
         setProfilePicturePreview(storedPicture)
       }
     } finally {
       setIsLoadingProfile(false)
     }
-  }, [isAuthorized])
+  }, [isAuthorized, userId])
 
   useEffect(() => {
     fetchProfile()
@@ -288,11 +306,12 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    const storedPicture = localStorage.getItem("profile.picture")
+    const pictureKey = getProfilePictureKey()
+    const storedPicture = localStorage.getItem(pictureKey)
     if (storedPicture) {
       setProfilePicturePreview((prev) => prev || storedPicture)
     }
-  }, [])
+  }, [userId])
 
   const handlePersonalChange = (field: keyof typeof personalInfo) => (
     event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -333,7 +352,8 @@ export default function SettingsPage() {
       const result = reader.result as string
       setProfilePicturePreview(result)
       try {
-        localStorage.setItem("profile.picture", result)
+        const pictureKey = getProfilePictureKey()
+        localStorage.setItem(pictureKey, result)
       } catch (error) {
         console.warn("Unable to store picture locally", error)
       }
@@ -350,7 +370,8 @@ export default function SettingsPage() {
 
   const handleRemoveProfilePicture = () => {
     setProfilePicturePreview("")
-    localStorage.removeItem("profile.picture")
+    const pictureKey = getProfilePictureKey()
+    localStorage.removeItem(pictureKey)
     if (personalStatus?.type === "error") {
       setPersonalStatus(null)
     }
@@ -430,7 +451,7 @@ export default function SettingsPage() {
 
       const requestOptions = profileExists
         ? undefined
-        : { method: "POST" as const, endpoint: `${API_BASE_URL}/v1/users/profile/add_profile` }
+        : { method: "POST" as const, endpoint: `${API_BASE_URL}v1/users/profile/add_profile` }
 
       const successMessage = await sendProfileRequest(requestBody, requestOptions)
 
@@ -761,11 +782,12 @@ export default function SettingsPage() {
                                 />
                               </div>
                               <div>
-                                <Label htmlFor="visibility" className="text-xs text-zinc-400">Profile Visibility</Label>
+                                <Label className="text-xs text-zinc-400">Profile Visibility</Label>
                                 <div className="flex gap-3 mt-2">
-                                  <label className="flex items-center gap-2 cursor-pointer">
+                                  <label htmlFor="visibility-public" className="flex items-center gap-2 cursor-pointer">
                                     <input
                                       type="radio"
+                                      id="visibility-public"
                                       name="visibility"
                                       value="PUBLIC"
                                       checked={personalInfo.visibility === "PUBLIC"}
@@ -779,9 +801,10 @@ export default function SettingsPage() {
                                     />
                                     <span className="text-xs text-white">Public</span>
                                   </label>
-                                  <label className="flex items-center gap-2 cursor-pointer">
+                                  <label htmlFor="visibility-private" className="flex items-center gap-2 cursor-pointer">
                                     <input
                                       type="radio"
+                                      id="visibility-private"
                                       name="visibility"
                                       value="PRIVATE"
                                       checked={personalInfo.visibility === "PRIVATE"}

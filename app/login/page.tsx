@@ -41,7 +41,7 @@ const itemVariants = {
   },
 }
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 // Form schema with validation
 const loginSchema = z.object({
@@ -92,7 +92,7 @@ export default function LoginPage() {
       setGoogleConfigError(null)
 
       try {
-        const response = await fetch(`${API_BASE_URL}/v1/auth/google/config`, {
+        const response = await fetch(`${API_BASE_URL}v1/auth/google/config`, {
           method: "GET",
           headers: {
             Accept: "application/json",
@@ -160,7 +160,7 @@ export default function LoginPage() {
     setLoginError(null)
 
     try {
-      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+      const statusResponse = await fetch(`${API_BASE_URL}v1/status`, {
         method: "GET",
       })
 
@@ -174,7 +174,7 @@ export default function LoginPage() {
         password: formData.password,
       }
 
-      const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}v1/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

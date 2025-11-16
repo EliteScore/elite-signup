@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 type GoogleExchangeResult =
   | {
@@ -54,7 +54,7 @@ export default function GoogleCallbackPage() {
       setStatus("loading")
       setMessage("Checking service status...")
 
-      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+      const statusResponse = await fetch(`${API_BASE_URL}v1/status`, {
         method: "GET",
       })
 
@@ -71,7 +71,7 @@ export default function GoogleCallbackPage() {
       let responseOk = false
 
       try {
-        const response = await fetch(`${API_BASE_URL}/v1/auth/google`, {
+        const response = await fetch(`${API_BASE_URL}v1/auth/google`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -38,7 +38,7 @@ const itemVariants = {
   },
 }
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 const verifySchema = z.object({
   code: z
@@ -103,8 +103,8 @@ export default function VerifyPage() {
     setInfoMessage(null)
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/v1/auth/verify_code?code=${encodeURIComponent(formData.code)}`,
+        const response = await fetch(
+          `${API_BASE_URL}v1/auth/verify_code?code=${encodeURIComponent(formData.code)}`,
         {
           method: "GET",
           headers: {
@@ -228,7 +228,7 @@ export default function VerifyPage() {
     setInfoMessage(null)
 
     try {
-      const response = await fetch(`${API_BASE_URL}/v1/auth/resend_code`, {
+      const response = await fetch(`${API_BASE_URL}v1/auth/resend_code`, {
         method: "POST",
         headers: {
           Accept: "application/json",

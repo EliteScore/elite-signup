@@ -38,7 +38,7 @@ const itemVariants = {
   },
 }
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 const forgotPasswordSchema = z.object({
   email: z.string().email({
@@ -137,7 +137,7 @@ export default function ForgotPasswordPage() {
 
     try {
       // Quick availability check before requesting the reset
-      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+      const statusResponse = await fetch(`${API_BASE_URL}v1/status`, {
         method: "GET",
       })
 
@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
         throw new Error("Service unavailable")
       }
 
-      const response = await fetch(`${API_BASE_URL}/v1/auth/forgot-password`, {
+      const response = await fetch(`${API_BASE_URL}v1/auth/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +194,7 @@ export default function ForgotPasswordPage() {
     setResetError(null)
 
     try {
-      const statusResponse = await fetch(`${API_BASE_URL}/v1/status`, {
+      const statusResponse = await fetch(`${API_BASE_URL}v1/status`, {
         method: "GET",
       })
 
@@ -202,7 +202,7 @@ export default function ForgotPasswordPage() {
         throw new Error("Service unavailable")
       }
 
-      const response = await fetch(`${API_BASE_URL}/v1/auth/forgot-password/${encodeURIComponent(token)}`, {
+      const response = await fetch(`${API_BASE_URL}v1/auth/forgot-password/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

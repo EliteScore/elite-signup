@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { LevelIndicator } from "@/components/level-indicator"
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 type ProfileData = {
   userId: number
@@ -52,6 +52,133 @@ export default function ProfilePage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [username, setUsername] = useState<string | null>(null)
+
+  // Fetch username from /v1/auth/me
+  useEffect(() => {
+    if (!isAuthorized) {
+      console.log("[Profile] Not authorized, skipping username fetch")
+      return
+    }
+
+    async function fetchUsername() {
+      try {
+        console.log("[Profile] ===== Starting username fetch =====")
+        
+        const token =
+          localStorage.getItem("auth.accessToken") || sessionStorage.getItem("auth.accessToken")
+
+        console.log("[Profile] Token found:", token ? "Yes (length: " + token.length + ")" : "No")
+
+        if (!token) {
+          console.warn("[Profile] No token available for username fetch")
+          return
+        }
+
+        const apiUrl = `${API_BASE_URL}v1/auth/me`
+        console.log("[Profile] Fetching username from:", apiUrl)
+        console.log("[Profile] Request headers:", {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token.substring(0, 20)}...`,
+        })
+
+        const response = await fetch(apiUrl, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        console.log("[Profile] Username API response status:", response.status)
+        console.log("[Profile] Username API response ok:", response.ok)
+        console.log("[Profile] Username API response headers:", Object.fromEntries(response.headers.entries()))
+
+        const contentType = response.headers.get("content-type")
+        console.log("[Profile] Response content-type:", contentType)
+
+        if (response.ok) {
+          let result
+          try {
+            if (contentType?.includes("application/json")) {
+              result = await response.json()
+            } else {
+              const text = await response.text()
+              console.log("[Profile] Non-JSON response text:", text)
+              try {
+                result = JSON.parse(text)
+              } catch {
+                result = { raw: text }
+              }
+            }
+          } catch (parseError) {
+            console.error("[Profile] Error parsing response:", parseError)
+            const text = await response.text()
+            console.log("[Profile] Raw response text:", text)
+            return
+          }
+
+          console.log("[Profile] Username API response body:", result)
+          console.log("[Profile] Response structure:", {
+            hasSuccess: "success" in result,
+            hasData: "data" in result,
+            isDirectObject: typeof result === "object" && !Array.isArray(result),
+          })
+
+          // Extract username from response
+          const userData = result?.data || result
+          console.log("[Profile] Extracted userData:", userData)
+          console.log("[Profile] userData.username:", userData?.username)
+          console.log("[Profile] userData keys:", userData ? Object.keys(userData) : "null")
+
+          if (userData?.username) {
+            setUsername(userData.username)
+            console.log("[Profile] ✓ Username successfully loaded:", userData.username)
+          } else {
+            console.warn("[Profile] ✗ Username not found in response. Available fields:", userData ? Object.keys(userData) : "none")
+          }
+        } else {
+          let errorBody
+          try {
+            const text = await response.text()
+            console.log("[Profile] Error response text:", text)
+            try {
+              errorBody = JSON.parse(text)
+              console.log("[Profile] Error response JSON:", errorBody)
+            } catch {
+              errorBody = { raw: text }
+            }
+          } catch (e) {
+            console.error("[Profile] Error reading error response:", e)
+          }
+          
+          console.warn("[Profile] ✗ Failed to fetch username. Status:", response.status, "Body:", errorBody)
+          
+          // Fallback: Try to get username from localStorage/sessionStorage
+          const fallbackUsername = 
+            localStorage.getItem("auth.username") || 
+            sessionStorage.getItem("auth.username")
+          
+          if (fallbackUsername) {
+            console.log("[Profile] Using fallback username from storage:", fallbackUsername)
+            setUsername(fallbackUsername)
+          } else {
+            console.warn("[Profile] No fallback username available")
+          }
+        }
+      } catch (error) {
+        console.error("[Profile] ✗ Exception while fetching username:", error)
+        console.error("[Profile] Error details:", {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        })
+      } finally {
+        console.log("[Profile] ===== Username fetch completed =====")
+      }
+    }
+
+    fetchUsername()
+  }, [isAuthorized])
 
   // Fetch profile data on mount
   useEffect(() => {
@@ -70,7 +197,7 @@ export default function ProfilePage() {
 
         console.log("[Profile] Fetching profile data...")
 
-        const response = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+        const response = await fetch(`${API_BASE_URL}v1/users/profile/get_own_profile`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -78,8 +205,10 @@ export default function ProfilePage() {
           },
         })
 
+        console.log("[Profile] Response status:", response.status)
+
         if (response.status === 401 || response.status === 404) {
-          console.log("[Profile] No profile found")
+          console.log("[Profile] No profile found (401/404)")
           setProfileError("no_profile")
           setIsLoadingProfile(false)
           return
@@ -93,18 +222,21 @@ export default function ProfilePage() {
         }
 
         const result = await response.json()
+        console.log("[Profile] API response:", result)
 
         // Some endpoints respond with { success, data }, others return the profile directly.
         const possibleProfile = result && typeof result === "object"
           ? (result.data && typeof result.data === "object" ? result.data : result)
           : null
 
+        console.log("[Profile] Extracted profile:", possibleProfile)
+
         if (possibleProfile && possibleProfile.userId) {
-          console.log("[Profile] Profile loaded:", possibleProfile)
+          console.log("[Profile] Profile loaded successfully")
           setProfileData(possibleProfile)
           setProfileError(null)
         } else {
-          console.error("[Profile] Invalid response format:", result)
+          console.log("[Profile] No valid profile data, marking as no_profile")
           setProfileError("no_profile")
         }
       } catch (error) {
@@ -188,10 +320,19 @@ export default function ProfilePage() {
 
   // Extract user data from profile
   const fullName = `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim() || "User"
-  const username = localStorage.getItem("auth.username") || "user"
+  const displayUsername = username || 
+    localStorage.getItem("auth.username") || 
+    sessionStorage.getItem("auth.username") || 
+    localStorage.getItem("auth.email")?.split("@")[0] ||
+    "user"
   const bio = profileData.bio || "No bio added yet"
   const followers = profileData.followersCount || 0
   const following = profileData.followingCount || 0
+
+  // Get user-specific profile picture
+  const userId = profileData.userId
+  const profilePictureKey = userId ? `profile.picture.${userId}` : "profile.picture.default"
+  const profilePicture = typeof window !== "undefined" ? localStorage.getItem(profilePictureKey) : null
 
   // Extract resume data
   const resume = profileData.resume || {}
@@ -258,7 +399,7 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center text-center gap-3">
           {/* Avatar */}
           <Avatar className="h-24 w-24 sm:h-32 sm:w-32 border-4 border-black ring-2 ring-blue-500 rounded-full object-cover shadow-[0_0_24px_0_rgba(80,0,255,0.5)]">
-            <AvatarImage src={localStorage.getItem("profile.picture") || undefined} />
+            <AvatarImage src={profilePicture || undefined} />
             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
               {fullName.charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -269,7 +410,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-center gap-2 text-xl sm:text-2xl font-extrabold">
                 <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">{fullName}</span>
               </div>
-              <span className="text-zinc-400 text-sm sm:text-base font-medium">@{username}</span>
+              <span className="text-zinc-400 text-sm sm:text-base font-medium">@{displayUsername}</span>
               
               {/* Quick Stats: Resume Score + Level */}
               <div className="mt-1 flex flex-wrap items-center justify-center gap-2">

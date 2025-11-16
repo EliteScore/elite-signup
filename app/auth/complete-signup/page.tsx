@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 // Animation variants
 const containerVariants = {
@@ -106,7 +106,7 @@ export default function CompleteSignupPage() {
       const randomPassword = `google_${googleSub || Date.now()}_${Math.random().toString(36).substring(2, 15)}`
 
       // Call the signup API
-      const response = await fetch(`${API_BASE_URL}/v1/auth/signup`, {
+      const response = await fetch(`${API_BASE_URL}v1/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -144,7 +144,7 @@ export default function CompleteSignupPage() {
       // Now login with the same credentials to get access token
       console.log("[Google Signup] Logging in automatically...")
       
-      const loginResponse = await fetch(`${API_BASE_URL}/v1/auth/login`, {
+      const loginResponse = await fetch(`${API_BASE_URL}v1/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

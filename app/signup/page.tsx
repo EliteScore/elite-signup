@@ -18,7 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 // Removed import of Separator due to missing module
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 type GoogleOAuthConfig = {
   clientId: string
@@ -152,7 +152,7 @@ export default function SignupPage() {
       setGoogleSignInError(null)
 
       try {
-        const response = await fetch(`${API_BASE_URL}/v1/auth/google/config`, {
+        const response = await fetch(`${API_BASE_URL}v1/auth/google/config`, {
           method: "GET",
           headers: {
             Accept: "application/json",
@@ -290,7 +290,7 @@ export default function SignupPage() {
 
     try {
       // Call the actual registration API
-      const response = await fetch('https://elite-score-a31a0334b58d.herokuapp.com/v1/auth/signup', {
+      const response = await fetch(`${API_BASE_URL}v1/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

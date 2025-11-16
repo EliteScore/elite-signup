@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardLayout } from "@/components/dashboard-layout"
 
-const API_BASE_URL = "https://elite-score-a31a0334b58d.herokuapp.com"
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 // Animation variants
 const containerVariants = {
@@ -120,7 +120,7 @@ export default function ProfileSetupPage() {
 
       console.log("[Profile Setup] Creating profile with:", requestBody)
 
-      const response = await fetch(`${API_BASE_URL}/v1/users/profile/add_profile`, {
+      const response = await fetch(`${API_BASE_URL}v1/users/profile/add_profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -148,7 +148,7 @@ export default function ProfileSetupPage() {
       localStorage.setItem("profile.exists", "true")
 
       // Verify by fetching the profile
-      const verifyResponse = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+      const verifyResponse = await fetch(`${API_BASE_URL}v1/users/profile/get_own_profile`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

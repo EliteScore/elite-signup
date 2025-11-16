@@ -365,7 +365,7 @@ export default function ImprovementJourneyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="experience">Years of Experience</Label>
+                <Label>Years of Experience</Label>
                 <RadioGroup defaultValue="1-3">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="0-1" id="exp-0-1" />
