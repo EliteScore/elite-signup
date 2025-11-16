@@ -127,13 +127,22 @@ export default function ProfilePage() {
     const pictureFromApi = resolvePictureFromProfile(profile)
 
     if (pictureFromApi) {
+      // Always cache the picture from API to ensure persistence after build
       cacheProfilePicture(pictureFromApi, profile.userId)
       setProfilePicture(pictureFromApi)
+      console.log("[Profile] Set profile picture from API:", pictureFromApi.substring(0, 50) + "...")
       return
     }
 
+    // Fallback to cached picture if API doesn't return one
     const cached = loadCachedProfilePicture(profile.userId)
-    setProfilePicture(cached)
+    if (cached) {
+      console.log("[Profile] Using cached profile picture")
+      setProfilePicture(cached)
+    } else {
+      console.log("[Profile] No profile picture available from API or cache")
+      setProfilePicture(null)
+    }
   }
 
   // Fetch username from /v1/auth/me
@@ -260,6 +269,20 @@ export default function ProfilePage() {
 
     fetchUsername()
   }, [isAuthorized])
+
+  // Try to load cached picture immediately on mount (before API call)
+  useEffect(() => {
+    if (!isAuthorized || typeof window === "undefined") return
+    
+    // Try to get userId from profileData if already loaded, or try common keys
+    if (profileData?.userId) {
+      const cached = loadCachedProfilePicture(profileData.userId)
+      if (cached && !profilePicture) {
+        console.log("[Profile] Loaded cached picture on mount")
+        setProfilePicture(cached)
+      }
+    }
+  }, [isAuthorized, profileData?.userId])
 
   // Fetch profile data on mount
   useEffect(() => {

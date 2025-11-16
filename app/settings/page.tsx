@@ -240,13 +240,38 @@ export default function SettingsPage() {
               visibility: profileData.visibility || "PUBLIC",
             }))
 
-            const pictureFromApi =
-              profileData.profilePictureUrl ||
-              profileData.profilePicture ||
-              profileData.avatarUrl ||
-              null
+            // Check for picture in profile data (same logic as profile page)
+            const pickFirstValidPicture = (...candidates: Array<string | null | undefined>) => {
+              for (const candidate of candidates) {
+                if (typeof candidate === "string" && candidate.trim().length > 0) {
+                  return candidate
+                }
+              }
+              return null
+            }
 
-            if (typeof pictureFromApi === "string" && pictureFromApi.length > 0) {
+            const directPicture = pickFirstValidPicture(
+              profileData.profilePictureUrl,
+              profileData.profilePicture,
+              profileData.avatarUrl,
+            )
+
+            const pictureFromApi = directPicture || 
+              (profileData.resume ? pickFirstValidPicture(
+                profileData.resume.profilePictureUrl,
+                profileData.resume.profilePicture,
+                profileData.resume.avatarUrl,
+              ) : null)
+
+            if (pictureFromApi) {
+              // Cache the picture from API to localStorage for persistence (critical after build)
+              const pictureKey = getProfilePictureKey(profileData.userId)
+              try {
+                localStorage.setItem(pictureKey, pictureFromApi)
+                console.log("[Settings] Cached profile picture from API")
+              } catch (error) {
+                console.warn("[Settings] Failed to cache profile picture from API:", error)
+              }
               setProfilePicturePreview(pictureFromApi)
             } else {
               // Use userId from profileData if available, otherwise use state
