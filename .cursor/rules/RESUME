@@ -1,0 +1,347 @@
+# EliteScore API — v1 (Extract: CV / Resume Editor)
+
+**Base URL**  
+All endpoints below are prefixed with `/v1`.
+
+## If not clear refer to andreas_first_task.md
+
+## Content Types
+- **Request:** `application/json`
+- **Response:** `application/json`
+
+## Response Envelope
+**Schema:** `ApiResponse<T>` — fields:  
+- `success` *(boolean)*  
+- `message` *(string)*  
+- `data` *(T or null)*
+
+## Authentication
+- JWT required.  
+- The authenticated user id is read from the request attribute `userId` (set by the auth filter).  
+- **No user id appears in the path.** All routes act on the caller’s own CV.
+
+## Storage Notes
+- CV JSON is stored in `public.user_profile_info.resume` (PostgreSQL `jsonb`).  
+- The handler **updates only this column** (+ `updated_at`), assuming the row already exists.  
+- Stored JSON is **wrapped** as:
+  ```json
+  {
+    "profile": { ...parts... }
+  }
+  ```
+  (Legacy, unwrapped JSON is tolerated on read.)
+
+---
+
+## Data Model
+
+### Cv (wrapper)
+```json
+{
+  "profile": { ... }  // see Profile below
+}
+```
+
+### Profile (target shape under `profile`)
+```jsonc
+{
+  "basics": {
+    "full_name": "",
+    "headline": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "summary": "",
+    "urls": {
+      "linkedin": "",
+      "github": "",
+      "portfolio": "",
+      "website": ""
+    }
+  },
+  "experience": [ { /* ExperienceEntry */ } ],
+  "education":  [ { /* EducationEntry  */ } ],
+  "projects":   [ { /* ProjectEntry    */ } ],
+  "skills":     [ "Java", "SQL", "AWS" ],
+  "certifications": [ { /* CertificationEntry */ } ],
+  "languages":      [ { /* LanguageEntry      */ } ],
+  "publications":   [ { /* PublicationEntry   */ } ],
+  "honors_awards":  [ { /* HonorAwardEntry    */ } ],
+  "volunteer":      [ { /* VolunteerEntry     */ } ]
+}
+```
+
+### PATCH/PUT Semantics
+- **PUT (basics or collection):** replace the whole object/array at that part.
+- **PATCH (basics or bulk):** deep-merge objects; arrays/scalars replace; `null` **clears** a field.
+- For **collections** (`experience`, `skills`, …):  
+  - `PUT` replaces the entire array.  
+  - `POST` appends one or many items.  
+  - `DELETE` clears the array.
+
+### Validation Highlights
+- Dates accept `YYYY-MM` or `YYYY-MM-DD`.  
+- Typical field length limits are enforced in the model (e.g., basics names/headline).
+
+---
+
+# Resource: `/v1/users/cv`
+
+> Acts on the authenticated user (derived from `request.getAttribute("userId")`).
+
+## Bulk
+
+### GET `/v1/users/cv`
+**Summary:** Get the full CV (wrapped in `profile`).  
+**Auth:** required
+
+**Response `data`:**
+```json
+{
+  "profile": { ... }
+}
+```
+
+**Codes**
+- `200 OK` — `"ok"`
+
+---
+
+### PUT `/v1/users/cv`
+**Summary:** Replace the whole CV (only `resume` is updated in DB).  
+**Auth:** required
+
+**Body (Cv):**
+```json
+{
+  "profile": {
+    "basics": { ... },
+    "experience": [ ... ],
+    "skills": [ ... ],
+    ...
+  }
+}
+```
+
+**Behavior**
+- The entire JSON under `profile` replaces what’s stored.  
+- Non-provided parts become absent/empty per the payload you send.
+
+**Codes**
+- `200 OK` — `"updated"`
+- `404` if your `user_id` row does not exist (handler maps internal not-found).
+
+---
+
+### PATCH `/v1/users/cv`
+**Summary:** Deep-merge multiple parts at once.  
+**Auth:** required
+
+**Body (Cv or unwrapped Profile):**
+```json
+{
+  "profile": {
+    "basics": { "headline": "New role", "urls": { "website": null } },
+    "skills": ["Java","Kotlin"]   // arrays replace
+  }
+}
+```
+
+**Behavior**
+- Objects merge; arrays/scalars replace; `null` clears a field.
+
+**Codes**
+- `200 OK` — `"patched"`
+- `404` if profile row missing.
+
+---
+
+## Basics (object)
+
+### GET `/v1/users/cv/basics`
+**Summary:** Get only the `basics` object.  
+**Auth:** required
+
+**Response `data`:** the `basics` object (may be `{}` if empty).
+
+**Codes**
+- `200 OK` — `"ok"`
+
+---
+
+### PUT `/v1/users/cv/basics`
+**Summary:** Replace the `basics` object.  
+**Auth:** required
+
+**Body (examples)**
+```json
+{
+  "full_name": "Aarav Mehta",
+  "headline": "Full Stack Engineer",
+  "email": "aarav@example.com",
+  "urls": { "github": "https://github.com/aarav" }
+}
+```
+
+**Behavior**
+- Entire `basics` is replaced with the provided JSON.  
+- Omitted fields are removed.
+
+**Codes**
+- `200 OK` — `"updated"`
+- `404` if profile row missing.
+
+---
+
+### PATCH `/v1/users/cv/basics`
+**Summary:** Partially update `basics`.  
+**Auth:** required
+
+**Body (examples)**
+```json
+{ "headline": "Senior Full Stack Engineer", "urls": { "website": null } }
+```
+
+**Behavior**
+- Only provided fields are updated; `null` clears fields.
+
+**Codes**
+- `200 OK` — `"patched"`
+- `404` if profile row missing.
+
+---
+
+## Collections (arrays)
+
+**Shared path prefix:** `/v1/users/cv/{part}`  
+Where `{part}` is one of:
+`experience | education | projects | skills | certifications | languages | publications | honors_awards | volunteer`
+
+### GET `/v1/users/cv/{part}`
+**Summary:** Get the array at `{part}`.  
+**Auth:** required  
+**Codes:** `200 OK` — `"ok"`
+
+---
+
+### PUT `/v1/users/cv/{part}`
+**Summary:** Replace the full array at `{part}`.  
+**Auth:** required
+
+**Body**
+- A JSON **array** for object parts (e.g., experience).  
+- For `skills`, a JSON array of strings.
+
+**Example (experience)**
+```json
+[{
+  "title": "Senior Software Engineer",
+  "company": "TechNova Labs",
+  "start_date": "2021-05-01",
+  "is_current": true,
+  "description": "Lead engineer..."
+}]
+```
+
+**Codes**
+- `200 OK` — `"updated"`
+- `404` if profile row missing.
+
+---
+
+### POST `/v1/users/cv/{part}`
+**Summary:** Append to the array at `{part}`.  
+**Auth:** required
+
+**Body**
+- Either a **single object/string** or an **array** of them.
+
+**Examples**
+```json
+{ "title":"Data Scientist","company":"Beta Ltd","start_date":"2023-01","is_current":true }
+```
+```json
+["Docker","Kubernetes"]
+```
+
+**Codes**
+- `200 OK` — `"appended"`
+- `404` if profile row missing.
+
+---
+
+### DELETE `/v1/users/cv/{part}`
+**Summary:** Clear the array at `{part}` (becomes `[]`).  
+**Auth:** required
+
+**Codes**
+- `204 No Content`
+- `404` if profile row missing.
+
+---
+
+## Error Codes (typical)
+- `400 Bad Request` — malformed JSON / schema violations
+- `401 Unauthorized` — missing/invalid JWT
+- `403 Forbidden` — (reserved; not used by CV endpoints today)
+- `404 Not Found` — profile row not present for this user
+- `409 Conflict` — (reserved)
+- `422 Unprocessable Entity` — failed validation (e.g., invalid date format)
+
+---
+
+## Examples — cURL
+
+### Get full CV
+```bash
+curl -X GET "$BASE/v1/users/cv"   -H "Authorization: Bearer <token>"
+```
+
+### Replace full CV
+```bash
+curl -X PUT "$BASE/v1/users/cv"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{
+    "profile": {
+      "basics": { "full_name": "Aarav Mehta", "email": "aarav@example.com" },
+      "skills": ["JavaScript","AWS","Docker"]
+    }
+  }'
+```
+
+### Patch multiple parts
+```bash
+curl -X PATCH "$BASE/v1/users/cv"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{
+    "profile": {
+      "basics": { "headline": "Senior Engineer", "urls": { "website": null } },
+      "skills": ["Kotlin"]
+    }
+  }'
+```
+
+### Replace basics
+```bash
+curl -X PUT "$BASE/v1/users/cv/basics"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{
+    "full_name": "Aarav Mehta",
+    "email": "aarav@example.com",
+    "headline": "Full Stack Engineer"
+  }'
+```
+
+### Patch basics
+```bash
+curl -X PATCH "$BASE/v1/users/cv/basics"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{ "headline": "Staff Engineer", "urls": { "github": "https://github.com/aarav" } }'
+```
+
+### Replace experience
+```bash
+curl -X PUT "$BASE/v1/users/cv/experience"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '[{ "title":"Software Engineer","company":"Acme","start_date":"2022-01" }]'
+```
+
+### Append a new skill
+```bash
+curl -X POST "$BASE/v1/users/cv/skills"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '"PostgreSQL"'
+```
+
+### Clear languages
+```bash
+curl -X DELETE "$BASE/v1/users/cv/languages"   -H "Authorization: Bearer <token)"
+```

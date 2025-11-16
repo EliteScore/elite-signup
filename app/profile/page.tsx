@@ -16,7 +16,12 @@ import {
   Users,
   Award,
   ArrowLeft,
+  ArrowRight,
   User,
+  Calendar,
+  Building2,
+  Code,
+  Languages,
 } from "lucide-react"
 import { motion } from "framer-motion"
 
@@ -78,6 +83,7 @@ export default function ProfilePage() {
   const [isUpdatingBlock, setIsUpdatingBlock] = useState(false)
   const [isBlockedViewedUser, setIsBlockedViewedUser] = useState(false)
   const [profileRefreshKey, setProfileRefreshKey] = useState(0)
+  const [cvData, setCvData] = useState<any>(null)
 
   const getProfilePictureKey = (id?: number | null) =>
     id ? `profile.picture.${id}` : "profile.picture.default"
@@ -349,6 +355,41 @@ export default function ProfilePage() {
   // We no longer call public getFollowers/getFollowing endpoints because they currently 500.
   // For viewed users, we rely on ProfileInfo counts plus local follow/unfollow adjustments.
 
+  // Fetch CV data (only for own profile)
+  useEffect(() => {
+    if (!isAuthorized || viewingUserId) return // Only fetch CV for own profile
+
+    async function fetchCv() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        const response = await fetch(`${API_BASE_URL}v1/users/cv`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const cv = result?.data || result
+          console.log("[Profile] CV data fetched:", cv)
+          setCvData(cv)
+        } else {
+          console.log("[Profile] No CV data found (status:", response.status, ")")
+          setCvData(null)
+        }
+      } catch (error) {
+        console.warn("[Profile] Error fetching CV:", error)
+        setCvData(null)
+      }
+    }
+
+    fetchCv()
+  }, [isAuthorized, viewingUserId, profileRefreshKey])
+
   // Fetch profile data on mount
   useEffect(() => {
     if (!isAuthorized) return
@@ -545,28 +586,56 @@ export default function ProfilePage() {
       ? ownFollowingIds.includes(numericViewingUserId)
       : false
 
-  // Prefer live counts from dedicated own followers/following endpoints for your profile.
-  // For other users' profiles, start from ProfileInfo counts and adjust by whether YOU follow them.
+  // IMPORTANT: followersCount/followingCount from get_own_profile may be stale/cached.
+  // The dedicated endpoints (get_own_followers/get_own_following) query the actual follow
+  // relationships table and return real-time data. Always prefer those for own profile.
+  //
+  // For other users' profiles, we use ProfileInfo counts and adjust by local follow state.
   const baseFollowersCount = profileData.followersCount || 0
   const followers = viewingUserId
     ? baseFollowersCount + (isFollowingViewedUser ? 1 : 0)
-    : ownFollowersIds
-      ? ownFollowersIds.length
-      : baseFollowersCount
+    : ownFollowersIds !== null
+      ? ownFollowersIds.length  // Use live count from dedicated endpoint
+      : baseFollowersCount       // Fallback to profile count if dedicated endpoint hasn't loaded yet
 
   const baseFollowingCount = profileData.followingCount || 0
   const following = viewingUserId
     ? baseFollowingCount
-    : ownFollowingIds
-      ? ownFollowingIds.length
-      : baseFollowingCount
+    : ownFollowingIds !== null
+      ? ownFollowingIds.length  // Use live count from dedicated endpoint
+      : baseFollowingCount      // Fallback to profile count if dedicated endpoint hasn't loaded yet
 
-  // Extract resume data
-  const resume: ResumeData = profileData.resume ?? {}
-  const resumeSkills = Array.isArray(resume.skills) ? resume.skills : []
-  const resumeCompany = resume.company || null
-  const resumeRole = resume.currentRole || null
-  const resumeSummary = resume.summary || null
+  // Extract resume data - prefer CV data from GET /v1/users/cv if available (for own profile)
+  // Otherwise fall back to legacy resume field from profile
+  const cvProfile = cvData?.profile || null
+  const legacyResume: ResumeData = profileData.resume ?? {}
+  
+  // Use CV data if available, otherwise use legacy resume structure
+  const resumeBasics = cvProfile?.basics || {}
+  const resumeExperience = cvProfile?.experience || []
+  const resumeEducation = cvProfile?.education || []
+  const resumeProjects = cvProfile?.projects || []
+  const resumeSkills = cvProfile?.skills || (Array.isArray(legacyResume.skills) ? legacyResume.skills : [])
+  const resumeCertifications = cvProfile?.certifications || []
+  const resumeLanguages = cvProfile?.languages || []
+  const resumePublications = cvProfile?.publications || []
+  const resumeHonorsAwards = cvProfile?.honors_awards || []
+  const resumeVolunteer = cvProfile?.volunteer || []
+  
+  // Legacy fields for backward compatibility
+  const resumeCompany = legacyResume.company || null
+  const resumeRole = legacyResume.currentRole || null
+  const resumeSummary = resumeBasics.summary || legacyResume.summary || null
+
+  // Find current job (LinkedIn-style: is_current === true or end_date === null)
+  const currentJob = resumeExperience.find((exp: any) => 
+    exp.is_current === true || exp.end_date === null || exp.end_date === undefined
+  ) || null
+
+  // Find current education (LinkedIn-style: end_date === null or recent)
+  const currentEducation = resumeEducation.find((edu: any) => 
+    edu.end_date === null || edu.end_date === undefined
+  ) || null
 
   const level = 4 // TODO: Get from user stats
   const resumeScore = 87 // TODO: Calculate from resume
@@ -850,9 +919,39 @@ export default function ProfilePage() {
               {displayUsername && (
                 <span className="text-zinc-400 text-sm sm:text-base font-medium">@{displayUsername}</span>
               )}
+
+              {/* LinkedIn-style: Current Job and/or Education */}
+              {(currentJob || currentEducation) && (
+                <div className="mt-2 space-y-1">
+                  {currentJob && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-zinc-300">
+                      <Briefcase className="h-4 w-4 text-purple-400" />
+                      <span className="font-medium">{currentJob.title}</span>
+                      {currentJob.company && (
+                        <>
+                          <span className="text-zinc-500">at</span>
+                          <span className="font-semibold text-white">{currentJob.company}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {currentEducation && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-zinc-300">
+                      <GraduationCap className="h-4 w-4 text-blue-400" />
+                      <span className="font-medium">{currentEducation.degree}</span>
+                      {currentEducation.school && (
+                        <>
+                          <span className="text-zinc-500">at</span>
+                          <span className="font-semibold text-white">{currentEducation.school}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Quick Stats: Resume Score + Level */}
-              <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                 <div className="px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-xs text-zinc-200 flex items-center gap-2">
                   <span className="font-semibold">Resume Score</span>
                   <span className="font-bold text-white">{resumeScore}</span>
@@ -866,16 +965,31 @@ export default function ProfilePage() {
               <div className="flex gap-2 mt-2">
                 {/* Own profile: show Edit Profile */}
                 {!viewingUserId && (
-                  <EnhancedButton
-                    size="sm"
-                    rounded="full"
-                    variant="gradient"
-                    animation="shimmer"
-                    className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
-                    onClick={() => router.push("/settings")}
-                  >
-                    Edit Profile
-                  </EnhancedButton>
+                  <>
+                    <EnhancedButton
+                      size="sm"
+                      rounded="full"
+                      variant="gradient"
+                      animation="shimmer"
+                      className="px-5 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                      onClick={() => router.push("/settings")}
+                    >
+                      Edit Profile
+                    </EnhancedButton>
+                    {/* Only show "Finish Your Setup" if no CV data exists */}
+                    {!cvProfile && (
+                      <EnhancedButton
+                        size="sm"
+                        rounded="full"
+                        variant="outline"
+                        className="px-5 py-1.5 text-xs sm:text-sm font-bold border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400"
+                        onClick={() => router.push("/profile/cv-upload")}
+                      >
+                        <FileText className="h-3 w-3 mr-1.5" />
+                        Finish Your Setup
+                      </EnhancedButton>
+                    )}
+                  </>
                 )}
 
                 {/* Viewing someone else: show Follow / Unfollow & Block */}
@@ -991,47 +1105,174 @@ export default function ProfilePage() {
           </motion.div>
         </TabsContent>
 
-        {/* Resume Tab */}
-        <TabsContent value="resume" className="mt-0 px-3 py-4 space-y-4 max-w-2xl mx-auto">
-          {/* Professional Info */}
-          {(resumeRole || resumeCompany || resumeSummary) && (
+        {/* Resume Tab - LinkedIn Style */}
+        <TabsContent value="resume" className="mt-0 px-3 py-4 space-y-6 max-w-2xl mx-auto">
+          {/* About/Summary Section (LinkedIn-style) */}
+          {resumeBasics.summary && (
             <motion.div variants={containerVariants} initial="hidden" animate="visible">
-              <motion.h2 className="text-sm font-semibold mb-3 flex items-center" variants={itemVariants}>
-                <Briefcase className="h-4 w-4 mr-2 text-purple-400" />
-                <span className="bg-gradient-to-r from-[#a259ff] to-[#d946ef] bg-clip-text text-transparent font-extrabold">
-                  Professional Info
-                </span>
+              <motion.h2 className="text-base font-bold mb-3 text-white" variants={itemVariants}>
+                About
               </motion.h2>
-              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-purple-700/40 shadow-[0_0_16px_0_rgba(147,51,234,0.3)] rounded-xl">
-                <EnhancedCardContent className="p-3">
-                  {resumeRole && (
-                    <div className="mb-2">
-                      <h3 className="font-bold text-white text-xs">{resumeRole}</h3>
-                      {resumeCompany && <p className="text-[10px] text-zinc-300 mt-0.5">{resumeCompany}</p>}
-                    </div>
-                  )}
-                  {resumeSummary && <p className="text-[10px] text-zinc-300 mt-2">{resumeSummary}</p>}
+              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-zinc-800 shadow-lg rounded-xl">
+                <EnhancedCardContent className="p-4">
+                  <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{resumeBasics.summary}</p>
                 </EnhancedCardContent>
               </EnhancedCard>
             </motion.div>
           )}
 
-          {/* Skills */}
+          {/* Experience Section - LinkedIn Style */}
+          {resumeExperience.length > 0 && (
+            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+              <motion.h2 className="text-base font-bold mb-4 text-white" variants={itemVariants}>
+                Experience
+              </motion.h2>
+              <div className="space-y-4">
+                {resumeExperience.map((exp: any, index: number) => {
+                  const isCurrent = exp.is_current === true || exp.end_date === null || exp.end_date === undefined
+                  return (
+                    <EnhancedCard key={index} variant="default" hover="lift" className="bg-zinc-900/80 border border-zinc-800 shadow-lg rounded-xl">
+                      <EnhancedCardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-indigo-500/20 flex items-center justify-center border border-purple-500/30">
+                              <Briefcase className="h-5 w-5 text-purple-400" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex-1">
+                                {exp.title && (
+                                  <h3 className="font-bold text-white text-sm leading-tight">{exp.title}</h3>
+                                )}
+                                {exp.company && (
+                                  <p className="text-xs text-zinc-300 mt-0.5 font-medium">{exp.company}</p>
+                                )}
+                                {exp.employment_type && (
+                                  <p className="text-[10px] text-zinc-400 mt-0.5 capitalize">{exp.employment_type}</p>
+                                )}
+                              </div>
+                              {isCurrent && (
+                                <Badge className="bg-emerald-900/50 text-emerald-300 border-emerald-800 text-[10px] px-2 py-0.5">
+                                  Current
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-400 mt-2">
+                              {(exp.start_date || exp.end_date || isCurrent) && (
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>
+                                    {exp.start_date || "N/A"} - {isCurrent ? "Present" : exp.end_date || "N/A"}
+                                  </span>
+                                </div>
+                              )}
+                              {exp.location && (
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  <span>{exp.location}</span>
+                                </div>
+                              )}
+                            </div>
+                            {exp.description && (
+                              <p className="text-xs text-zinc-300 mt-3 leading-relaxed whitespace-pre-wrap">{exp.description}</p>
+                            )}
+                            {exp.achievements && Array.isArray(exp.achievements) && exp.achievements.length > 0 && (
+                              <ul className="list-disc list-inside text-xs text-zinc-400 mt-3 space-y-1.5 ml-2">
+                                {exp.achievements.map((ach: string, i: number) => (
+                                  <li key={i} className="leading-relaxed">{ach}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      </EnhancedCardContent>
+                    </EnhancedCard>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Education Section - LinkedIn Style */}
+          {resumeEducation.length > 0 && (
+            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+              <motion.h2 className="text-base font-bold mb-4 text-white" variants={itemVariants}>
+                Education
+              </motion.h2>
+              <div className="space-y-4">
+                {resumeEducation.map((edu: any, index: number) => {
+                  const isCurrent = edu.end_date === null || edu.end_date === undefined
+                  return (
+                    <EnhancedCard key={index} variant="default" hover="lift" className="bg-zinc-900/80 border border-zinc-800 shadow-lg rounded-xl">
+                      <EnhancedCardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-blue-500/30">
+                              <GraduationCap className="h-5 w-5 text-blue-400" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex-1">
+                                {edu.school && (
+                                  <h3 className="font-bold text-white text-sm leading-tight">{edu.school}</h3>
+                                )}
+                                {edu.degree && (
+                                  <p className="text-xs text-zinc-300 mt-0.5 font-medium">{edu.degree}</p>
+                                )}
+                                {edu.field_of_study && (
+                                  <p className="text-[11px] text-zinc-400 mt-0.5">{edu.field_of_study}</p>
+                                )}
+                              </div>
+                              {isCurrent && (
+                                <Badge className="bg-emerald-900/50 text-emerald-300 border-emerald-800 text-[10px] px-2 py-0.5">
+                                  Current
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-400 mt-2">
+                              {(edu.start_date || edu.end_date || isCurrent) && (
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>
+                                    {edu.start_date || "N/A"} - {isCurrent ? "Present" : edu.end_date || "N/A"}
+                                  </span>
+                                </div>
+                              )}
+                              {edu.grade && (
+                                <span className="text-zinc-300 font-medium">Grade: {edu.grade}</span>
+                              )}
+                            </div>
+                            {edu.description && (
+                              <p className="text-xs text-zinc-300 mt-3 leading-relaxed whitespace-pre-wrap">{edu.description}</p>
+                            )}
+                            {edu.activities && (
+                              <p className="text-xs text-zinc-400 mt-2 italic">{edu.activities}</p>
+                            )}
+                          </div>
+                        </div>
+                      </EnhancedCardContent>
+                    </EnhancedCard>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Skills Section - LinkedIn Style */}
           {resumeSkills.length > 0 && (
             <motion.div variants={containerVariants} initial="hidden" animate="visible">
-              <motion.h2 className="text-sm font-semibold mb-3 flex items-center" variants={itemVariants}>
-                <Star className="h-4 w-4 mr-2 text-blue-400" />
-                <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">
-                  Skills
-                </span>
+              <motion.h2 className="text-base font-bold mb-4 text-white" variants={itemVariants}>
+                Skills
               </motion.h2>
-              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-blue-700/40 shadow-[0_0_16px_0_rgba(80,0,255,0.3)] rounded-xl">
-                <EnhancedCardContent className="p-3">
+              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-zinc-800 shadow-lg rounded-xl">
+                <EnhancedCardContent className="p-4">
                   <div className="flex flex-wrap gap-2">
                     {resumeSkills.map((skill: string, index: number) => (
                       <Badge
                         key={index}
-                        className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]"
+                        className="bg-blue-900/50 text-blue-300 border-blue-800 text-xs px-3 py-1.5 hover:bg-blue-900/70 transition-colors cursor-default"
                       >
                         {skill}
                       </Badge>
@@ -1042,23 +1283,134 @@ export default function ProfilePage() {
             </motion.div>
           )}
 
+          {/* Projects Section - LinkedIn Style */}
+          {resumeProjects.length > 0 && (
+            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+              <motion.h2 className="text-base font-bold mb-4 text-white" variants={itemVariants}>
+                Projects
+              </motion.h2>
+              <div className="space-y-4">
+                {resumeProjects.map((proj: any, index: number) => (
+                  <EnhancedCard key={index} variant="default" hover="lift" className="bg-zinc-900/80 border border-zinc-800 shadow-lg rounded-xl">
+                    <EnhancedCardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          {proj.name && (
+                            <h3 className="font-bold text-white text-sm leading-tight">{proj.name}</h3>
+                          )}
+                        </div>
+                        {proj.url && (
+                          <a 
+                            href={proj.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
+                          >
+                            <span>View</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                      {proj.description && (
+                        <p className="text-xs text-zinc-300 mt-2 leading-relaxed whitespace-pre-wrap">{proj.description}</p>
+                      )}
+                      {proj.tech && Array.isArray(proj.tech) && proj.tech.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {proj.tech.map((tech: string, i: number) => (
+                            <Badge key={i} className="bg-green-900/50 text-green-300 border-green-800 text-[10px] px-2 py-0.5">
+                              {tech}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </EnhancedCardContent>
+                  </EnhancedCard>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Certifications Section - LinkedIn Style */}
+          {resumeCertifications.length > 0 && (
+            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+              <motion.h2 className="text-base font-bold mb-4 text-white" variants={itemVariants}>
+                Licenses & Certifications
+              </motion.h2>
+              <div className="space-y-3">
+                {resumeCertifications.map((cert: any, index: number) => (
+                  <EnhancedCard key={index} variant="default" hover="lift" className="bg-zinc-900/80 border border-zinc-800 shadow-lg rounded-xl">
+                    <EnhancedCardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center border border-yellow-500/30">
+                            <Award className="h-5 w-5 text-yellow-400" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {cert.name && (
+                            <h3 className="font-bold text-white text-sm leading-tight">{cert.name}</h3>
+                          )}
+                          {cert.issuer && (
+                            <p className="text-xs text-zinc-300 mt-0.5">{cert.issuer}</p>
+                          )}
+                          {cert.date && (
+                            <p className="text-[11px] text-zinc-400 mt-1">Issued {cert.date}</p>
+                          )}
+                        </div>
+                      </div>
+                    </EnhancedCardContent>
+                  </EnhancedCard>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Languages Section - LinkedIn Style */}
+          {resumeLanguages.length > 0 && (
+            <motion.div variants={containerVariants} initial="hidden" animate="visible">
+              <motion.h2 className="text-base font-bold mb-4 text-white" variants={itemVariants}>
+                Languages
+              </motion.h2>
+              <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 border border-zinc-800 shadow-lg rounded-xl">
+                <EnhancedCardContent className="p-4">
+                  <div className="space-y-3">
+                    {resumeLanguages.map((lang: any, index: number) => {
+                      const langName = lang.language || lang.name || lang
+                      const fluency = lang.fluency || lang.proficiency
+                      return (
+                        <div key={index} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+                          <span className="text-sm font-medium text-white">{langName}</span>
+                          {fluency && (
+                            <span className="text-xs text-zinc-400 capitalize">{fluency}</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </EnhancedCardContent>
+              </EnhancedCard>
+            </motion.div>
+          )}
+
           {/* Empty state if no resume data */}
-          {!resumeRole && !resumeCompany && !resumeSummary && resumeSkills.length === 0 && (
+          {!cvProfile && !resumeRole && !resumeCompany && !resumeSummary && resumeSkills.length === 0 && (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
               <h3 className="text-lg font-bold text-zinc-400 mb-2">No Resume Data</h3>
               <p className="text-sm text-zinc-500 mb-4">
-                Add your professional information in settings
+                {!viewingUserId ? "Upload your CV to get started" : "This user hasn't added their resume yet"}
               </p>
-              <EnhancedButton
-                variant="gradient"
-                rounded="full"
-                animation="shimmer"
-                className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] text-xs px-5 py-2"
-                onClick={() => router.push("/settings")}
-              >
-                Add Resume Info
-              </EnhancedButton>
+              {!viewingUserId && (
+                <EnhancedButton
+                  variant="gradient"
+                  rounded="full"
+                  animation="shimmer"
+                  className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] text-xs px-5 py-2"
+                  onClick={() => router.push("/profile/cv-upload")}
+                >
+                  Upload CV
+                </EnhancedButton>
+              )}
             </div>
           )}
         </TabsContent>
