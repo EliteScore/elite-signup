@@ -94,10 +94,46 @@ const mapProfileInfoToResult = (profile: ProfileInfo): SearchResult => {
   const lastName = profile.lastName?.trim() ?? ""
   const fullName = `${firstName} ${lastName}`.trim() || `User ${profile.userId}`
 
-  const title =
-    profile.resume?.currentRole
-      ? `${profile.resume.currentRole}${profile.resume.company ? ` at ${profile.resume.company}` : ""}`
-      : null
+  // Check if resume contains structured CV data (wrapped in { profile: {...} })
+  const resumeFromProfile = profile.resume as any
+  const structuredResumeProfile = resumeFromProfile?.profile || resumeFromProfile
+  
+  // Extract title from structured CV data (LinkedIn-style)
+  let title: string | null = null
+  
+  if (structuredResumeProfile && typeof structuredResumeProfile === 'object' && !Array.isArray(structuredResumeProfile)) {
+    // Try to get current/most recent job from structured CV
+    const experience = structuredResumeProfile.experience || []
+    if (Array.isArray(experience) && experience.length > 0) {
+      // Find current job first, then most recent
+      const currentJob = experience.find((exp: any) => 
+        exp.is_current === true || exp.end_date === null || exp.end_date === undefined
+      )
+      
+      const jobToUse = currentJob || experience.sort((a: any, b: any) => {
+        const dateA = a.start_date || ""
+        const dateB = b.start_date || ""
+        return dateB.localeCompare(dateA)
+      })[0]
+      
+      if (jobToUse) {
+        title = jobToUse.title || null
+        if (jobToUse.company) {
+          title = title ? `${title} at ${jobToUse.company}` : jobToUse.company
+        }
+      }
+    }
+    
+    // If no job, try headline from basics
+    if (!title && structuredResumeProfile.basics?.headline) {
+      title = structuredResumeProfile.basics.headline
+    }
+  }
+  
+  // Fallback to legacy resume fields
+  if (!title && profile.resume?.currentRole) {
+    title = `${profile.resume.currentRole}${profile.resume.company ? ` at ${profile.resume.company}` : ""}`
+  }
 
   // Try multiple sources for profile picture
   const image =
@@ -190,6 +226,46 @@ export default function SearchPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [ownUserId, setOwnUserId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (ownUserId !== null) return
+
+    async function fetchOwnId() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        const response = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const profile = result?.data || result
+          if (profile?.userId) {
+            setOwnUserId(profile.userId)
+          }
+        }
+      } catch (error) {
+        console.warn("[Search] Failed to fetch own user ID:", error)
+      }
+    }
+
+    fetchOwnId()
+  }, [ownUserId])
+
+  const navigateToProfile = (userId: number) => {
+    if (ownUserId !== null && userId === ownUserId) {
+      router.push("/profile")
+    } else {
+      router.push(`/profile?userId=${userId}`)
+    }
+  }
 
   const performSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim()
@@ -300,7 +376,9 @@ export default function SearchPage() {
     }
   }, [searchQuery, performSearch])
 
-  const filteredPeople = searchResults
+  const filteredPeople = searchResults.filter(
+    (person) => ownUserId === null || person.userId !== ownUserId,
+  )
   const filteredCommunities: any[] = []
   const filteredLeaderboards: any[] = []
 
@@ -444,7 +522,7 @@ export default function SearchPage() {
                     {filteredPeople.map((person) => (
                       <motion.div
                         key={`user-${person.userId}`}
-                        onClick={() => router.push(`/profile?userId=${person.userId}`)}
+                        onClick={() => navigateToProfile(person.userId)}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
@@ -490,7 +568,7 @@ export default function SearchPage() {
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation()
-                              router.push(`/profile?userId=${person.userId}`)
+                            navigateToProfile(person.userId)
                             }}
                             className="bg-zinc-900 border border-zinc-700 text-white hover:bg-zinc-800 h-8 px-3 text-xs rounded-lg flex-shrink-0"
                           >

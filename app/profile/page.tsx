@@ -22,6 +22,7 @@ import {
   Building2,
   Code,
   Languages,
+  X,
 } from "lucide-react"
 import { motion } from "framer-motion"
 
@@ -84,6 +85,11 @@ export default function ProfilePage() {
   const [isBlockedViewedUser, setIsBlockedViewedUser] = useState(false)
   const [profileRefreshKey, setProfileRefreshKey] = useState(0)
   const [cvData, setCvData] = useState<any>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+
+  const numericViewingUserId = viewingUserId ? Number(viewingUserId) : null
+  const isViewingOwnProfile =
+    !viewingUserId || (currentUserId !== null && numericViewingUserId === currentUserId)
 
   const getProfilePictureKey = (id?: number | null) =>
     id ? `profile.picture.${id}` : "profile.picture.default"
@@ -162,8 +168,8 @@ export default function ProfilePage() {
 
   // Fetch username from /v1/auth/me (only for own profile)
   useEffect(() => {
-    // If viewing another user, do NOT overwrite username with /v1/auth/me
-    if (!isAuthorized || viewingUserId) {
+    // Fetch username only when viewing own profile
+    if (!isAuthorized || !isViewingOwnProfile) {
       console.log("[Profile] Skipping username fetch (either not authorized or viewing another user)")
       return
     }
@@ -284,7 +290,38 @@ export default function ProfilePage() {
     }
 
     fetchUsername()
-  }, [isAuthorized, viewingUserId])
+  }, [isAuthorized, isViewingOwnProfile])
+
+  useEffect(() => {
+    if (!isAuthorized || currentUserId !== null) return
+
+    async function fetchOwnUserId() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        const response = await fetch(`${API_BASE_URL}v1/users/profile/get_own_profile`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const profile = result?.data || result
+          if (profile?.userId) {
+            setCurrentUserId(profile.userId)
+          }
+        }
+      } catch (error) {
+        console.warn("[Profile] Failed to fetch own user ID:", error)
+      }
+    }
+
+    fetchOwnUserId()
+  }, [isAuthorized, currentUserId])
 
   // Try to load cached picture immediately on mount (before API call)
   useEffect(() => {
@@ -357,7 +394,7 @@ export default function ProfilePage() {
 
   // Fetch CV data (only for own profile)
   useEffect(() => {
-    if (!isAuthorized || viewingUserId) return // Only fetch CV for own profile
+    if (!isAuthorized || !isViewingOwnProfile) return
 
     async function fetchCv() {
       try {
@@ -388,7 +425,7 @@ export default function ProfilePage() {
     }
 
     fetchCv()
-  }, [isAuthorized, viewingUserId, profileRefreshKey])
+  }, [isAuthorized, isViewingOwnProfile, profileRefreshKey])
 
   // Fetch profile data on mount
   useEffect(() => {
@@ -450,6 +487,9 @@ export default function ProfilePage() {
         if (possibleProfile && possibleProfile.userId) {
           setProfileData(possibleProfile as ProfileData)
           updateProfilePictureFromProfile(possibleProfile)
+          if (!viewingUserId) {
+            setCurrentUserId(possibleProfile.userId)
+          }
         } else {
           console.log("[Profile] No valid profile data, marking as no_profile")
           setProfileError("no_profile")
@@ -466,7 +506,7 @@ export default function ProfilePage() {
   }, [isAuthorized, viewingUserId, profileRefreshKey])
 
   useEffect(() => {
-    if (!viewingUserId || !profileData) {
+    if (isViewingOwnProfile || !viewingUserId || !profileData) {
       console.log("[Profile] Block state reset (no viewingUserId or profileData)", {
         viewingUserId,
         hasProfileData: !!profileData,
@@ -485,7 +525,7 @@ export default function ProfilePage() {
       blockedFromProfile,
     })
     setIsBlockedViewedUser(Boolean(blockedFromProfile))
-  }, [viewingUserId, profileData])
+  }, [viewingUserId, profileData, isViewingOwnProfile])
 
   if (!isAuthorized || isLoadingProfile) {
     return (
@@ -563,22 +603,19 @@ export default function ProfilePage() {
   const storedEmail = getStoredAuthValue("auth.email")
   const fallbackUsernameFromEmail = storedEmail ? storedEmail.split("@")[0] : null
 
-  // For other users (when viewingUserId is set), backend does not yet return a username field.
+  // For other users (when viewing another profile), backend does not yet return a username field.
   // As a UX fallback, derive a handle from their name or userId so the UI still shows an @handle.
   const derivedOtherUsername =
-    viewingUserId && fullName
+    numericViewingUserId && fullName
       ? fullName.toLowerCase().replace(/\s+/g, "")
-      : viewingUserId
+      : numericViewingUserId
         ? `user${profileData.userId}`
         : null
 
-  const displayUsername = viewingUserId
-    ? derivedOtherUsername
-    : username || storedUsername || fallbackUsernameFromEmail || "user"
+  const displayUsername = isViewingOwnProfile
+    ? username || storedUsername || fallbackUsernameFromEmail || "user"
+    : derivedOtherUsername
   const bio = profileData.bio || "No bio added yet"
-
-  // Convenience: numeric ID for viewed user (if any)
-  const numericViewingUserId = viewingUserId ? Number(viewingUserId) : null
 
   // Determine if the acting user is following the viewed profile (when viewing another user)
   const isFollowingViewedUser =
@@ -592,50 +629,129 @@ export default function ProfilePage() {
   //
   // For other users' profiles, we use ProfileInfo counts and adjust by local follow state.
   const baseFollowersCount = profileData.followersCount || 0
-  const followers = viewingUserId
-    ? baseFollowersCount + (isFollowingViewedUser ? 1 : 0)
-    : ownFollowersIds !== null
-      ? ownFollowersIds.length  // Use live count from dedicated endpoint
-      : baseFollowersCount       // Fallback to profile count if dedicated endpoint hasn't loaded yet
+  const followers = isViewingOwnProfile
+    ? ownFollowersIds !== null
+      ? ownFollowersIds.length
+      : baseFollowersCount
+    : baseFollowersCount + (isFollowingViewedUser ? 1 : 0)
 
   const baseFollowingCount = profileData.followingCount || 0
-  const following = viewingUserId
-    ? baseFollowingCount
-    : ownFollowingIds !== null
-      ? ownFollowingIds.length  // Use live count from dedicated endpoint
-      : baseFollowingCount      // Fallback to profile count if dedicated endpoint hasn't loaded yet
+  const following = isViewingOwnProfile
+    ? ownFollowingIds !== null
+      ? ownFollowingIds.length
+      : baseFollowingCount
+    : baseFollowingCount
 
   // Extract resume data - prefer CV data from GET /v1/users/cv if available (for own profile)
-  // Otherwise fall back to legacy resume field from profile
+  // For viewing others, check if profileData.resume contains structured CV data
   const cvProfile = cvData?.profile || null
+  
+  // Check if profileData.resume contains structured CV data (wrapped in { profile: {...} })
+  // This works for both own profile and viewing others
+  const resumeFromProfile = profileData.resume as any
+  let structuredResumeProfile: any = null
+  
+  // Try to extract structured CV data from profileData.resume
+  if (resumeFromProfile) {
+    // Check if it's wrapped in { profile: {...} }
+    if (resumeFromProfile.profile && typeof resumeFromProfile.profile === 'object' && !Array.isArray(resumeFromProfile.profile)) {
+      structuredResumeProfile = resumeFromProfile.profile
+    }
+    // Check if it's already the profile object directly
+    else if (typeof resumeFromProfile === 'object' && !Array.isArray(resumeFromProfile) && 
+             (resumeFromProfile.basics || resumeFromProfile.experience || resumeFromProfile.education || 
+              resumeFromProfile.skills || resumeFromProfile.projects)) {
+      structuredResumeProfile = resumeFromProfile
+    }
+  }
+  
+  // Determine which CV data source to use
+  // Priority: 1) cvData (own profile), 2) structured resume from profileData.resume, 3) legacy resume
+  const effectiveCvProfile = cvProfile || structuredResumeProfile
   const legacyResume: ResumeData = profileData.resume ?? {}
   
+  // Debug logging for both own profile and viewing others
+  if (effectiveCvProfile) {
+    console.log(`[Profile] Using CV data for ${viewingUserId ? `user ${viewingUserId}` : 'own profile'}`, {
+      source: cvProfile ? 'cvData.profile' : 'profileData.resume',
+      hasBasics: !!effectiveCvProfile.basics,
+      experienceCount: Array.isArray(effectiveCvProfile.experience) ? effectiveCvProfile.experience.length : 0,
+      educationCount: Array.isArray(effectiveCvProfile.education) ? effectiveCvProfile.education.length : 0,
+      skillsCount: Array.isArray(effectiveCvProfile.skills) ? effectiveCvProfile.skills.length : 0,
+    })
+  }
+  
+  // Check if CV has been properly parsed and has meaningful data
+  const hasCvData = effectiveCvProfile && (
+    (effectiveCvProfile.basics && Object.keys(effectiveCvProfile.basics).length > 0) ||
+    (Array.isArray(effectiveCvProfile.experience) && effectiveCvProfile.experience.length > 0) ||
+    (Array.isArray(effectiveCvProfile.education) && effectiveCvProfile.education.length > 0) ||
+    (Array.isArray(effectiveCvProfile.skills) && effectiveCvProfile.skills.length > 0) ||
+    (Array.isArray(effectiveCvProfile.projects) && effectiveCvProfile.projects.length > 0) ||
+    (Array.isArray(effectiveCvProfile.certifications) && effectiveCvProfile.certifications.length > 0)
+  )
+  
+  // Also check legacy resume field for backward compatibility (old format without profile wrapper)
+  const hasLegacyResume = !hasCvData && legacyResume && (
+    legacyResume.company ||
+    legacyResume.currentRole ||
+    legacyResume.summary ||
+    (Array.isArray(legacyResume.skills) && legacyResume.skills.length > 0)
+  )
+  
   // Use CV data if available, otherwise use legacy resume structure
-  const resumeBasics = cvProfile?.basics || {}
-  const resumeExperience = cvProfile?.experience || []
-  const resumeEducation = cvProfile?.education || []
-  const resumeProjects = cvProfile?.projects || []
-  const resumeSkills = cvProfile?.skills || (Array.isArray(legacyResume.skills) ? legacyResume.skills : [])
-  const resumeCertifications = cvProfile?.certifications || []
-  const resumeLanguages = cvProfile?.languages || []
-  const resumePublications = cvProfile?.publications || []
-  const resumeHonorsAwards = cvProfile?.honors_awards || []
-  const resumeVolunteer = cvProfile?.volunteer || []
+  const resumeBasics = effectiveCvProfile?.basics || {}
+  const resumeExperience = effectiveCvProfile?.experience || []
+  const resumeEducation = effectiveCvProfile?.education || []
+  const resumeProjects = effectiveCvProfile?.projects || []
+  const resumeSkills = effectiveCvProfile?.skills || (Array.isArray(legacyResume.skills) ? legacyResume.skills : [])
+  const resumeCertifications = effectiveCvProfile?.certifications || []
+  const resumeLanguages = effectiveCvProfile?.languages || []
+  const resumePublications = effectiveCvProfile?.publications || []
+  const resumeHonorsAwards = effectiveCvProfile?.honors_awards || []
+  const resumeVolunteer = effectiveCvProfile?.volunteer || []
   
   // Legacy fields for backward compatibility
   const resumeCompany = legacyResume.company || null
   const resumeRole = legacyResume.currentRole || null
   const resumeSummary = resumeBasics.summary || legacyResume.summary || null
+  
+  // Check if profile is set up (has CV data or legacy resume data)
+  // Works for both own profile and viewing others
+  const isProfileSetup = hasCvData || hasLegacyResume
 
-  // Find current job (LinkedIn-style: is_current === true or end_date === null)
+  // LinkedIn-style: Find current job, or most recent job if no current job exists
   const currentJob = resumeExperience.find((exp: any) => 
     exp.is_current === true || exp.end_date === null || exp.end_date === undefined
   ) || null
 
-  // Find current education (LinkedIn-style: end_date === null or recent)
+  // If no current job, get the most recent job (sorted by start_date descending)
+  const mostRecentJob = currentJob || (resumeExperience.length > 0
+    ? [...resumeExperience].sort((a: any, b: any) => {
+        // Sort by start_date descending (most recent first)
+        const dateA = a.start_date || ""
+        const dateB = b.start_date || ""
+        return dateB.localeCompare(dateA)
+      })[0]
+    : null)
+
+  // LinkedIn-style: Find current education, or most recent education if no current education exists
   const currentEducation = resumeEducation.find((edu: any) => 
     edu.end_date === null || edu.end_date === undefined
   ) || null
+
+  // If no current education, get the most recent education (sorted by start_date descending)
+  const mostRecentEducation = currentEducation || (resumeEducation.length > 0
+    ? [...resumeEducation].sort((a: any, b: any) => {
+        // Sort by start_date descending (most recent first)
+        const dateA = a.start_date || ""
+        const dateB = b.start_date || ""
+        return dateB.localeCompare(dateA)
+      })[0]
+    : null)
+
+  // Get headline from basics (LinkedIn shows this prominently)
+  const headline = resumeBasics.headline || resumeBasics.summary || null
 
   const level = 4 // TODO: Get from user stats
   const resumeScore = 87 // TODO: Calculate from resume
@@ -666,7 +782,7 @@ export default function ProfilePage() {
   }
 
   const handleToggleFollow = async () => {
-    if (!isAuthorized || !numericViewingUserId || isUpdatingFollow) return
+    if (!isAuthorized || !numericViewingUserId || isUpdatingFollow || isViewingOwnProfile) return
     if (isBlockedViewedUser) {
       console.warn("[Profile] Cannot follow while user is blocked", {
         viewingUserId,
@@ -781,7 +897,7 @@ export default function ProfilePage() {
   }
 
   const handleToggleBlock = async () => {
-    if (!isAuthorized || !numericViewingUserId || isUpdatingBlock) return
+    if (!isAuthorized || !numericViewingUserId || isUpdatingBlock || isViewingOwnProfile) return
 
     const token = getStoredAccessToken()
     if (!token) {
@@ -869,17 +985,7 @@ export default function ProfilePage() {
       showBackButton={true}
       backUrl="/home"
       rightElement={
-        viewingUserId ? (
-          <EnhancedButton
-            variant="ghost"
-            size="sm"
-            rounded="full"
-            className="hover:bg-zinc-800"
-            onClick={() => router.back()}
-          >
-            ← Back
-          </EnhancedButton>
-        ) : (
+        isViewingOwnProfile ? (
           <EnhancedButton
             variant="ghost"
             size="icon"
@@ -888,6 +994,16 @@ export default function ProfilePage() {
             onClick={() => router.push("/settings")}
           >
             <Settings className="h-4 w-4" />
+          </EnhancedButton>
+        ) : (
+          <EnhancedButton
+            variant="ghost"
+            size="sm"
+            rounded="full"
+            className="hover:bg-zinc-800"
+            onClick={() => router.back()}
+          >
+            ← Back
           </EnhancedButton>
         )
       }
@@ -920,30 +1036,59 @@ export default function ProfilePage() {
                 <span className="text-zinc-400 text-sm sm:text-base font-medium">@{displayUsername}</span>
               )}
 
-              {/* LinkedIn-style: Current Job and/or Education */}
-              {(currentJob || currentEducation) && (
-                <div className="mt-2 space-y-1">
-                  {currentJob && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-zinc-300">
-                      <Briefcase className="h-4 w-4 text-purple-400" />
-                      <span className="font-medium">{currentJob.title}</span>
-                      {currentJob.company && (
-                        <>
-                          <span className="text-zinc-500">at</span>
-                          <span className="font-semibold text-white">{currentJob.company}</span>
-                        </>
+              {/* LinkedIn-style: Headline (if available) */}
+              {headline && (
+                <p className="text-sm text-zinc-300 mt-1 max-w-md text-center">{headline}</p>
+              )}
+
+              {/* LinkedIn-style: Current/Most Recent Job and/or Education - Structured Layout (Mobile Responsive) */}
+              {(mostRecentJob || mostRecentEducation) && (
+                <div className="mt-3 space-y-2.5 w-full max-w-lg mx-auto px-2">
+                  {mostRecentJob && (
+                    <div className="flex items-center justify-center gap-2 sm:gap-2.5 text-xs sm:text-sm flex-wrap">
+                      {/* Icon Container - Centered before text */}
+                      <div className="flex-shrink-0 h-4 w-4 sm:h-5 sm:w-5 rounded-md bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center shadow-sm">
+                        <Briefcase className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-400" />
+                      </div>
+                      {/* Text Content - Centered with icon, responsive wrapping */}
+                      <div className="flex items-center gap-1.5 sm:gap-2 justify-center flex-wrap min-w-0">
+                        <span className="font-medium text-white text-xs sm:text-sm">{mostRecentJob.title || "Professional"}</span>
+                        {mostRecentJob.company && (
+                          <>
+                            <span className="text-zinc-500 font-normal text-[10px] sm:text-xs">at</span>
+                            <span className="font-semibold text-white text-xs sm:text-sm break-words">{mostRecentJob.company}</span>
+                          </>
+                        )}
+                      </div>
+                      {/* Current Badge */}
+                      {currentJob && (
+                        <Badge className="bg-emerald-900/50 text-emerald-300 border-emerald-800 text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
+                          Current
+                        </Badge>
                       )}
                     </div>
                   )}
-                  {currentEducation && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-zinc-300">
-                      <GraduationCap className="h-4 w-4 text-blue-400" />
-                      <span className="font-medium">{currentEducation.degree}</span>
-                      {currentEducation.school && (
-                        <>
-                          <span className="text-zinc-500">at</span>
-                          <span className="font-semibold text-white">{currentEducation.school}</span>
-                        </>
+                  {mostRecentEducation && (
+                    <div className="flex items-center justify-center gap-2 sm:gap-2.5 text-xs sm:text-sm flex-wrap">
+                      {/* Icon Container - Centered before text */}
+                      <div className="flex-shrink-0 h-4 w-4 sm:h-5 sm:w-5 rounded-md bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center shadow-sm">
+                        <GraduationCap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" />
+                      </div>
+                      {/* Text Content - Centered with icon, responsive wrapping */}
+                      <div className="flex items-center gap-1.5 sm:gap-2 justify-center flex-wrap min-w-0">
+                        <span className="font-medium text-white text-xs sm:text-sm">{mostRecentEducation.degree || "Student"}</span>
+                        {mostRecentEducation.school && (
+                          <>
+                            <span className="text-zinc-500 font-normal text-[10px] sm:text-xs">at</span>
+                            <span className="font-semibold text-white text-xs sm:text-sm break-words">{mostRecentEducation.school}</span>
+                          </>
+                        )}
+                      </div>
+                      {/* Current Badge */}
+                      {currentEducation && (
+                        <Badge className="bg-emerald-900/50 text-emerald-300 border-emerald-800 text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
+                          Current
+                        </Badge>
                       )}
                     </div>
                   )}
@@ -964,7 +1109,7 @@ export default function ProfilePage() {
               
               <div className="flex gap-2 mt-2">
                 {/* Own profile: show Edit Profile */}
-                {!viewingUserId && (
+                {isViewingOwnProfile && (
                   <>
                     <EnhancedButton
                       size="sm"
@@ -976,8 +1121,8 @@ export default function ProfilePage() {
                     >
                       Edit Profile
                     </EnhancedButton>
-                    {/* Only show "Finish Your Setup" if no CV data exists */}
-                    {!cvProfile && (
+                    {/* Only show "Finish Your Setup" if CV hasn't been parsed/set up */}
+                    {!isProfileSetup && (
                       <EnhancedButton
                         size="sm"
                         rounded="full"
@@ -993,7 +1138,7 @@ export default function ProfilePage() {
                 )}
 
                 {/* Viewing someone else: show Follow / Unfollow & Block */}
-                {viewingUserId && numericViewingUserId && (
+                {!isViewingOwnProfile && numericViewingUserId && (
                   <>
                     <EnhancedButton
                       size="sm"
@@ -1107,8 +1252,48 @@ export default function ProfilePage() {
 
         {/* Resume Tab - LinkedIn Style */}
         <TabsContent value="resume" className="mt-0 px-3 py-4 space-y-6 max-w-2xl mx-auto">
-          {/* About/Summary Section (LinkedIn-style) */}
-          {resumeBasics.summary && (
+          {/* Locked State - Show if profile not set up */}
+          {!isProfileSetup && (
+            <motion.div 
+              variants={containerVariants} 
+              initial="hidden" 
+              animate="visible"
+              className="flex flex-col items-center justify-center py-16 px-4"
+            >
+              <div className="relative mb-6">
+                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-zinc-700 flex items-center justify-center">
+                  <FileText className="h-12 w-12 text-zinc-600" />
+                </div>
+                <div className="absolute -top-1 -right-1 h-8 w-8 rounded-full bg-zinc-900 border-2 border-zinc-800 flex items-center justify-center">
+                  <X className="h-5 w-5 text-zinc-600" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 text-center">Profile Setup Required</h3>
+              <p className="text-sm text-zinc-400 mb-6 text-center max-w-md">
+                {isViewingOwnProfile
+                  ? "Upload and parse your CV to unlock your resume section and showcase your professional experience."
+                  : "This user hasn't set up their profile yet."}
+              </p>
+              {isViewingOwnProfile && (
+                <EnhancedButton
+                  variant="gradient"
+                  rounded="full"
+                  animation="shimmer"
+                  className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] text-sm px-6 py-2.5 font-bold"
+                  onClick={() => router.push("/profile/cv-upload")}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Setup Profile
+                </EnhancedButton>
+              )}
+            </motion.div>
+          )}
+
+          {/* Resume Content - Only show if profile is set up */}
+          {isProfileSetup && (
+            <>
+              {/* About/Summary Section (LinkedIn-style) */}
+              {resumeBasics.summary && (
             <motion.div variants={containerVariants} initial="hidden" animate="visible">
               <motion.h2 className="text-base font-bold mb-3 text-white" variants={itemVariants}>
                 About
@@ -1392,26 +1577,7 @@ export default function ProfilePage() {
             </motion.div>
           )}
 
-          {/* Empty state if no resume data */}
-          {!cvProfile && !resumeRole && !resumeCompany && !resumeSummary && resumeSkills.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-zinc-400 mb-2">No Resume Data</h3>
-              <p className="text-sm text-zinc-500 mb-4">
-                {!viewingUserId ? "Upload your CV to get started" : "This user hasn't added their resume yet"}
-              </p>
-              {!viewingUserId && (
-                <EnhancedButton
-                  variant="gradient"
-                  rounded="full"
-                  animation="shimmer"
-                  className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)] text-xs px-5 py-2"
-                  onClick={() => router.push("/profile/cv-upload")}
-                >
-                  Upload CV
-                </EnhancedButton>
-              )}
-            </div>
+            </>
           )}
         </TabsContent>
       </Tabs>

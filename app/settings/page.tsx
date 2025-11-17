@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { AnimatedSection } from "@/components/ui/animated-section"
 import { getStoredAccessToken } from "@/lib/auth-storage"
+import { sanitizeCvForPost, ExperienceEntry, EducationEntry } from "@/lib/cv-normalizer"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
@@ -85,7 +86,246 @@ export default function SettingsPage() {
   const [professionalStatus, setProfessionalStatus] = useState<StatusMessage | null>(null)
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>("")
   const [userId, setUserId] = useState<number | null>(null)
+  const [cvProfile, setCvProfile] = useState<any>(null)
+  const [isLoadingProfessionalData, setIsLoadingProfessionalData] = useState(true)
   const PHONE_REGEX = /^\+?[0-9()\s-]{7,15}$/
+
+  type ManualBasics = {
+    full_name: string
+    headline: string
+    email: string
+    phone: string
+    location: string
+    summary: string
+  }
+
+  const createEmptyBasics = (): ManualBasics => ({
+    full_name: "",
+    headline: "",
+    email: "",
+    phone: "",
+    location: "",
+    summary: "",
+  })
+
+  const createEmptyExperience = (): ExperienceEntry => ({
+    title: "",
+    company: "",
+    employment_type: "",
+    location: "",
+    start_date: "",
+    end_date: "",
+    is_current: false,
+    description: "",
+    achievements: [],
+  })
+
+  const createEmptyEducation = (): EducationEntry => ({
+    school: "",
+    degree: "",
+    field_of_study: "",
+    start_date: "",
+    end_date: "",
+    grade: "",
+    activities: "",
+    description: "",
+  })
+
+  const [manualBasics, setManualBasics] = useState<ManualBasics>(createEmptyBasics())
+  const [manualExperience, setManualExperience] = useState<ExperienceEntry[]>([createEmptyExperience()])
+  const [manualEducation, setManualEducation] = useState<EducationEntry[]>([createEmptyEducation()])
+  const [manualSkillsInput, setManualSkillsInput] = useState("")
+
+  const handleManualBasicsChange = (field: keyof ManualBasics, value: string) => {
+    setManualBasics((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const updateManualExperience = (index: number, field: keyof ExperienceEntry | "is_current", value: string | boolean) => {
+    setManualExperience((prev) =>
+      prev.map((entry, idx) => {
+        if (idx !== index) return entry
+        if (field === "is_current") {
+          return {
+            ...entry,
+            is_current: value as boolean,
+            end_date: value ? null : entry.end_date,
+          }
+        }
+        return {
+          ...entry,
+          [field]: value as string,
+        }
+      }),
+    )
+  }
+
+  const updateManualEducation = (index: number, field: keyof EducationEntry, value: string) => {
+    setManualEducation((prev) =>
+      prev.map((entry, idx) => {
+        if (idx !== index) return entry
+        return {
+          ...entry,
+          [field]: value,
+        }
+      }),
+    )
+  }
+
+  const addManualExperience = () => setManualExperience((prev) => [...prev, createEmptyExperience()])
+  const removeManualExperience = (index: number) =>
+    setManualExperience((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)))
+
+  const addManualEducation = () => setManualEducation((prev) => [...prev, createEmptyEducation()])
+  const removeManualEducation = (index: number) =>
+    setManualEducation((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)))
+
+  const resetManualProfessionalForm = () => {
+    setManualBasics(createEmptyBasics())
+    setManualExperience([createEmptyExperience()])
+    setManualEducation([createEmptyEducation()])
+    setManualSkillsInput("")
+  }
+
+  const updateProfessionalSummaryFromProfile = (profile: any | null) => {
+    if (!profile) {
+      setProfessionalInfo({
+        currentRole: "",
+        company: "",
+        experienceSummary: "",
+        topSkills: "",
+      })
+      return
+    }
+
+    const primaryExperience = Array.isArray(profile.experience) ? profile.experience[0] : null
+    setProfessionalInfo({
+      currentRole: primaryExperience?.title || "",
+      company: primaryExperience?.company || "",
+      experienceSummary: profile.basics?.summary || "",
+      topSkills: Array.isArray(profile.skills) ? profile.skills.join(", ") : "",
+    })
+  }
+
+  const populateProfessionalFormFromCv = (profile: any | null) => {
+    if (!profile) {
+      resetManualProfessionalForm()
+      updateProfessionalSummaryFromProfile(null)
+      return
+    }
+
+    setManualBasics({
+      full_name: profile.basics?.full_name || "",
+      headline: profile.basics?.headline || "",
+      email: profile.basics?.email || "",
+      phone: profile.basics?.phone || "",
+      location: profile.basics?.location || "",
+      summary: profile.basics?.summary || "",
+    })
+
+    setManualExperience(
+      Array.isArray(profile.experience) && profile.experience.length > 0
+        ? profile.experience.map((exp: ExperienceEntry) => ({
+            title: exp.title || "",
+            company: exp.company || "",
+            employment_type: exp.employment_type || "",
+            location: exp.location || "",
+            start_date: exp.start_date || "",
+            end_date: exp.end_date || "",
+            is_current: exp.is_current ?? false,
+            description: exp.description || "",
+            achievements: Array.isArray(exp.achievements) ? exp.achievements : [],
+          }))
+        : [createEmptyExperience()],
+    )
+
+    setManualEducation(
+      Array.isArray(profile.education) && profile.education.length > 0
+        ? profile.education.map((edu: EducationEntry) => ({
+            school: edu.school || "",
+            degree: edu.degree || "",
+            field_of_study: edu.field_of_study || "",
+            start_date: edu.start_date || "",
+            end_date: edu.end_date || "",
+            grade: edu.grade || "",
+            activities: edu.activities || "",
+            description: edu.description || "",
+          }))
+        : [createEmptyEducation()],
+    )
+
+    setManualSkillsInput(Array.isArray(profile.skills) ? profile.skills.join(", ") : "")
+    updateProfessionalSummaryFromProfile(profile)
+  }
+
+  const buildManualCvPayload = () => {
+    const basics = Object.fromEntries(
+      Object.entries(manualBasics).map(([key, value]) => [key, value.trim()]),
+    ) as ManualBasics
+
+    const experiences = manualExperience
+      .map((exp) => ({
+        title: exp.title?.trim() || "",
+        company: exp.company?.trim() || "",
+        employment_type: exp.employment_type || "",
+        location: exp.location || "",
+        start_date: exp.start_date || "",
+        end_date: exp.is_current ? null : exp.end_date || null,
+        is_current: exp.is_current ?? false,
+        description: exp.description || "",
+        achievements: Array.isArray(exp.achievements) ? exp.achievements : [],
+      }))
+      .filter((exp) => exp.title || exp.company)
+
+    const education = manualEducation
+      .map((edu) => ({
+        school: edu.school?.trim() || "",
+        degree: edu.degree?.trim() || "",
+        field_of_study: edu.field_of_study || "",
+        start_date: edu.start_date || "",
+        end_date: edu.end_date || "",
+        grade: edu.grade || "",
+        activities: edu.activities || "",
+        description: edu.description || "",
+      }))
+      .filter((edu) => edu.school || edu.degree)
+
+    const skillsArray = manualSkillsInput
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean)
+
+    return {
+      profile: {
+        basics,
+        experience: experiences,
+        education,
+        projects: [],
+        skills: skillsArray,
+        certifications: [],
+        languages: [],
+        publications: [],
+        honors_awards: [],
+        volunteer: [],
+      },
+    }
+  }
+
+  const toggleProfessionalEditing = () => {
+    if (professionalStatus) {
+      setProfessionalStatus(null)
+    }
+    if (isEditingProfessional) {
+      populateProfessionalFormFromCv(cvProfile)
+      setIsEditingProfessional(false)
+    } else {
+      populateProfessionalFormFromCv(cvProfile)
+      setIsEditingProfessional(true)
+    }
+  }
+
 
   // Helper function to get user-specific profile picture key
   const getProfilePictureKey = useCallback((targetUserId?: number | null): string => {
@@ -325,6 +565,61 @@ export default function SettingsPage() {
   }, [fetchProfile])
 
   useEffect(() => {
+    if (!isAuthorized) return
+
+    async function fetchCvProfile() {
+      console.log("[Settings] Fetching CV profile data…")
+      setIsLoadingProfessionalData(true)
+      try {
+        const token = getStoredToken()
+        if (!token) {
+          console.warn("[Settings] No token available for CV fetch")
+          setCvProfile(null)
+          resetManualProfessionalForm()
+          updateProfessionalSummaryFromProfile(null)
+          return
+        }
+
+        const response = await fetch(`${API_BASE_URL}v1/users/cv`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const profile = result?.data?.profile || result?.profile || result?.data || null
+          console.log("[Settings] CV profile fetched", {
+            hasProfile: !!profile,
+            experienceCount: Array.isArray(profile?.experience) ? profile.experience.length : 0,
+            educationCount: Array.isArray(profile?.education) ? profile.education.length : 0,
+            skillsCount: Array.isArray(profile?.skills) ? profile.skills.length : 0,
+          })
+          setCvProfile(profile)
+          populateProfessionalFormFromCv(profile)
+          updateProfessionalSummaryFromProfile(profile)
+        } else {
+          console.warn("[Settings] No CV data found (status:", response.status, ")")
+          setCvProfile(null)
+          resetManualProfessionalForm()
+          updateProfessionalSummaryFromProfile(null)
+        }
+      } catch (error) {
+        console.error("[Settings] Error fetching CV profile:", error)
+        setCvProfile(null)
+        resetManualProfessionalForm()
+        updateProfessionalSummaryFromProfile(null)
+      } finally {
+        setIsLoadingProfessionalData(false)
+      }
+    }
+
+    fetchCvProfile()
+  }, [isAuthorized])
+
+  useEffect(() => {
     if (typeof window === "undefined") return
     const pictureKey = getProfilePictureKey()
     const storedPicture = localStorage.getItem(pictureKey)
@@ -394,18 +689,6 @@ export default function SettingsPage() {
     localStorage.removeItem(pictureKey)
     if (personalStatus?.type === "error") {
       setPersonalStatus(null)
-    }
-  }
-
-  const handleProfessionalChange = (field: keyof typeof professionalInfo) => (
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    setProfessionalInfo((prev) => ({
-      ...prev,
-      [field]: event.target.value,
-    }))
-    if (professionalStatus) {
-      setProfessionalStatus(null)
     }
   }
 
@@ -512,56 +795,58 @@ export default function SettingsPage() {
 
     setProfessionalStatus(null)
 
-    const trimmedRole = professionalInfo.currentRole.trim()
-    const trimmedCompany = professionalInfo.company.trim()
-    const trimmedSummary = professionalInfo.experienceSummary.trim()
-    const normalizedSkills = professionalInfo.topSkills
-      .split(",")
-      .map((skill) => skill.trim())
-      .filter(Boolean)
-
-    const resumePayload: Record<string, unknown> = {
-      ...(trimmedRole ? { currentRole: trimmedRole } : {}),
-      ...(trimmedCompany ? { company: trimmedCompany } : {}),
-      ...(trimmedSummary ? { summary: trimmedSummary } : {}),
-      ...(normalizedSkills.length ? { skills: normalizedSkills } : {}),
-    }
-
-    if (!Object.keys(resumePayload).length) {
+    const token = getStoredToken()
+    if (!token) {
       setProfessionalStatus({
         type: "error",
-        message: "Please update at least one professional field before saving.",
+        message: "Authentication required. Please log in again.",
       })
       return
     }
 
-    resumePayload.updatedAt = new Date().toISOString()
-    resumePayload.source = "settings-page"
+    const manualCv = buildManualCvPayload()
+    const payload = sanitizeCvForPost(manualCv)
 
     setIsSavingProfessional(true)
+    console.log("[Settings] Saving CV via settings page...", {
+      experienceEntries: payload.profile.experience?.length || 0,
+      educationEntries: payload.profile.education?.length || 0,
+      skillsCount: payload.profile.skills?.length || 0,
+    })
 
     try {
-      const successMessage = await sendProfileRequest({ resume: resumePayload })
+      const response = await fetch(`${API_BASE_URL}v1/users/cv`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.warn("[Settings] Failed to save CV via settings:", response.status, errorText)
+        throw new Error(errorText || `Save failed with status ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log("[Settings] CV updated from settings page:", result)
 
       setProfessionalStatus({
         type: "success",
-        message: successMessage,
+        message: "Professional information updated successfully.",
       })
 
-      setProfessionalInfo((prev) => ({
-        ...prev,
-        currentRole: trimmedRole,
-        company: trimmedCompany,
-        experienceSummary: trimmedSummary,
-        topSkills: normalizedSkills.join(", "),
-      }))
-
-      await fetchProfile()
-
+      populateProfessionalFormFromCv(payload.profile)
+      updateProfessionalSummaryFromProfile(payload.profile)
+      setCvProfile(payload.profile)
       setIsEditingProfessional(false)
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to reach the server. Please check your connection and try again."
+        error instanceof Error
+          ? error.message
+          : "Failed to reach the server. Please check your connection and try again."
       setProfessionalStatus({ type: "error", message: errorMessage })
     } finally {
       setIsSavingProfessional(false)
@@ -1084,56 +1369,270 @@ export default function SettingsPage() {
                               size="sm"
                               rounded="full"
                               className="bg-zinc-800/80 border-purple-700/40 text-white hover:bg-zinc-700 hover:shadow-[0_0_8px_0_rgba(147,51,234,0.3)]"
-                              onClick={() => setIsEditingProfessional((prev) => !prev)}
+                              onClick={toggleProfessionalEditing}
                             >
                               {isEditingProfessional ? "Cancel" : professionalInfo.currentRole || professionalInfo.topSkills ? "Edit" : "Add"}
                             </EnhancedButton>
                           </div>
 
                           {isEditingProfessional ? (
-                            <div className="grid gap-3">
+                            <form
+                              className="space-y-4"
+                              onSubmit={(event) => {
+                                event.preventDefault()
+                                handleSaveProfessional()
+                              }}
+                            >
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
-                                  <Label htmlFor="currentRole" className="text-xs text-zinc-400">Current Role</Label>
+                                  <Label className="text-xs text-zinc-400">Full name</Label>
                                   <Input
-                                    id="currentRole"
-                                    value={professionalInfo.currentRole}
-                                    onChange={handleProfessionalChange("currentRole")}
-                                    placeholder="Senior Developer"
+                                    value={manualBasics.full_name}
+                                    onChange={(e) => handleManualBasicsChange("full_name", e.target.value)}
+                                    placeholder="Taksh Dange"
                                     className="bg-black/40 border-zinc-700 text-white"
                                   />
                                 </div>
                                 <div>
-                                  <Label htmlFor="company" className="text-xs text-zinc-400">Company/Organization</Label>
+                                  <Label className="text-xs text-zinc-400">Headline</Label>
                                   <Input
-                                    id="company"
-                                    value={professionalInfo.company}
-                                    onChange={handleProfessionalChange("company")}
-                                    placeholder="EliteScore"
+                                    value={manualBasics.headline}
+                                    onChange={(e) => handleManualBasicsChange("headline", e.target.value)}
+                                    placeholder="Founder @ EliteScore"
+                                    className="bg-black/40 border-zinc-700 text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-zinc-400">Email</Label>
+                                  <Input
+                                    type="email"
+                                    value={manualBasics.email}
+                                    onChange={(e) => handleManualBasicsChange("email", e.target.value)}
+                                    placeholder="you@example.com"
+                                    className="bg-black/40 border-zinc-700 text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-zinc-400">Phone</Label>
+                                  <Input
+                                    value={manualBasics.phone}
+                                    onChange={(e) => handleManualBasicsChange("phone", e.target.value)}
+                                    placeholder="+1 555 123 4567"
+                                    className="bg-black/40 border-zinc-700 text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-zinc-400">Location</Label>
+                                  <Input
+                                    value={manualBasics.location}
+                                    onChange={(e) => handleManualBasicsChange("location", e.target.value)}
+                                    placeholder="Amsterdam, NL"
                                     className="bg-black/40 border-zinc-700 text-white"
                                   />
                                 </div>
                               </div>
                               <div>
-                                <Label htmlFor="experienceSummary" className="text-xs text-zinc-400">Experience Summary</Label>
+                                <Label className="text-xs text-zinc-400">Professional summary</Label>
                                 <Textarea
-                                  id="experienceSummary"
-                                  value={professionalInfo.experienceSummary}
-                                  onChange={handleProfessionalChange("experienceSummary")}
-                                  placeholder="Highlight your experience, responsibilities, and wins"
+                                  value={manualBasics.summary}
+                                  onChange={(e) => handleManualBasicsChange("summary", e.target.value)}
+                                  placeholder="Highlight your experience, responsibilities, and wins."
                                   className="min-h-[100px] bg-black/40 border-zinc-700 text-white"
                                 />
                               </div>
-                              <div>
-                                <Label htmlFor="topSkills" className="text-xs text-zinc-400">Top Skills</Label>
-                                <Textarea
-                                  id="topSkills"
-                                  value={professionalInfo.topSkills}
-                                  onChange={handleProfessionalChange("topSkills")}
-                                  placeholder="Separate skills with commas (e.g. React, TypeScript, UX Research)"
-                                  className="min-h-[80px] bg-black/40 border-zinc-700 text-white"
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-xs font-semibold text-white uppercase tracking-wide">
+                                    Experience
+                                  </h4>
+                                  <EnhancedButton
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    rounded="full"
+                                    className="text-xs border-purple-600/40 text-purple-200 hover:bg-purple-500/10"
+                                    onClick={addManualExperience}
+                                  >
+                                    Add role
+                                  </EnhancedButton>
+                                </div>
+                                {manualExperience.map((exp, index) => (
+                                  <div
+                                    key={`experience-${index}`}
+                                    className="space-y-3 rounded-2xl border border-zinc-800 bg-black/30 p-4"
+                                  >
+                                    <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-zinc-500">
+                                      <span>Role {index + 1}</span>
+                                      {manualExperience.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="text-red-400 hover:text-red-200"
+                                          onClick={() => removeManualExperience(index)}
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <Input
+                                        placeholder="Title"
+                                        value={exp.title || ""}
+                                        onChange={(e) => updateManualExperience(index, "title", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        placeholder="Company"
+                                        value={exp.company || ""}
+                                        onChange={(e) => updateManualExperience(index, "company", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        placeholder="Employment type"
+                                        value={exp.employment_type || ""}
+                                        onChange={(e) =>
+                                          updateManualExperience(index, "employment_type", e.target.value)
+                                        }
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        placeholder="Location"
+                                        value={exp.location || ""}
+                                        onChange={(e) => updateManualExperience(index, "location", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        type="month"
+                                        placeholder="Start date"
+                                        value={exp.start_date || ""}
+                                        onChange={(e) => updateManualExperience(index, "start_date", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        type="month"
+                                        placeholder="End date"
+                                        value={exp.end_date || ""}
+                                        disabled={exp.is_current ?? false}
+                                        onChange={(e) => updateManualExperience(index, "end_date", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                    </div>
+                                    <label className="flex items-center gap-2 text-xs text-zinc-400">
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-zinc-600 bg-zinc-800"
+                                        checked={exp.is_current ?? false}
+                                        onChange={(e) =>
+                                          updateManualExperience(index, "is_current", e.target.checked)
+                                        }
+                                      />
+                                      Currently working in this role
+                                    </label>
+                                    <Textarea
+                                      placeholder="Key responsibilities and wins"
+                                      value={exp.description || ""}
+                                      onChange={(e) => updateManualExperience(index, "description", e.target.value)}
+                                      className="bg-black/40 border-zinc-700 text-white"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center justify_between">
+                                  <h4 className="text-xs font-semibold text-white uppercase tracking-wide">
+                                    Education
+                                  </h4>
+                                  <EnhancedButton
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    rounded="full"
+                                    className="text-xs border-blue-600/40 text-blue-200 hover:bg-blue-500/10"
+                                    onClick={addManualEducation}
+                                  >
+                                    Add school
+                                  </EnhancedButton>
+                                </div>
+                                {manualEducation.map((edu, index) => (
+                                  <div
+                                    key={`education-${index}`}
+                                    className="space-y-3 rounded-2xl border border-zinc-800 bg-black/30 p-4"
+                                  >
+                                    <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-zinc-500">
+                                      <span>Education {index + 1}</span>
+                                      {manualEducation.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="text-red-400 hover:text-red-200"
+                                          onClick={() => removeManualEducation(index)}
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <Input
+                                        placeholder="School"
+                                        value={edu.school || ""}
+                                        onChange={(e) => updateManualEducation(index, "school", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        placeholder="Degree"
+                                        value={edu.degree || ""}
+                                        onChange={(e) => updateManualEducation(index, "degree", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        placeholder="Field of study"
+                                        value={edu.field_of_study || ""}
+                                        onChange={(e) =>
+                                          updateManualEducation(index, "field_of_study", e.target.value)
+                                        }
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        placeholder="Grade / GPA"
+                                        value={edu.grade || ""}
+                                        onChange={(e) => updateManualEducation(index, "grade", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        type="month"
+                                        placeholder="Start date"
+                                        value={edu.start_date || ""}
+                                        onChange={(e) => updateManualEducation(index, "start_date", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                      <Input
+                                        type="month"
+                                        placeholder="End date"
+                                        value={edu.end_date || ""}
+                                        onChange={(e) => updateManualEducation(index, "end_date", e.target.value)}
+                                        className="bg-black/40 border-zinc-700 text-white"
+                                      />
+                                    </div>
+                                    <Textarea
+                                      placeholder="Highlights, activities, awards"
+                                      value={edu.description || ""}
+                                      onChange={(e) => updateManualEducation(index, "description", e.target.value)}
+                                      className="bg-black/40 border-zinc-700 text-white"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label className="text-xs text-zinc-400">Skills</Label>
+                                <Input
+                                  placeholder="Separate skills with commas (e.g. React, Storytelling, SQL)"
+                                  value={manualSkillsInput}
+                                  onChange={(e) => setManualSkillsInput(e.target.value)}
+                                  className="bg-black/40 border-zinc-700 text-white"
                                 />
                               </div>
+
                               {professionalStatus && (
                                 <div
                                   className={cn(
@@ -1146,54 +1645,167 @@ export default function SettingsPage() {
                                   {professionalStatus.message}
                                 </div>
                               )}
-                              <div className="flex items-center justify-end gap-2">
+
+                              <div className="flex flex-wrap items-center justify-between gap-3">
                                 <EnhancedButton
-                                  variant="ghost"
+                                  type="button"
+                                  variant="outline"
                                   rounded="full"
-                                  className="text-zinc-400 hover:text-white"
-                                  onClick={() => setIsEditingProfessional(false)}
-                                  disabled={isSavingProfessional}
+                                  className="border-blue-600/40 text-blue-200 hover:bg-blue-500/10"
+                                  onClick={() => router.push("/profile/cv-upload")}
                                 >
-                                  Cancel
+                                  Use Resume Upload Instead
                                 </EnhancedButton>
-                                <EnhancedButton
-                                  variant="gradient"
-                                  rounded="full"
-                                  animation="shimmer"
-                                  className="bg-gradient-to-r from-purple-500 via-blue-500 to-fuchsia-500"
-                                  onClick={handleSaveProfessional}
-                                  disabled={isSavingProfessional}
-                                  leftIcon={isSavingProfessional ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : undefined}
-                                >
-                                  {isSavingProfessional ? "Saving" : "Save Changes"}
-                                </EnhancedButton>
+                                <div className="flex items-center gap-2">
+                                  <EnhancedButton
+                                    type="button"
+                                    variant="ghost"
+                                    rounded="full"
+                                    className="text-zinc-400 hover:text-white"
+                                    onClick={toggleProfessionalEditing}
+                                    disabled={isSavingProfessional}
+                                  >
+                                    Cancel
+                                  </EnhancedButton>
+                                  <EnhancedButton
+                                    type="submit"
+                                    variant="gradient"
+                                    rounded="full"
+                                    animation="shimmer"
+                                    className="bg-gradient-to-r from-purple-500 via-blue-500 to-fuchsia-500"
+                                    disabled={isSavingProfessional}
+                                    leftIcon={
+                                      isSavingProfessional ? (
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                      ) : undefined
+                                    }
+                                  >
+                                    {isSavingProfessional ? "Saving" : "Save Changes"}
+                                  </EnhancedButton>
+                                </div>
                               </div>
-                            </div>
+                            </form>
                           ) : (
-                            <div className="space-y-2 text-xs text-zinc-400">
-                              {professionalInfo.currentRole || professionalInfo.company ? (
-                                <div>
-                                  <span className="text-zinc-500">Role:</span> {professionalInfo.currentRole}
-                                  {professionalInfo.company && (
-                                    <span className="text-zinc-500"> @ {professionalInfo.company}</span>
+                            <div className="space-y-4 text-xs text-zinc-400">
+                              {isLoadingProfessionalData ? (
+                                <p className="text-zinc-500">Loading professional information…</p>
+                              ) : cvProfile ? (
+                                <>
+                                  {cvProfile.basics?.summary && (
+                                    <div>
+                                      <p className="text-[10px] text-zinc-500">Summary</p>
+                                      <p className="text-white">{cvProfile.basics.summary}</p>
+                                    </div>
                                   )}
-                                </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-2">Experience</p>
+                                    {Array.isArray(cvProfile.experience) && cvProfile.experience.length > 0 ? (
+                                      <div className="space-y-2">
+                                        {cvProfile.experience.map((exp: ExperienceEntry, index: number) => (
+                                          <div
+                                            key={`exp-display-${index}`}
+                                            className="rounded-xl border border-zinc-800 bg-black/20 p-3 space-y-1"
+                                          >
+                                            <div className="flex items-center gap-2 text-white text-xs font-semibold">
+                                              <span>{exp.title}</span>
+                                              {exp.company && <span className="text-zinc-500">@ {exp.company}</span>}
+                                            </div>
+                                            <div className="text-[10px] text-zinc-500 flex flex-wrap gap-2">
+                                              {exp.start_date && <span>{exp.start_date}</span>}
+                                              {(exp.start_date || exp.end_date) && <span>→</span>}
+                                              <span>{exp.is_current ? "Present" : exp.end_date || "N/A"}</span>
+                                              {exp.location && <span>• {exp.location}</span>}
+                                            </div>
+                                            {exp.description && (
+                                              <p className="text-zinc-300 text-xs">{exp.description}</p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-zinc-500">No work experience added yet.</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-2">Education</p>
+                                    {Array.isArray(cvProfile.education) && cvProfile.education.length > 0 ? (
+                                      <div className="space-y-2">
+                                        {cvProfile.education.map((edu: EducationEntry, index: number) => (
+                                          <div
+                                            key={`edu-display-${index}`}
+                                            className="rounded-xl border border-zinc-800 bg-black/20 p-3 space-y-1"
+                                          >
+                                            <div className="text-white text-xs font-semibold">{edu.school}</div>
+                                            <div className="text-zinc-300 text-xs">
+                                              {edu.degree}
+                                              {edu.field_of_study ? ` · ${edu.field_of_study}` : ""}
+                                            </div>
+                                            <div className="text-[10px] text-zinc-500 flex gap-2">
+                                              {edu.start_date && <span>{edu.start_date}</span>}
+                                              {(edu.start_date || edu.end_date) && <span>→</span>}
+                                              <span>{edu.end_date || "Present"}</span>
+                                            </div>
+                                            {edu.description && (
+                                              <p className="text-zinc-300 text-xs">{edu.description}</p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-zinc-500">No education history added yet.</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-2">Skills</p>
+                                    {Array.isArray(cvProfile.skills) && cvProfile.skills.length > 0 ? (
+                                      <div className="flex flex-wrap gap-2">
+                                        {cvProfile.skills.map((skill: string, index: number) => (
+                                          <span
+                                            key={`skill-${index}`}
+                                            className="px-2 py-1 text-[10px] rounded-full border border-purple-600/40 text-purple-200"
+                                          >
+                                            {skill}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-zinc-500">No skills added yet.</p>
+                                    )}
+                                  </div>
+                                  {professionalStatus && (
+                                    <div
+                                      className={cn(
+                                        "rounded-lg border px-3 py-2 text-xs",
+                                        professionalStatus.type === "success"
+                                          ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-200"
+                                          : "border-red-500/40 bg-red-950/40 text-red-200",
+                                      )}
+                                    >
+                                      {professionalStatus.message}
+                                    </div>
+                                  )}
+                                  <div className="flex flex-wrap gap-2">
+                                    <EnhancedButton
+                                      variant="outline"
+                                      rounded="full"
+                                      className="border-purple-600/40 text-purple-200 hover:bg-purple-500/10"
+                                      onClick={() => router.push("/profile/cv-upload")}
+                                    >
+                                      Upload or re-parse resume
+                                    </EnhancedButton>
+                                  </div>
+                                </>
                               ) : (
-                                <p>No professional information added yet.</p>
-                              )}
-                              {professionalInfo.experienceSummary && (
-                                <div>
-                                  <span className="text-zinc-500">Summary:</span> {professionalInfo.experienceSummary}
-                                </div>
-                              )}
-                              {professionalInfo.topSkills && (
-                                <div>
-                                  <span className="text-zinc-500">Skills:</span> {professionalInfo.topSkills}
-                                </div>
-                              )}
-                              {professionalStatus && professionalStatus.type === "success" && (
-                                <div className="rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
-                                  {professionalStatus.message}
+                                <div className="space-y-2">
+                                  <p>No professional information added yet.</p>
+                                  <EnhancedButton
+                                    variant="outline"
+                                    rounded="full"
+                                    className="border-purple-600/40 text-purple-200 hover:bg-purple-500/10"
+                                    onClick={() => toggleProfessionalEditing()}
+                                  >
+                                    Get started
+                                  </EnhancedButton>
                                 </div>
                               )}
                             </div>

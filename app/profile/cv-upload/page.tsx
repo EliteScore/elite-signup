@@ -8,9 +8,13 @@ import { ArrowRight, CheckCircle, FileText, Upload, X, Info, Sparkles } from "lu
 
 import { AppShell } from "@/components/layout/app-shell"
 import { EnhancedButton } from "@/components/ui/enhanced-button"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { getStoredAccessToken } from "@/lib/auth-storage"
+import { sanitizeCvForPost, ExperienceEntry, EducationEntry } from "@/lib/cv-normalizer"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 const PARSER_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
@@ -45,11 +49,177 @@ export default function CvUploadPage() {
 	const [uploadState, setUploadState] = useState<"initial" | "uploading" | "processing" | "complete" | "error">(
 		"initial",
 	)
+	const [mode, setMode] = useState<"upload" | "manual">("upload")
 	const [uploadProgress, setUploadProgress] = useState(0)
 	const [processingProgress, setProcessingProgress] = useState(0)
 	const [file, setFile] = useState<File | null>(null)
 	const [errorMessage, setErrorMessage] = useState<string | null>(null)
 	const [parsedData, setParsedData] = useState<any>(null)
+
+	type ManualBasics = {
+		full_name: string
+		headline: string
+		email: string
+		phone: string
+		location: string
+		summary: string
+	}
+
+	const createEmptyBasics = (): ManualBasics => ({
+		full_name: "",
+		headline: "",
+		email: "",
+		phone: "",
+		location: "",
+		summary: "",
+	})
+
+	const createEmptyExperience = (): ExperienceEntry => ({
+		title: "",
+		company: "",
+		employment_type: "",
+		location: "",
+		start_date: "",
+		end_date: "",
+		is_current: false,
+		description: "",
+		achievements: [],
+	})
+
+	const createEmptyEducation = (): EducationEntry => ({
+		school: "",
+		degree: "",
+		field_of_study: "",
+		start_date: "",
+		end_date: "",
+		grade: "",
+		activities: "",
+		description: "",
+	})
+
+	const [manualBasics, setManualBasics] = useState<ManualBasics>(createEmptyBasics())
+	const [manualExperience, setManualExperience] = useState<ExperienceEntry[]>([createEmptyExperience()])
+	const [manualEducation, setManualEducation] = useState<EducationEntry[]>([createEmptyEducation()])
+	const [manualSkillsInput, setManualSkillsInput] = useState("")
+
+	const handleManualBasicsChange = (field: keyof ManualBasics, value: string) => {
+		setManualBasics((prev) => ({
+			...prev,
+			[field]: value,
+		}))
+	}
+
+	const updateManualExperience = (index: number, field: keyof ExperienceEntry | "is_current", value: string | boolean) => {
+		setManualExperience((prev) =>
+			prev.map((entry, idx) => {
+				if (idx !== index) return entry
+				if (field === "is_current") {
+					return {
+						...entry,
+						is_current: value as boolean,
+						end_date: value ? null : entry.end_date,
+					}
+				}
+				return {
+					...entry,
+					[field]: value as string,
+				}
+			}),
+		)
+	}
+
+	const updateManualEducation = (index: number, field: keyof EducationEntry, value: string) => {
+		setManualEducation((prev) =>
+			prev.map((entry, idx) => {
+				if (idx !== index) return entry
+				return {
+					...entry,
+					[field]: value,
+				}
+			}),
+		)
+	}
+
+	const addManualExperience = () => setManualExperience((prev) => [...prev, createEmptyExperience()])
+	const removeManualExperience = (index: number) =>
+		setManualExperience((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)))
+
+	const addManualEducation = () => setManualEducation((prev) => [...prev, createEmptyEducation()])
+	const removeManualEducation = (index: number) =>
+		setManualEducation((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)))
+
+	const resetManualForm = () => {
+		setManualBasics(createEmptyBasics())
+		setManualExperience([createEmptyExperience()])
+		setManualEducation([createEmptyEducation()])
+		setManualSkillsInput("")
+	}
+
+	const switchMode = (nextMode: "upload" | "manual") => {
+		setMode(nextMode)
+		setErrorMessage(null)
+		setUploadState("initial")
+		setUploadProgress(0)
+		setProcessingProgress(0)
+		if (nextMode === "manual") {
+			setFile(null)
+		} else {
+			resetManualForm()
+		}
+	}
+
+	const buildManualCvPayload = () => {
+		const basics = Object.fromEntries(
+			Object.entries(manualBasics).map(([key, value]) => [key, value.trim()]),
+		) as ManualBasics
+
+		const experiences = manualExperience
+			.map((exp) => ({
+				title: exp.title?.trim() || "",
+				company: exp.company?.trim() || "",
+				employment_type: exp.employment_type || "",
+				location: exp.location || "",
+				start_date: exp.start_date || "",
+				end_date: exp.is_current ? null : exp.end_date || null,
+				is_current: exp.is_current ?? false,
+				description: exp.description || "",
+				achievements: Array.isArray(exp.achievements) ? exp.achievements : [],
+			}))
+			.filter((exp) => exp.title || exp.company)
+
+		const education = manualEducation
+			.map((edu) => ({
+				school: edu.school?.trim() || "",
+				degree: edu.degree?.trim() || "",
+				field_of_study: edu.field_of_study || "",
+				start_date: edu.start_date || "",
+				end_date: edu.end_date || "",
+				grade: edu.grade || "",
+				activities: edu.activities || "",
+				description: edu.description || "",
+			}))
+			.filter((edu) => edu.school || edu.degree)
+
+		const skillsArray = manualSkillsInput
+			.split(",")
+			.map((skill) => skill.trim())
+			.filter(Boolean)
+
+		return {
+			profile: {
+				basics,
+				experience: experiences,
+				education,
+				projects: [],
+				skills: skillsArray,
+				certifications: [],
+				languages: [],
+				publications: [],
+				honors_awards: [],
+				volunteer: [],
+			},
+		}
+	}
 
 	if (!isAuthorized) {
 		return (
@@ -138,207 +308,40 @@ export default function CvUploadPage() {
 		}
 	}
 
-	// Type definitions matching backend schema
-	type ExperienceEntry = {
-		title?: string
-		company?: string
-		employment_type?: string | null
-		location?: string | null
-		start_date?: string | null
-		end_date?: string | null
-		is_current?: boolean
-		description?: string | null
-		achievements?: string[]
+	const handleManualSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		setErrorMessage(null)
+
+		if (!manualBasics.full_name.trim()) {
+			setErrorMessage("Please add your full name to continue.")
+			return
+		}
+
+		try {
+			const token = getStoredAccessToken()
+			if (!token) {
+				setErrorMessage("Authentication required. Please log in again.")
+				return
+			}
+
+			setUploadState("processing")
+			setProcessingProgress(10)
+
+			const manualCv = buildManualCvPayload()
+			setParsedData(manualCv)
+
+			await saveToProfile(manualCv, token)
+		} catch (error) {
+			console.error("[CV Upload] Manual entry error:", error)
+			setErrorMessage(
+				error instanceof Error
+					? error.message
+					: "Failed to save your information. Please try again.",
+			)
+			setUploadState("error")
+		}
 	}
 
-	type EducationEntry = {
-		school?: string
-		degree?: string
-		field_of_study?: string | null
-		start_date?: string | null
-		end_date?: string | null
-		grade?: string | null
-		activities?: string | null
-		description?: string | null
-	}
-
-	// Clean education entries - fixes "end_date=null," and whitespace keys
-	const cleanEducationEntry = (raw: any): EducationEntry => {
-		const fixed: EducationEntry = {}
-
-		if (typeof raw.school === "string") fixed.school = raw.school
-		if (typeof raw.degree === "string") fixed.degree = raw.degree
-		if (typeof raw.field_of_study === "string") fixed.field_of_study = raw.field_of_study
-		if (typeof raw.start_date === "string") fixed.start_date = raw.start_date
-		if (typeof raw.end_date === "string" || raw.end_date === null) fixed.end_date = raw.end_date
-		if (typeof raw.grade === "string") fixed.grade = raw.grade
-		if (typeof raw.activities === "string") fixed.activities = raw.activities
-		if (typeof raw.description === "string") fixed.description = raw.description
-
-		// Handle cursed key from parser: "end_date=null,"
-		if ("end_date=null," in raw) {
-			const text = raw["end_date=null,"]
-			if (!fixed.description && typeof text === "string") {
-				fixed.description = text
-			}
-			if (!("end_date" in fixed)) {
-				fixed.end_date = null
-			}
-		}
-
-		// Handle random whitespace keys as extra description
-		for (const [key, value] of Object.entries(raw)) {
-			if (key.trim() === "" && typeof value === "string") {
-				fixed.description = fixed.description
-					? `${fixed.description} ${value}`
-					: value
-			}
-		}
-
-		return fixed
-	}
-
-	// Clean experience entries - fixes "end_date=null," and whitespace keys
-	const cleanExperienceEntry = (raw: any): ExperienceEntry => {
-		const cleaned: ExperienceEntry = {}
-
-		if (typeof raw.title === "string") cleaned.title = raw.title
-		if (typeof raw.company === "string") cleaned.company = raw.company
-		if (typeof raw.employment_type === "string") cleaned.employment_type = raw.employment_type
-		if (typeof raw.location === "string") cleaned.location = raw.location
-		if (typeof raw.start_date === "string") cleaned.start_date = raw.start_date
-		if (typeof raw.end_date === "string" || raw.end_date === null) {
-			cleaned.end_date = raw.end_date
-		}
-		if (typeof raw.is_current === "boolean") cleaned.is_current = raw.is_current
-		if (Array.isArray(raw.achievements)) cleaned.achievements = raw.achievements
-		else cleaned.achievements = []
-
-		// Description if parser already gave one
-		if (typeof raw.description === "string") {
-			cleaned.description = raw.description
-		}
-
-		// 1) Fix "end_date=null," garbage key
-		if ("end_date=null," in raw) {
-			const text = raw["end_date=null,"]
-			if (!cleaned.description && typeof text === "string") {
-				cleaned.description = text
-			}
-			if (!("end_date" in cleaned)) {
-				cleaned.end_date = null
-			}
-		}
-
-		// 2) Fix `"  "` / whitespace keys → description
-		for (const [key, value] of Object.entries(raw)) {
-			if (key.trim() === "" && typeof value === "string") {
-				cleaned.description = cleaned.description
-					? `${cleaned.description} ${value}`
-					: value
-			}
-		}
-
-		return cleaned
-	}
-
-	// Comprehensive normalizer for the entire CV payload
-	const normalizeCvForPost = (cvData: any) => {
-		const rawProfile = cvData.profile ?? cvData
-		const profile: any = {}
-
-		// Basics – just pass through as-is, backend will validate fields
-		if (rawProfile.basics && typeof rawProfile.basics === "object") {
-			profile.basics = rawProfile.basics
-		}
-
-		// Education
-		if (Array.isArray(rawProfile.education)) {
-			profile.education = rawProfile.education.map(cleanEducationEntry)
-		} else {
-			profile.education = []
-		}
-
-		// Experience
-		if (Array.isArray(rawProfile.experience)) {
-			profile.experience = rawProfile.experience.map(cleanExperienceEntry)
-		} else {
-			profile.experience = []
-		}
-
-		// Projects – clean and ensure proper shape
-		if (Array.isArray(rawProfile.projects)) {
-			profile.projects = rawProfile.projects.map((p: any) => ({
-				name: p.name ?? null,
-				description: p.description ?? null,
-				start_date: p.start_date ?? null,
-				end_date: p.end_date ?? null,
-				url: p.url ?? null,
-				highlights: Array.isArray(p.highlights) ? p.highlights : [],
-				tech: Array.isArray(p.tech) ? p.tech : [],
-			}))
-		} else {
-			profile.projects = []
-		}
-
-		// Handle extracurriculars - map to projects since backend doesn't know extracurriculars
-		if (Array.isArray(rawProfile.extracurriculars)) {
-			const extraProjects = rawProfile.extracurriculars.map((e: any) => ({
-				name: e.title ?? e.name ?? null,
-				description: e.description ?? null,
-				start_date: e.start_date ?? null,
-				end_date: e.end_date ?? null,
-				url: e.url ?? null,
-				highlights: Array.isArray(e.highlights) ? e.highlights : [],
-				tech: Array.isArray(e.tech) ? e.tech : [],
-			}))
-
-			// Merge with existing projects
-			profile.projects = [...profile.projects, ...extraProjects]
-		}
-
-		// Skills – make sure it's an array of strings
-		if (Array.isArray(rawProfile.skills)) {
-			profile.skills = rawProfile.skills.filter((s: any) => typeof s === "string")
-		} else {
-			profile.skills = []
-		}
-
-		// Honors_awards – pass through if array
-		if (Array.isArray(rawProfile.honors_awards)) {
-			profile.honors_awards = rawProfile.honors_awards
-		} else {
-			profile.honors_awards = []
-		}
-
-		// Optional stuff – keep if present
-		if (Array.isArray(rawProfile.certifications)) {
-			profile.certifications = rawProfile.certifications
-		} else {
-			profile.certifications = []
-		}
-
-		if (Array.isArray(rawProfile.languages)) {
-			profile.languages = rawProfile.languages
-		} else {
-			profile.languages = []
-		}
-
-		if (Array.isArray(rawProfile.publications)) {
-			profile.publications = rawProfile.publications
-		} else {
-			profile.publications = []
-		}
-
-		if (Array.isArray(rawProfile.volunteer)) {
-			profile.volunteer = rawProfile.volunteer
-		} else {
-			profile.volunteer = []
-		}
-
-		// 🚫 Make sure NO random top-level junk is left
-		return { profile }
-	}
 
 	const saveToProfile = async (cvData: any, token: string) => {
 		setProcessingProgress(0)
@@ -350,10 +353,10 @@ export default function CvUploadPage() {
 			console.log("[CV Upload] Saving parsed data to user profile...")
 			console.log("[CV Upload] Raw parsed data from parser API:", JSON.stringify(cvData, null, 2))
 
-			// Normalize the entire CV payload to fix all parser issues
-			const payloadToSend = normalizeCvForPost(cvData)
+			// Sanitize the entire CV payload - THE ONE TRUE GATE between parser chaos and backend schema
+			const payload = sanitizeCvForPost(cvData)
 			
-			console.log("[CV Upload] Payload being sent to PUT /v1/users/cv:", JSON.stringify(payloadToSend, null, 2))
+			console.log("[CV Upload] Payload being sent to PUT /v1/users/cv:", JSON.stringify(payload, null, 2))
 
 			// Step 2: Save parsed CV to user profile using PUT /v1/users/cv
 			const saveResponse = await fetch(`${API_BASE_URL}v1/users/cv`, {
@@ -362,7 +365,7 @@ export default function CvUploadPage() {
 					"Content-Type": "application/json",
 					Authorization: `Bearer ${token}`,
 				},
-				body: JSON.stringify(payloadToSend),
+				body: JSON.stringify(payload),
 			})
 
 			console.log("[CV Upload] PUT response status:", saveResponse.status)
@@ -403,6 +406,9 @@ export default function CvUploadPage() {
 		setFile(null)
 		setErrorMessage(null)
 		setParsedData(null)
+		if (mode === "manual") {
+			resetManualForm()
+		}
 	}
 
 	const handleContinue = () => {
@@ -440,7 +446,7 @@ export default function CvUploadPage() {
 					</motion.div>
 
 					{/* Initial Upload State */}
-					{uploadState === "initial" && (
+					{uploadState === "initial" && mode === "upload" && (
 						<motion.div variants={itemVariants}>
 							<Card className="bg-zinc-900/80 border-zinc-800 shadow-2xl rounded-2xl">
 								<CardHeader>
@@ -525,6 +531,290 @@ export default function CvUploadPage() {
 										<ArrowRight className="ml-2 h-4 w-4" />
 									</EnhancedButton>
 								</CardFooter>
+							</Card>
+							<div className="text-center mt-4 space-y-2">
+								<p className="text-xs text-zinc-500">Don&apos;t have a resume yet?</p>
+								<Button
+									variant="outline"
+									size="sm"
+									className="rounded-full border-purple-500/40 text-purple-300 hover:bg-purple-500/10"
+									onClick={() => switchMode("manual")}
+								>
+									Fill it out manually
+								</Button>
+							</div>
+						</motion.div>
+					)}
+
+					{/* Manual Entry State */}
+					{uploadState === "initial" && mode === "manual" && (
+						<motion.div variants={itemVariants}>
+							<Card className="bg-zinc-900/80 border-zinc-800 shadow-2xl rounded-2xl">
+								<CardHeader>
+									<CardTitle className="text-xl font-bold">Manual Resume Entry</CardTitle>
+									<CardDescription className="text-zinc-400">
+										Share your experience without uploading a file
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<form onSubmit={handleManualSubmit} className="space-y-6">
+										<div className="space-y-3">
+											<h3 className="text-sm font-semibold text-white">Basics</h3>
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+												<Input
+													placeholder="Full name"
+													value={manualBasics.full_name}
+													onChange={(e) => handleManualBasicsChange("full_name", e.target.value)}
+													className="bg-zinc-800 border-zinc-700 text-white"
+												/>
+												<Input
+													placeholder="Headline (e.g. Product Designer)"
+													value={manualBasics.headline}
+													onChange={(e) => handleManualBasicsChange("headline", e.target.value)}
+													className="bg-zinc-800 border-zinc-700 text-white"
+												/>
+												<Input
+													type="email"
+													placeholder="Email"
+													value={manualBasics.email}
+													onChange={(e) => handleManualBasicsChange("email", e.target.value)}
+													className="bg-zinc-800 border-zinc-700 text-white"
+												/>
+												<Input
+													placeholder="Phone"
+													value={manualBasics.phone}
+													onChange={(e) => handleManualBasicsChange("phone", e.target.value)}
+													className="bg-zinc-800 border-zinc-700 text-white"
+												/>
+												<Input
+													placeholder="Location"
+													value={manualBasics.location}
+													onChange={(e) => handleManualBasicsChange("location", e.target.value)}
+													className="bg-zinc-800 border-zinc-700 text-white"
+												/>
+											</div>
+											<Textarea
+												placeholder="Professional summary"
+												value={manualBasics.summary}
+												onChange={(e) => handleManualBasicsChange("summary", e.target.value)}
+												className="bg-zinc-800 border-zinc-700 text-white"
+											/>
+										</div>
+
+										<div className="space-y-3">
+											<div className="flex items-center justify-between">
+												<h3 className="text-sm font-semibold text-white">Experience</h3>
+												<Button variant="outline" size="sm" onClick={addManualExperience}>
+													Add role
+												</Button>
+											</div>
+											<div className="space-y-3">
+												{manualExperience.map((exp, index) => (
+													<div
+														key={`experience-${index}`}
+														className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4"
+													>
+														<div className="flex items-center justify-between">
+															<p className="text-xs uppercase tracking-wide text-zinc-500">
+																Role {index + 1}
+															</p>
+															{manualExperience.length > 1 && (
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="sm"
+																	className="text-red-400 hover:text-red-200"
+																	onClick={() => removeManualExperience(index)}
+																>
+																	Remove
+																</Button>
+															)}
+														</div>
+														<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+															<Input
+																placeholder="Title"
+																value={exp.title || ""}
+																onChange={(e) => updateManualExperience(index, "title", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																placeholder="Company"
+																value={exp.company || ""}
+																onChange={(e) => updateManualExperience(index, "company", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																placeholder="Employment type (Full-time, Internship...)"
+																value={exp.employment_type || ""}
+																onChange={(e) =>
+																	updateManualExperience(index, "employment_type", e.target.value)
+																}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																placeholder="Location"
+																value={exp.location || ""}
+																onChange={(e) => updateManualExperience(index, "location", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																type="month"
+																placeholder="Start date"
+																value={exp.start_date || ""}
+																onChange={(e) => updateManualExperience(index, "start_date", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																type="month"
+																placeholder="End date"
+																value={exp.end_date || ""}
+																disabled={exp.is_current ?? false}
+																onChange={(e) => updateManualExperience(index, "end_date", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+														</div>
+														<label className="flex items-center gap-2 text-xs text-zinc-400">
+															<input
+																type="checkbox"
+																className="h-4 w-4 rounded border-zinc-600 bg-zinc-800"
+																checked={exp.is_current ?? false}
+																onChange={(e) =>
+																	updateManualExperience(index, "is_current", e.target.checked)
+																}
+															/>
+															Currently working in this role
+														</label>
+														<Textarea
+															placeholder="Key responsibilities and achievements"
+															value={exp.description || ""}
+															onChange={(e) => updateManualExperience(index, "description", e.target.value)}
+															className="bg-zinc-800 border-zinc-700 text-white"
+														/>
+													</div>
+												))}
+											</div>
+										</div>
+
+										<div className="space-y-3">
+											<div className="flex items-center justify-between">
+												<h3 className="text-sm font-semibold text-white">Education</h3>
+												<Button variant="outline" size="sm" onClick={addManualEducation}>
+													Add school
+												</Button>
+											</div>
+											<div className="space-y-3">
+												{manualEducation.map((edu, index) => (
+													<div
+														key={`education-${index}`}
+														className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4"
+													>
+														<div className="flex items-center justify-between">
+															<p className="text-xs uppercase tracking-wide text-zinc-500">
+																Education {index + 1}
+															</p>
+															{manualEducation.length > 1 && (
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="sm"
+																	className="text-red-400 hover:text-red-200"
+																	onClick={() => removeManualEducation(index)}
+																>
+																	Remove
+																</Button>
+															)}
+														</div>
+														<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+															<Input
+																placeholder="School"
+																value={edu.school || ""}
+																onChange={(e) => updateManualEducation(index, "school", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																placeholder="Degree"
+																value={edu.degree || ""}
+																onChange={(e) => updateManualEducation(index, "degree", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																placeholder="Field of study"
+																value={edu.field_of_study || ""}
+																onChange={(e) =>
+																	updateManualEducation(index, "field_of_study", e.target.value)
+																}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																placeholder="Grade / GPA"
+																value={edu.grade || ""}
+																onChange={(e) => updateManualEducation(index, "grade", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																type="month"
+																placeholder="Start date"
+																value={edu.start_date || ""}
+																onChange={(e) => updateManualEducation(index, "start_date", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+															<Input
+																type="month"
+																placeholder="End date"
+																value={edu.end_date || ""}
+																onChange={(e) => updateManualEducation(index, "end_date", e.target.value)}
+																className="bg-zinc-800 border-zinc-700 text-white"
+															/>
+														</div>
+														<Textarea
+															placeholder="Highlights, activities, awards"
+															value={edu.description || ""}
+															onChange={(e) => updateManualEducation(index, "description", e.target.value)}
+															className="bg-zinc-800 border-zinc-700 text-white"
+														/>
+													</div>
+												))}
+											</div>
+										</div>
+
+										<div className="space-y-2">
+											<h3 className="text-sm font-semibold text-white">Skills</h3>
+											<Input
+												placeholder="Separate skills with commas (e.g. React, UI Design, Leadership)"
+												value={manualSkillsInput}
+												onChange={(e) => setManualSkillsInput(e.target.value)}
+												className="bg-zinc-800 border-zinc-700 text-white"
+											/>
+										</div>
+
+										{errorMessage && (
+											<div className="rounded-lg border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+												{errorMessage}
+											</div>
+										)}
+
+										<div className="flex flex-wrap gap-3">
+											<EnhancedButton
+												type="submit"
+												className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+												variant="gradient"
+												animation="shimmer"
+												rounded="full"
+											>
+												Save & Process
+												<ArrowRight className="ml-2 h-4 w-4" />
+											</EnhancedButton>
+											<Button
+												type="button"
+												variant="ghost"
+												className="text-zinc-400 hover:text-white"
+												onClick={() => switchMode("upload")}
+											>
+												Back to upload
+											</Button>
+										</div>
+									</form>
+								</CardContent>
 							</Card>
 						</motion.div>
 					)}
