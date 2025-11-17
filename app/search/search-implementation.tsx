@@ -332,6 +332,10 @@ export default function SearchPage() {
       }
 
       console.log("[Search] Making request to:", url)
+      console.log("[Search] Query:", trimmedQuery)
+      console.log("[Search] Encoded:", encodeURIComponent(trimmedQuery))
+      console.log("[Search] Has token:", !!token)
+      console.log("[Search] Token preview:", token ? `${token.substring(0, 20)}...${token.substring(token.length - 10)}` : "none")
       console.log("[Search] Headers:", { ...headers, Authorization: token ? "Bearer ***" : "none" })
 
       // Add timeout and better error handling for production
@@ -353,9 +357,11 @@ export default function SearchPage() {
             throw new Error("Search request timed out. Please try again.")
           }
           if (fetchError.message.includes("Failed to fetch") || fetchError.message.includes("NetworkError")) {
-            throw new Error("Network error. Please check your connection and try again.")
+            console.error("[Search] Network/CORS error detected:", fetchError)
+            throw new Error("Cannot connect to search API. This may be a CORS or network issue.")
           }
         }
+        console.error("[Search] Fetch error:", fetchError)
         throw fetchError
       }
 
@@ -404,6 +410,7 @@ export default function SearchPage() {
       try {
         responseText = await response.text()
         console.log("[Search] Response text length:", responseText?.length || 0)
+        console.log("[Search] Response text:", responseText)
       } catch (readError) {
         console.error("[Search] Failed to read response text:", readError)
         throw new Error("Failed to read server response")
@@ -433,9 +440,14 @@ export default function SearchPage() {
         payload = JSON.parse(responseText) as ApiResponse<ProfileInfo[]>
         console.log("[Search] Parsed payload:", {
           success: payload?.success,
+          message: payload?.message,
           hasData: !!payload?.data,
+          dataType: Array.isArray(payload?.data) ? 'array' : typeof payload?.data,
           dataLength: Array.isArray(payload?.data) ? payload.data.length : 0,
         })
+        if (payload?.data && Array.isArray(payload.data) && payload.data.length === 0) {
+          console.warn("[Search] Backend returned empty array - no users found matching query:", trimmedQuery)
+        }
       } catch (parseError) {
         console.error("[Search] Failed to parse JSON:", parseError)
         console.error("[Search] Response text (first 200 chars):", responseText.substring(0, 200))
@@ -443,8 +455,15 @@ export default function SearchPage() {
       }
 
       if (payload?.success && payload.data) {
+        if (payload.data.length === 0) {
+          console.log("[Search] API returned success but empty data array")
+          setSearchResults([])
+          return
+        }
+        
         const mappedResults = payload.data.map(mapProfileInfoToResult)
         console.log("[Search] Mapped results:", mappedResults.length)
+        console.log("[Search] Sample result:", mappedResults[0])
         
         // Deduplicate by userId (keep the most complete profile - prefer ones with images)
         const userMap = new Map<number, SearchResult>()
