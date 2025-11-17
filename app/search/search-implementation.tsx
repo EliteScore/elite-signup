@@ -13,8 +13,27 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 
-const DEFAULT_API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL).replace(/\/$/, "")
+const DEFAULT_API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com"
+// Normalize base URL - remove trailing slash and ensure it's a valid URL
+const getApiBaseUrl = () => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL
+  // Remove trailing slash if present and any whitespace
+  const normalized = envUrl.trim().replace(/\/+$/, "")
+  
+  // Validate URL format
+  try {
+    new URL(normalized)
+  } catch (error) {
+    console.error("[Search] Invalid API base URL:", normalized, "Falling back to default")
+    return DEFAULT_API_BASE_URL
+  }
+  
+  if (typeof window !== "undefined") {
+    console.log("[Search] API Base URL:", normalized)
+  }
+  return normalized
+}
+const API_BASE_URL = getApiBaseUrl()
 
 type Resume = {
   currentRole?: string | null
@@ -157,7 +176,9 @@ const mapProfileInfoToResult = (profile: ProfileInfo): SearchResult => {
 const getSearchUrl = (input: string) => {
   const trimmed = input.trim()
   const encoded = encodeURIComponent(trimmed)
+  // Ensure no double slashes - API_BASE_URL already has trailing slash removed
   const url = `${API_BASE_URL}/v1/users/search/${encoded}`
+  console.log("[Search] Constructed URL:", url)
   return url
 }
 
@@ -165,8 +186,15 @@ const getSearchUrl = (input: string) => {
 async function enrichResultsWithProfiles(results: SearchResult[]): Promise<SearchResult[]> {
   const token = getStoredAccessToken()
   if (!token) {
+    console.log("[Search] No token available, skipping enrichment")
     return results
   }
+
+  if (results.length === 0) {
+    return results
+  }
+
+  console.log("[Search] Enriching", results.length, "results with profile data")
 
   return Promise.all(
     results.map(async (user) => {
@@ -182,13 +210,23 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
         })
 
         if (!resp.ok) {
-          console.warn("[Search] Enrichment fetch not ok:", resp.status)
+          console.warn(`[Search] Enrichment fetch failed for user ${user.userId}:`, resp.status, resp.statusText)
           return user
         }
 
-        const result = await resp.json()
+        let result
+        try {
+          result = await resp.json()
+        } catch (parseError) {
+          console.warn(`[Search] Failed to parse enrichment response for user ${user.userId}:`, parseError)
+          return user
+        }
+
         const profile = result?.data || result
-        if (!profile) return user
+        if (!profile) {
+          console.warn(`[Search] No profile data in enrichment response for user ${user.userId}`)
+          return user
+        }
 
         const picture = resolvePictureFromApiProfile(profile)
 
@@ -213,6 +251,7 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
         }
       } catch (error) {
         // swallow enrichment errors; base search results will still render
+        console.warn(`[Search] Enrichment error for user ${user.userId}:`, error)
         return user
       }
     }),
@@ -292,36 +331,120 @@ export default function SearchPage() {
         headers.Authorization = `Bearer ${token}`
       }
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
-      })
+      console.log("[Search] Making request to:", url)
+      console.log("[Search] Headers:", { ...headers, Authorization: token ? "Bearer ***" : "none" })
 
+      // Add timeout and better error handling for production
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+      let response: Response
+      try {
+        response = await fetch(url, {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+        if (fetchError instanceof Error) {
+          if (fetchError.name === "AbortError") {
+            throw new Error("Search request timed out. Please try again.")
+          }
+          if (fetchError.message.includes("Failed to fetch") || fetchError.message.includes("NetworkError")) {
+            throw new Error("Network error. Please check your connection and try again.")
+          }
+        }
+        throw fetchError
+      }
+
+      console.log("[Search] Response status:", response.status, response.statusText)
+      console.log("[Search] Response ok:", response.ok)
+
+      // Handle 204 No Content explicitly
       if (response.status === 204) {
+        console.log("[Search] No content (204) - no results found")
         setSearchResults([])
+        setSearchError(null)
+        setIsSearching(false)
         return
       }
 
+      // Check if response is OK before parsing
+      if (!response.ok) {
+        let errorMessage = `Search failed with status ${response.status}`
+        try {
+          const errorText = await response.text()
+          console.warn("[Search] Error response text:", errorText)
+          if (errorText && errorText.trim()) {
+            try {
+              const errorPayload = JSON.parse(errorText)
+              errorMessage = errorPayload?.message || errorPayload?.error || errorMessage
+              console.warn("[Search] Parsed error payload:", errorPayload)
+            } catch (parseError) {
+              // If it's not JSON, use the text as error message
+              errorMessage = errorText.length > 100 ? errorText.substring(0, 100) + "..." : errorText
+            }
+          }
+        } catch (readError) {
+          console.warn("[Search] Could not read error response:", readError)
+        }
+        throw new Error(errorMessage)
+      }
+
+      // Parse successful response
       let payload: ApiResponse<ProfileInfo[]> | null = null
       let responseText: string | null = null
       
+      // Check content type
+      const contentType = response.headers.get("content-type")
+      console.log("[Search] Response content-type:", contentType)
+      
       try {
         responseText = await response.text()
-        
-        if (responseText) {
-          payload = JSON.parse(responseText) as ApiResponse<ProfileInfo[]>
-        }
-      } catch (error) {
-        throw new Error(`Failed to parse response: ${error instanceof Error ? error.message : String(error)}`)
+        console.log("[Search] Response text length:", responseText?.length || 0)
+      } catch (readError) {
+        console.error("[Search] Failed to read response text:", readError)
+        throw new Error("Failed to read server response")
+      }
+      
+      if (!responseText || responseText.trim() === "") {
+        console.warn("[Search] Empty response body")
+        setSearchResults([])
+        setIsSearching(false)
+        return
       }
 
-      if (!response.ok) {
-        const message = payload?.message || `Search failed with status ${response.status}`
-        throw new Error(message)
+      // Only try to parse as JSON if content-type indicates JSON or if it looks like JSON
+      const isJsonContent = contentType?.includes("application/json") || 
+                           contentType?.includes("text/json") ||
+                           (responseText.trim().startsWith("{") || responseText.trim().startsWith("["))
+
+      if (!isJsonContent) {
+        console.warn("[Search] Response is not JSON, content-type:", contentType)
+        // If it's not JSON but we got a 200, treat as empty results
+        setSearchResults([])
+        setIsSearching(false)
+        return
+      }
+
+      try {
+        payload = JSON.parse(responseText) as ApiResponse<ProfileInfo[]>
+        console.log("[Search] Parsed payload:", {
+          success: payload?.success,
+          hasData: !!payload?.data,
+          dataLength: Array.isArray(payload?.data) ? payload.data.length : 0,
+        })
+      } catch (parseError) {
+        console.error("[Search] Failed to parse JSON:", parseError)
+        console.error("[Search] Response text (first 200 chars):", responseText.substring(0, 200))
+        throw new Error(`Invalid response format: ${parseError instanceof Error ? parseError.message : String(parseError)}`)
       }
 
       if (payload?.success && payload.data) {
         const mappedResults = payload.data.map(mapProfileInfoToResult)
+        console.log("[Search] Mapped results:", mappedResults.length)
         
         // Deduplicate by userId (keep the most complete profile - prefer ones with images)
         const userMap = new Map<number, SearchResult>()
@@ -330,10 +453,8 @@ export default function SearchPage() {
           const existing = userMap.get(result.userId)
           
           if (!existing) {
-            // First occurrence, add it
             userMap.set(result.userId, result)
           } else {
-            // Duplicate found - keep the one with more data
             const existingScore = 
               (existing.image ? 2 : 0) + 
               (existing.bio ? 1 : 0) + 
@@ -344,22 +465,33 @@ export default function SearchPage() {
               (result.bio ? 1 : 0) + 
               (result.title ? 1 : 0)
             
-              if (newScore > existingScore) {
+            if (newScore > existingScore) {
               userMap.set(result.userId, result)
             }
           }
         }
         
         const dedupedResults = Array.from(userMap.values())
+        console.log("[Search] Deduplicated results:", dedupedResults.length)
 
         const uniqueResults = await enrichResultsWithProfiles(dedupedResults)
+        console.log("[Search] Final enriched results:", uniqueResults.length)
         
         setSearchResults(uniqueResults)
       } else {
+        console.log("[Search] No results in payload:", {
+          success: payload?.success,
+          hasData: !!payload?.data,
+          message: payload?.message,
+        })
         setSearchResults([])
       }
     } catch (error) {
-      setSearchError("We couldn't complete your search. Please try again.")
+      console.error("[Search] Search error:", error)
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "We couldn't complete your search. Please try again."
+      setSearchError(errorMessage)
       setSearchResults([])
     } finally {
       setIsSearching(false)
