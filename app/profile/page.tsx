@@ -86,6 +86,7 @@ export default function ProfilePage() {
   const [profileRefreshKey, setProfileRefreshKey] = useState(0)
   const [cvData, setCvData] = useState<any>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [cvRefreshTrigger, setCvRefreshTrigger] = useState(0)
 
   const numericViewingUserId = viewingUserId ? Number(viewingUserId) : null
   const isViewingOwnProfile =
@@ -392,6 +393,26 @@ export default function ProfilePage() {
   // We no longer call public getFollowers/getFollowing endpoints because they currently 500.
   // For viewed users, we rely on ProfileInfo counts plus local follow/unfollow adjustments.
 
+  // Listen for CV update events from other pages
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleCvUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent
+      console.log("[Profile] Received cvUpdated event from:", customEvent.detail?.source)
+      setCvRefreshTrigger(prev => prev + 1)
+      setProfileRefreshKey(prev => prev + 1)
+    }
+
+    window.addEventListener("cvUpdated", handleCvUpdate)
+    console.log("[Profile] Listening for cvUpdated events")
+
+    return () => {
+      window.removeEventListener("cvUpdated", handleCvUpdate)
+      console.log("[Profile] Stopped listening for cvUpdated events")
+    }
+  }, [])
+
   // Fetch CV data (only for own profile)
   useEffect(() => {
     if (!isAuthorized || !isViewingOwnProfile) return
@@ -401,6 +422,7 @@ export default function ProfilePage() {
         const token = getStoredAccessToken()
         if (!token) return
 
+        console.log("[Profile] Fetching CV data (trigger:", cvRefreshTrigger, ")")
         const response = await fetch(`${API_BASE_URL}v1/users/cv`, {
           method: "GET",
           headers: {
@@ -412,7 +434,12 @@ export default function ProfilePage() {
         if (response.ok) {
           const result = await response.json()
           const cv = result?.data || result
-          console.log("[Profile] CV data fetched:", cv)
+          console.log("[Profile] CV data fetched successfully:", {
+            hasProfile: !!cv?.profile,
+            experienceCount: Array.isArray(cv?.profile?.experience) ? cv.profile.experience.length : 0,
+            educationCount: Array.isArray(cv?.profile?.education) ? cv.profile.education.length : 0,
+            skillsCount: Array.isArray(cv?.profile?.skills) ? cv.profile.skills.length : 0,
+          })
           setCvData(cv)
         } else {
           console.log("[Profile] No CV data found (status:", response.status, ")")
@@ -425,7 +452,7 @@ export default function ProfilePage() {
     }
 
     fetchCv()
-  }, [isAuthorized, isViewingOwnProfile, profileRefreshKey])
+  }, [isAuthorized, isViewingOwnProfile, profileRefreshKey, cvRefreshTrigger])
 
   // Fetch profile data on mount
   useEffect(() => {
@@ -444,7 +471,7 @@ export default function ProfilePage() {
           return
         }
 
-        console.log("[Profile] Fetching profile data...")
+        console.log("[Profile] Fetching profile data (refreshKey:", profileRefreshKey, ")...")
 
         // Determine which endpoint to use
         const endpoint = viewingUserId
@@ -477,12 +504,16 @@ export default function ProfilePage() {
         }
 
         const result = await response.json()
-        console.log("[Profile] API response:", result)
+        console.log("[Profile] API response received")
 
         // Extract profile from response
         const possibleProfile = result?.data || result
 
-        console.log("[Profile] Extracted profile:", possibleProfile)
+        console.log("[Profile] Extracted profile:", {
+          userId: possibleProfile?.userId,
+          hasResume: !!possibleProfile?.resume,
+          resumeType: typeof possibleProfile?.resume,
+        })
 
         if (possibleProfile && possibleProfile.userId) {
           setProfileData(possibleProfile as ProfileData)

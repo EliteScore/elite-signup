@@ -383,6 +383,12 @@ export default function CvUploadPage() {
 
 			setProcessingProgress(100)
 
+			// Trigger CV update event for other pages to refresh
+			console.log("[CV Upload] Dispatching cvUpdated event")
+			if (typeof window !== "undefined") {
+				window.dispatchEvent(new CustomEvent("cvUpdated", { detail: { source: "cv-upload" } }))
+			}
+
 			// Small delay for smooth UI transition
 			setTimeout(() => {
 				setUploadState("complete")

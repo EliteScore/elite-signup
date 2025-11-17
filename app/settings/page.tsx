@@ -842,6 +842,12 @@ export default function SettingsPage() {
       updateProfessionalSummaryFromProfile(payload.profile)
       setCvProfile(payload.profile)
       setIsEditingProfessional(false)
+
+      // Trigger CV update event for other pages to refresh
+      console.log("[Settings] Dispatching cvUpdated event")
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("cvUpdated", { detail: { source: "settings" } }))
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error
