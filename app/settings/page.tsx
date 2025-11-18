@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import { AnimatedSection } from "@/components/ui/animated-section"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 import { sanitizeCvForPost, ExperienceEntry, EducationEntry } from "@/lib/cv-normalizer"
+import { handleLogout as performLogout } from "@/lib/logout"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
@@ -860,149 +861,28 @@ export default function SettingsPage() {
   }
 
   const handleLogout = async () => {
-    console.groupCollapsed("[Logout] Starting logout process")
-    console.log("Timestamp:", new Date().toISOString())
-    
-    if (typeof window === "undefined") {
-      console.warn("[Logout] Running on server, skipping logout")
-      console.groupEnd()
-      return
-    }
+    // Reset component state before logout
+    setProfileExists(false)
+    setProfilePicturePreview("")
+    setPersonalInfo({
+      phoneNumber: "",
+      firstName: "",
+      lastName: "",
+      bio: "",
+      visibility: "PUBLIC",
+    })
+    setProfessionalInfo({
+      currentRole: "",
+      company: "",
+      experienceSummary: "",
+      topSkills: "",
+    })
 
-    const token = getStoredToken()
-    console.log("[Logout] Token found:", token ? "Yes" : "No")
-    console.log("[Logout] Token length:", token?.length || 0)
-
-    try {
-      // Step 1: Call logout API endpoint
-      if (token) {
-        console.log("[Logout] Step 1: Calling logout API endpoint")
-        console.log("[Logout] Endpoint:", `${API_BASE_URL}v1/auth/logout`)
-        
-        const logoutResponse = await fetch(`${API_BASE_URL}v1/auth/logout`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        console.log("[Logout] API Response Status:", logoutResponse.status)
-        console.log("[Logout] API Response OK:", logoutResponse.ok)
-        console.log("[Logout] API Response Status Text:", logoutResponse.statusText)
-
-        const logoutResult = await parseApiResponse(logoutResponse)
-        console.log("[Logout] API Response Body:", logoutResult)
-
-        if (!logoutResponse.ok) {
-          console.warn("[Logout] API logout failed, but continuing with local cleanup")
-          const errorMessage = logoutResult?.message || logoutResult?.error || "Logout API call failed"
-          console.warn("[Logout] Error:", errorMessage)
-        } else {
-          console.log("[Logout] API logout successful")
-        }
-      } else {
-        console.log("[Logout] No token found, skipping API call")
-      }
-
-      // Step 2: Clear tokens from storage
-      console.log("[Logout] Step 2: Clearing tokens from storage")
-      const localStorageToken = localStorage.getItem("auth.accessToken")
-      const sessionStorageToken = sessionStorage.getItem("auth.accessToken")
-      console.log("[Logout] localStorage token exists:", !!localStorageToken)
-      console.log("[Logout] sessionStorage token exists:", !!sessionStorageToken)
-
-      localStorage.removeItem("auth.accessToken")
-      sessionStorage.removeItem("auth.accessToken")
-      console.log("[Logout] Tokens removed from storage")
-
-      // Step 3: Clear profile data
-      console.log("[Logout] Step 3: Clearing profile data")
-      const profileExistsBefore = localStorage.getItem("profile.exists")
-      console.log("[Logout] profile.exists before:", profileExistsBefore)
-      
-      localStorage.removeItem("profile.exists")
-      console.log("[Logout] profile.exists removed")
-
-      // Step 4: Clear profile picture
-      console.log("[Logout] Step 4: Clearing profile picture")
-      const pictureKey = getProfilePictureKey()
-      console.log("[Logout] Profile picture key:", pictureKey)
-      const pictureExists = localStorage.getItem(pictureKey)
-      console.log("[Logout] Profile picture exists:", !!pictureExists)
-      
-      if (pictureExists) {
-        localStorage.removeItem(pictureKey)
-        console.log("[Logout] Profile picture removed")
-      }
-
-      // Step 5: Clear any other auth-related data
-      console.log("[Logout] Step 5: Clearing other auth data")
-      const authKeys = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && key.startsWith("auth.")) {
-          authKeys.push(key)
-        }
-      }
-      console.log("[Logout] Found auth keys:", authKeys)
-      authKeys.forEach((key) => {
-        localStorage.removeItem(key)
-        console.log("[Logout] Removed:", key)
-      })
-
-      // Step 6: Reset state
-      console.log("[Logout] Step 6: Resetting component state")
-      setProfileExists(false)
-      setProfilePicturePreview("")
-      setPersonalInfo({
-        phoneNumber: "",
-        firstName: "",
-        lastName: "",
-        bio: "",
-        visibility: "PUBLIC",
-      })
-      setProfessionalInfo({
-        currentRole: "",
-        company: "",
-        experienceSummary: "",
-        topSkills: "",
-      })
-      console.log("[Logout] State reset complete")
-
-      // Step 7: Redirect to login
-      console.log("[Logout] Step 7: Redirecting to login page")
-      router.push("/login")
-      console.log("[Logout] Redirect initiated")
-
-      console.log("[Logout] Logout process completed successfully")
-      console.groupEnd()
-    } catch (error) {
-      console.error("[Logout] Error during logout:", error)
-      console.error("[Logout] Error details:", {
-        message: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      })
-      
-      // Even if logout API fails, clear local data
-      console.log("[Logout] Attempting local cleanup despite error")
-      try {
-        localStorage.removeItem("auth.accessToken")
-        sessionStorage.removeItem("auth.accessToken")
-        localStorage.removeItem("profile.exists")
-        const pictureKey = getProfilePictureKey()
-        localStorage.removeItem(pictureKey)
-        console.log("[Logout] Local cleanup completed")
-        
-        // Redirect anyway
-        router.push("/login")
-        console.log("[Logout] Redirected to login despite error")
-      } catch (cleanupError) {
-        console.error("[Logout] Error during cleanup:", cleanupError)
-      }
-      
-      console.groupEnd()
-    }
+    // Use shared logout utility
+    await performLogout({
+      onRedirect: () => router.push("/login"),
+      userId: userId,
+    })
   }
   
   if (!isAuthorized) {

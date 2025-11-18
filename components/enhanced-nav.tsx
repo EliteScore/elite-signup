@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { handleLogout } from "@/lib/logout"
 
 interface EnhancedNavProps {
   theme?: "light" | "dark"
@@ -53,6 +54,12 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
 
   const isActive = (path: string) => {
     return pathname === path || pathname?.startsWith(`${path}/`)
+  }
+
+  const handleLogoutClick = async () => {
+    await handleLogout({
+      onRedirect: () => router.push("/login"),
+    })
   }
 
   return (
@@ -139,7 +146,7 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer text-red-500 hover:text-red-400"
-                  onClick={() => router.push("/login")}
+                  onClick={handleLogoutClick}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
