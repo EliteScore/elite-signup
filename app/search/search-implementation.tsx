@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { EnhancedButton } from "@/components/ui/enhanced-button"
 import { cn } from "@/lib/utils"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 
@@ -36,6 +38,9 @@ type ProfileInfo = {
   visibility: "PUBLIC" | "PRIVATE" | null
   createdAt: string | null
   updatedAt: string | null
+  profilePictureUrl?: string | null
+  profilePicture?: string | null
+  avatarUrl?: string | null
 }
 
 type ApiResponse<T> = {
@@ -247,6 +252,13 @@ export default function SearchPage() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchError, setSearchError] = useState<string | null>(null)
   const [ownUserId, setOwnUserId] = useState<number | null>(null)
+  const [ownFollowingIds, setOwnFollowingIds] = useState<number[] | null>(null)
+  const [showFollowersModal, setShowFollowersModal] = useState(false)
+  const [showFollowingModal, setShowFollowingModal] = useState(false)
+  const [modalProfiles, setModalProfiles] = useState<ProfileInfo[]>([])
+  const [isLoadingModalProfiles, setIsLoadingModalProfiles] = useState(false)
+  const [modalTargetUserId, setModalTargetUserId] = useState<number | null>(null)
+  const [isUpdatingFollow, setIsUpdatingFollow] = useState(false)
 
   useEffect(() => {
     if (ownUserId !== null) return
@@ -279,11 +291,227 @@ export default function SearchPage() {
     fetchOwnId()
   }, [ownUserId])
 
+  // Fetch own following list (to show follow/unfollow state in modals)
+  useEffect(() => {
+    if (!ownUserId) return
+
+    async function fetchOwnFollowing() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        const response = await fetch(`${API_BASE_URL}v1/users/get_own_following`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const followingData: number[] = result?.data || []
+          setOwnFollowingIds(Array.isArray(followingData) ? followingData : [])
+        }
+      } catch (error) {
+        console.warn("[Search] Failed to fetch own following:", error)
+      }
+    }
+
+    fetchOwnFollowing()
+  }, [ownUserId])
+
   const navigateToProfile = (userId: number) => {
     if (ownUserId !== null && userId === ownUserId) {
       router.push("/profile")
     } else {
       router.push(`/profile?userId=${userId}`)
+    }
+  }
+
+  // Fetch followers/following IDs for a specific user (public endpoints)
+  const fetchUserFollowersIds = async (userId: number): Promise<number[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}v1/users/getFollowers/${userId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const followersData: number[] = result?.data || []
+        return Array.isArray(followersData) ? followersData : []
+      }
+      return []
+    } catch (error) {
+      console.warn(`[Search] Failed to fetch followers for user ${userId}:`, error)
+      return []
+    }
+  }
+
+  const fetchUserFollowingIds = async (userId: number): Promise<number[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}v1/users/getFollowing/${userId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const followingData: number[] = result?.data || []
+        return Array.isArray(followingData) ? followingData : []
+      }
+      return []
+    } catch (error) {
+      console.warn(`[Search] Failed to fetch following for user ${userId}:`, error)
+      return []
+    }
+  }
+
+  // Fetch profiles for user IDs
+  const fetchProfilesForUserIds = async (userIds: number[]) => {
+    if (userIds.length === 0) {
+      setModalProfiles([])
+      return
+    }
+
+    setIsLoadingModalProfiles(true)
+    try {
+      const token = getStoredAccessToken()
+
+      // Fetch all profiles in parallel
+      const profilePromises = userIds.map(async (userId) => {
+        try {
+          const url = token
+            ? `${API_BASE_URL}v1/users/profile/get_profile/${userId}`
+            : `${API_BASE_URL}v1/users/profile/get_profile/${userId}`
+
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          }
+          if (token) {
+            headers.Authorization = `Bearer ${token}`
+          }
+
+          const response = await fetch(url, {
+            method: "GET",
+            headers,
+          })
+
+          if (response.ok) {
+            const result = await response.json()
+            const profile = result?.data || result
+            return profile as ProfileInfo
+          }
+          return null
+        } catch (error) {
+          console.warn(`[Search] Failed to fetch profile for user ${userId}:`, error)
+          return null
+        }
+      })
+
+      const profiles = await Promise.all(profilePromises)
+      const validProfiles = profiles.filter((p): p is ProfileInfo => p !== null)
+      setModalProfiles(validProfiles)
+    } catch (error) {
+      console.error("[Search] Error fetching modal profiles:", error)
+      setModalProfiles([])
+    } finally {
+      setIsLoadingModalProfiles(false)
+    }
+  }
+
+  // Handle opening followers modal
+  const handleOpenFollowersModal = async (userId: number) => {
+    console.log("[Search] Opening followers modal for user:", userId)
+    setModalTargetUserId(userId)
+    setShowFollowersModal(true)
+    setModalProfiles([]) // Clear previous profiles
+    setIsLoadingModalProfiles(true)
+    
+    try {
+      const followerIds = await fetchUserFollowersIds(userId)
+      console.log("[Search] Fetched follower IDs:", followerIds.length)
+      await fetchProfilesForUserIds(followerIds)
+    } catch (error) {
+      console.error("[Search] Error opening followers modal:", error)
+      setIsLoadingModalProfiles(false)
+    }
+  }
+
+  // Handle opening following modal
+  const handleOpenFollowingModal = async (userId: number) => {
+    console.log("[Search] Opening following modal for user:", userId)
+    setModalTargetUserId(userId)
+    setShowFollowingModal(true)
+    setModalProfiles([]) // Clear previous profiles
+    setIsLoadingModalProfiles(true)
+    
+    try {
+      const followingIds = await fetchUserFollowingIds(userId)
+      console.log("[Search] Fetched following IDs:", followingIds.length)
+      await fetchProfilesForUserIds(followingIds)
+    } catch (error) {
+      console.error("[Search] Error opening following modal:", error)
+      setIsLoadingModalProfiles(false)
+    }
+  }
+
+  // Handle follow/unfollow in modal
+  const handleToggleFollowInModal = async (userId: number, isCurrentlyFollowing: boolean) => {
+    if (isUpdatingFollow) return
+
+    const token = getStoredAccessToken()
+    if (!token) {
+      console.warn("[Search] No token available for follow/unfollow in modal")
+      return
+    }
+
+    setIsUpdatingFollow(true)
+
+    const endpoint = isCurrentlyFollowing
+      ? `${API_BASE_URL}v1/users/unfollow`
+      : `${API_BASE_URL}v1/users/follow`
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (response.ok) {
+        // Update local following list
+        setOwnFollowingIds((prev) => {
+          const current = Array.isArray(prev) ? prev : []
+          if (isCurrentlyFollowing) {
+            return current.filter((id) => id !== userId)
+          } else {
+            if (!current.includes(userId)) {
+              return [...current, userId]
+            }
+            return current
+          }
+        })
+
+        // If unfollowing, remove from modal profiles if in "Following" modal
+        if (isCurrentlyFollowing && showFollowingModal) {
+          setModalProfiles((prev) => prev.filter((p) => p.userId !== userId))
+        }
+      } else {
+        console.warn("[Search] Follow/unfollow failed in modal:", response.status)
+      }
+    } catch (error) {
+      console.warn("[Search] Error during follow/unfollow in modal:", error)
+    } finally {
+      setIsUpdatingFollow(false)
     }
   }
 
@@ -688,10 +916,60 @@ export default function SearchPage() {
                             )}
                             <div className="flex flex-wrap gap-3 text-[10px] text-zinc-500 mt-1">
                               {typeof person.followersCount === "number" && (
-                                <span>{person.followersCount.toLocaleString()} followers</span>
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    "text-left bg-transparent border-none p-0 m-0 text-[10px] text-zinc-500",
+                                    person.followersCount > 0 
+                                      ? "cursor-pointer hover:text-zinc-400 transition-colors underline decoration-dotted underline-offset-2" 
+                                      : "cursor-default"
+                                  )}
+                                  style={{ 
+                                    font: 'inherit',
+                                    outline: 'none',
+                                    WebkitAppearance: 'none',
+                                    MozAppearance: 'none'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    console.log("[Search] Clicked followers for user:", person.userId, "count:", person.followersCount)
+                                    if (person.followersCount && person.followersCount > 0) {
+                                      handleOpenFollowersModal(person.userId)
+                                    }
+                                  }}
+                                  disabled={!person.followersCount || person.followersCount === 0}
+                                >
+                                  {person.followersCount.toLocaleString()} followers
+                                </button>
                               )}
                               {typeof person.followingCount === "number" && (
-                                <span>{person.followingCount.toLocaleString()} following</span>
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    "text-left bg-transparent border-none p-0 m-0 text-[10px] text-zinc-500",
+                                    person.followingCount > 0 
+                                      ? "cursor-pointer hover:text-zinc-400 transition-colors underline decoration-dotted underline-offset-2" 
+                                      : "cursor-default"
+                                  )}
+                                  style={{ 
+                                    font: 'inherit',
+                                    outline: 'none',
+                                    WebkitAppearance: 'none',
+                                    MozAppearance: 'none'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    console.log("[Search] Clicked following for user:", person.userId, "count:", person.followingCount)
+                                    if (person.followingCount && person.followingCount > 0) {
+                                      handleOpenFollowingModal(person.userId)
+                                    }
+                                  }}
+                                  disabled={!person.followingCount || person.followingCount === 0}
+                                >
+                                  {person.followingCount.toLocaleString()} following
+                                </button>
                               )}
                             </div>
                           </div>
@@ -716,6 +994,160 @@ export default function SearchPage() {
           )}
         </div>
       </div>
+
+      {/* Followers Modal */}
+      <Dialog open={showFollowersModal} onOpenChange={setShowFollowersModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-white text-center border-b border-zinc-800 pb-3">Followers</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto mt-4">
+            {isLoadingModalProfiles ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              </div>
+            ) : modalProfiles.length === 0 ? (
+              <div className="text-center py-8 text-zinc-400 text-sm">No followers yet</div>
+            ) : (
+              <div className="space-y-2">
+                {modalProfiles.map((profile) => {
+                  const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || `User ${profile.userId}`
+                  const profilePic = pickFirstValidPicture(
+                    profile.profilePictureUrl,
+                    profile.profilePicture,
+                    profile.avatarUrl
+                  )
+                  const isFollowing = ownFollowingIds?.includes(profile.userId) || false
+                  const isOwnProfile = profile.userId === ownUserId
+
+                  return (
+                    <div
+                      key={profile.userId}
+                      className="flex items-center gap-3 p-3 hover:bg-zinc-800/50 rounded-lg transition-colors cursor-pointer"
+                      onClick={() => {
+                        setShowFollowersModal(false)
+                        navigateToProfile(profile.userId)
+                      }}
+                    >
+                      <Avatar className="h-11 w-11 border border-zinc-800">
+                        <AvatarImage src={profilePic || undefined} alt={fullName} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                          {fullName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white text-sm truncate">{fullName}</h3>
+                        {profile.bio && (
+                          <p className="text-xs text-zinc-400 truncate mt-0.5">{profile.bio}</p>
+                        )}
+                      </div>
+                      {!isOwnProfile && (
+                        <EnhancedButton
+                          size="sm"
+                          rounded="full"
+                          variant={isFollowing ? "outline" : "gradient"}
+                          animation={isFollowing ? undefined : "shimmer"}
+                          className={cn(
+                            "px-4 py-1.5 text-xs font-bold flex-shrink-0",
+                            isFollowing
+                              ? "border-zinc-600 text-zinc-200 bg-transparent"
+                              : "bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                          )}
+                          disabled={isUpdatingFollow}
+                          isLoading={isUpdatingFollow}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggleFollowInModal(profile.userId, isFollowing)
+                          }}
+                        >
+                          {isFollowing ? "Unfollow" : "Follow"}
+                        </EnhancedButton>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Following Modal */}
+      <Dialog open={showFollowingModal} onOpenChange={setShowFollowingModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-white text-center border-b border-zinc-800 pb-3">Following</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto mt-4">
+            {isLoadingModalProfiles ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              </div>
+            ) : modalProfiles.length === 0 ? (
+              <div className="text-center py-8 text-zinc-400 text-sm">Not following anyone yet</div>
+            ) : (
+              <div className="space-y-2">
+                {modalProfiles.map((profile) => {
+                  const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || `User ${profile.userId}`
+                  const profilePic = pickFirstValidPicture(
+                    profile.profilePictureUrl,
+                    profile.profilePicture,
+                    profile.avatarUrl
+                  )
+                  const isFollowing = ownFollowingIds?.includes(profile.userId) || false
+                  const isOwnProfile = profile.userId === ownUserId
+
+                  return (
+                    <div
+                      key={profile.userId}
+                      className="flex items-center gap-3 p-3 hover:bg-zinc-800/50 rounded-lg transition-colors cursor-pointer"
+                      onClick={() => {
+                        setShowFollowingModal(false)
+                        navigateToProfile(profile.userId)
+                      }}
+                    >
+                      <Avatar className="h-11 w-11 border border-zinc-800">
+                        <AvatarImage src={profilePic || undefined} alt={fullName} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                          {fullName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white text-sm truncate">{fullName}</h3>
+                        {profile.bio && (
+                          <p className="text-xs text-zinc-400 truncate mt-0.5">{profile.bio}</p>
+                        )}
+                      </div>
+                      {!isOwnProfile && (
+                        <EnhancedButton
+                          size="sm"
+                          rounded="full"
+                          variant={isFollowing ? "outline" : "gradient"}
+                          animation={isFollowing ? undefined : "shimmer"}
+                          className={cn(
+                            "px-4 py-1.5 text-xs font-bold flex-shrink-0",
+                            isFollowing
+                              ? "border-zinc-600 text-zinc-200 bg-transparent"
+                              : "bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                          )}
+                          disabled={isUpdatingFollow}
+                          isLoading={isUpdatingFollow}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggleFollowInModal(profile.userId, isFollowing)
+                          }}
+                        >
+                          {isFollowing ? "Unfollow" : "Follow"}
+                        </EnhancedButton>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }
