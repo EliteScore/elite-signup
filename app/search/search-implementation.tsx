@@ -13,27 +13,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 
-const DEFAULT_API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com"
-// Normalize base URL - remove trailing slash and ensure it's a valid URL
-const getApiBaseUrl = () => {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL
-  // Remove trailing slash if present and any whitespace
-  const normalized = envUrl.trim().replace(/\/+$/, "")
-  
-  // Validate URL format
-  try {
-    new URL(normalized)
-  } catch (error) {
-    console.error("[Search] Invalid API base URL:", normalized, "Falling back to default")
-    return DEFAULT_API_BASE_URL
-  }
-  
-  if (typeof window !== "undefined") {
-    console.log("[Search] API Base URL:", normalized)
-  }
-  return normalized
-}
-const API_BASE_URL = getApiBaseUrl()
+const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 
 type Resume = {
   currentRole?: string | null
@@ -173,11 +153,12 @@ const mapProfileInfoToResult = (profile: ProfileInfo): SearchResult => {
   }
 }
 
+
+
 const getSearchUrl = (input: string) => {
   const trimmed = input.trim()
   const encoded = encodeURIComponent(trimmed)
-  // Ensure no double slashes - API_BASE_URL already has trailing slash removed
-  const url = `${API_BASE_URL}/v1/users/search/${encoded}`
+  const url = `${API_BASE_URL}v1/users/search/${encoded}`
   console.log("[Search] Constructed URL:", url)
   return url
 }
@@ -199,7 +180,7 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
   return Promise.all(
     results.map(async (user) => {
       try {
-        const url = `${API_BASE_URL}/v1/users/profile/get_profile/${user.userId}`
+        const url = `${API_BASE_URL}v1/users/profile/get_profile/${user.userId}`
 
         const resp = await fetch(url, {
           method: "GET",
@@ -275,7 +256,7 @@ export default function SearchPage() {
         const token = getStoredAccessToken()
         if (!token) return
 
-        const response = await fetch(`${API_BASE_URL}/v1/users/profile/get_own_profile`, {
+        const response = await fetch(`${API_BASE_URL}v1/users/profile/get_own_profile`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
