@@ -189,6 +189,14 @@ export default function ResumePage() {
 		try {
 			setErrorMessage(null)
 			
+			// Get authentication token
+			const token = getStoredAccessToken()
+			if (!token) {
+				setErrorMessage("Authentication required. Please log in again.")
+				setUploadState("error")
+				return
+			}
+			
 			// Validate file size (max 10MB)
 			if (uploadedFile.size > 10 * 1024 * 1024) {
 				setErrorMessage("File size must be less than 10MB")
@@ -215,8 +223,11 @@ export default function ResumePage() {
 			setUploadState("processing")
 			setUploadProgress(100)
 			
-			const response = await fetch(`${PARSER_API_BASE_URL}v2/parser/resume/score`, {
+			const response = await fetch(`${PARSER_API_BASE_URL}v2/parser/resume/store/score`, {
 				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
 				body: formData,
 			})
 
