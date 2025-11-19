@@ -80,14 +80,13 @@ export default function ResumeReportPage() {
 		const scoreParam = searchParams?.get("score")
 		const dataParam = searchParams?.get("data")
 
-		if (scoreParam) {
-			setUserScore(Number(scoreParam))
-		}
-
 		if (dataParam) {
 			try {
 				const decoded = JSON.parse(decodeURIComponent(dataParam))
 				setResumeData(decoded)
+				// Extract score from API response structure (same as resume page)
+				const apiScore = decoded.score || decoded.parsed?.overall_score || 0
+				setUserScore(apiScore)
 			} catch (error) {
 				console.warn("[Resume Report] Failed to parse data param:", error)
 			}
@@ -100,13 +99,18 @@ export default function ResumeReportPage() {
 				if (stored) {
 					const parsed = JSON.parse(stored)
 					setResumeData(parsed)
-					if (!scoreParam) {
-						setUserScore(parsed.score || parsed.parsed?.overall_score)
-					}
+					// Extract score from API response structure (same as resume page)
+					const apiScore = parsed.score || parsed.parsed?.overall_score || 0
+					setUserScore(apiScore)
 				}
 			} catch (error) {
 				console.warn("[Resume Report] Failed to load from localStorage:", error)
 			}
+		}
+		
+		// Only use URL param if we don't have API data (fallback)
+		if (scoreParam && !resumeData) {
+			setUserScore(Number(scoreParam))
 		}
 	}, [isAuthorized, searchParams, resumeData])
 
@@ -149,7 +153,8 @@ export default function ResumeReportPage() {
 		)
 	}
 
-	const score = userScore || resumeData?.score || resumeData?.parsed?.overall_score || 0
+	// Extract score from API response structure (same as resume page)
+	const score = resumeData?.score || resumeData?.parsed?.overall_score || userScore || 0
 	const components = resumeData?.parsed?.components || {}
 	const explanation = resumeData?.parsed?.explanation || { highlights: [], notes: { strengths: [], weaknesses: [] } }
 

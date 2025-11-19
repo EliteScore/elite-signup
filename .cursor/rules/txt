@@ -1,90 +1,226 @@
-Overview
-EliteScore Backend is a Jakarta EE (JAX-RS) application that provides authentication, user management, profile handling, and status tracking functionalities. It is built with Jetty, Jersey, PostgreSQL, Redis, and Argon2 for secure password hashing. The backend exposes RESTful APIs that power the EliteScore platform.
+# EliteScore API — v1 (Extract: Challenges)
 
-The project is structured into logical layers: resources (API endpoints), handlers (business logic and database operations), models (entities and enums), utilities, encryption, and schedulers.
+Base URL
+--------
+All endpoints are prefixed with `/v1/challenges`.
 
-Features
-Authentication: Registration, login, password reset, JWT-based sessions.
-User Profiles: Profile creation, updates, and visibility control.
-Follow System: Follow and unfollow other users.
-Status API: Service health and system status checks.
-Password Security: Argon2 hashing for safe credential storage.
-Token Management: JWT signing, validation, and revocation.
-CORS and Filters: Configurable filters for secure API access.
-Database & Caching: PostgreSQL with HikariCP and Redis for performance.
-Scheduled Tasks: Clean-up jobs for expired tokens or unused data.
-Tech Stack
-Language: Java 17
-Frameworks: Jakarta EE, Jersey (JAX-RS)
-Server: Jetty
-Database: PostgreSQL (HikariCP connection pool)
-Security: Argon2, JWT (jjwt)
-Cache: Redis (Jedis client)
-Build Tool: Maven (Shade plugin for fat JAR packaging)
-Project Structure
-src/main/java/com/example/elitescorebackend
- ├── encryption/       # Argon2 password hashing
- ├── handlers/         # Database and business logic handlers
- ├── models/           # Entities, DTOs, and enums
- ├── res/              # REST resources (API endpoints)
- ├── response/         # Unified API response wrapper
- ├── schedulers/       # Scheduled background tasks
- ├── util/             # Utilities (DB connection, JWT, filters, app root)
- └── Main.java         # Application entrypoint
-Setup & Installation
-Prerequisites
-Java 17
-Maven 3.8+
-PostgreSQL instance
-Redis instance
-Clone and Build
-git clone https://github.com/your-org/elitescore-backend.git
-cd elitescore-backend
-mvn clean package
-This generates a shaded JAR under target/elitescore-backend-1.0.0.jar.
+Content Types
+-------------
+- Request: application/json (except file uploads)
+- Response: application/json
 
-Run
-java -jar target/elitescore-backend-1.0.0.jar
-The server will start on the configured Jetty port (default: 8080).
+==================================================
+# Resource Path: /v1/challenges
 
-Environment Variables
-The application expects certain environment variables:
+## GET /v1/challenges/get_challenges_xp
+Summary: Get total XP earned across all verified challenges.
+Auth: required (user_id from request.state)
+Response:
+{
+  "user_id": int,
+  "total_xp": int
+}
 
-DB_URL – JDBC URL for PostgreSQL (e.g. jdbc:postgresql://localhost:5432/elitescore)
-DB_USER – database username
-DB_PASSWORD – database password
-JWT_SECRET – secret key for signing JWTs
-REDIS_URL – Redis connection URL
-PEPPER_KEY – optional pepper key for password hashing
-API Endpoints
-Auth (/auth)
-POST /auth/register – Register new user
-POST /auth/login – Authenticate and receive JWT
-POST /auth/logout – Invalidate token
-POST /auth/forgot-password – Request password reset
-POST /auth/reset-password – Reset password with token
-Profile (/profile)
-GET /profile/{id} – Get user profile by ID
-PUT /profile/{id} – Update profile
-GET /profile/me – Get current user’s profile
-Follow (/follow)
-POST /follow/{id} – Follow a user
-DELETE /follow/{id} – Unfollow a user
-GET /follow/{id} – List followers/following
-Status (/status)
-GET /status/health – Check service health
-GET /status/info – Get system metadata
-Testing
-Run unit tests with:
+--------------------------------------------------
+## GET /v1/challenges/get_daily
+Summary: Retrieve or auto-create today’s daily challenge pack.
+Auth: required
+Response (200 OK): List of UCOut
+[
+  {
+    "uc_id": int,
+    "challenge_id": int,
+    "title": str,
+    "description": str,
+    "goals": [str],
+    "activities": [str],
+    "tags": [str],
+    "cadence": "daily",
+    "difficulty": "easy|medium|hard",
+    "est_minutes": int,
+    "base_xp": int,
+    "status": str,
+    "progress_pct": int,
+    "due_at": datetime
+  }
+]
 
-mvn test
-Deployment
-You can deploy the fat JAR directly on any Java 17 runtime, or integrate with containerized environments such as Docker and Kubernetes. Alternatively, you can deploy on an application server supporting Jakarta EE.
+--------------------------------------------------
+## GET /v1/challenges/get_monthly
+Summary: Retrieve or auto-create the current month’s challenge pack.
+Auth: required
+Response (200 OK): List of UCOut
+(same structure as `/get_daily`, cadence="monthly")
 
-Example Docker run:
+--------------------------------------------------
+## POST /v1/challenges/start_challenge/{uc_id}
+Summary: Mark an assigned challenge as started.
+Auth: required
+Path Params:
+- uc_id (int) — ID of the user_challenge to start
+Responses:
+- 200 OK — {"uc_id": int, "started": true}
+- 400 Bad Request — {"error": "Challenge cannot be started"}
+- 404 Not Found — UserChallenge not found
 
-docker build -t elitescore-backend .
-docker run -p 8080:8080 --env-file .env elitescore-backend
-License
-This project is licensed under the MIT License. See LICENSE for details.
+--------------------------------------------------
+## POST /v1/challenges/verify/text/{uc_id}
+Summary: Submit a text reflection proof for a challenge.
+Auth: required
+Consumes: application/json
+Request Body:
+{
+  "text": string  // must be ≥ 50 characters
+}
+Responses:
+- 200 OK — Verified or queued result:
+  {
+    "uc_id": int,
+    "verified"?: bool,
+    "queued"?: bool,
+    "ai_confidence": float,
+    "low_conf_reason": string,
+    "verdict": "approve|reject"
+  }
+- 400 Bad Request — Short or invalid text
+- 404 Not Found — UserChallenge not found
 
+Behavior:
+- Stores/updates ArtifactText.
+- AI-verifies with OpenAI model.
+- If confidence ≥ 0.75 → immediate verification and XP awarded.
+- If 0.2–0.75 → added to moderation queue.
+- If ≤ 0.2 → rejected (no queue).
+
+--------------------------------------------------
+## POST /v1/challenges/verify/link/{uc_id}
+Summary: Submit a URL proof for a challenge.
+Auth: required
+Consumes: application/json
+Request Body:
+{
+  "url": "https://example.com/my-proof"
+}
+Responses:
+- 200 OK — same pattern as `/verify/text`
+- 400 Bad Request — Empty or unreachable URL
+- 404 Not Found — UserChallenge not found
+
+Behavior:
+- Validates URL liveness (HEAD/GET 200–399).
+- Stores/updates ArtifactLink.
+- AI-verifies URL semantics.
+- Queues or verifies immediately based on confidence thresholds.
+
+--------------------------------------------------
+## POST /v1/challenges/verify/photo/{uc_id}
+Summary: Submit an image proof (photo/screenshot) for a challenge.
+Auth: required
+Consumes: multipart/form-data
+Form Data:
+- file: image/jpeg or image/png (≤ 5 MB)
+Responses:
+- 200 OK — same pattern as `/verify/text`
+- 400 Bad Request — Empty, oversized, or unsupported file
+- 404 Not Found — UserChallenge not found
+
+Behavior:
+- Saves/updates ArtifactPhoto.
+- AI-verifies visual content with vision model.
+- Applies same confidence thresholds and queue logic.
+
+--------------------------------------------------
+## POST /v1/challenges/replace/{uc_id}
+Summary: Replace an assigned challenge with a new one of the same cadence.
+Auth: required
+Path Params:
+- uc_id (int)
+Response (200 OK):
+UCOut (new challenge details)
+Errors:
+- 400 — Cannot replace verified challenge
+- 404 — UserChallenge not found
+- 409 — No replacement candidates available
+
+Behavior:
+- Marks old challenge as `skipped`.
+- Selects a new eligible challenge based on preferences.
+- Updates pack item to point to the new UC.
+
+--------------------------------------------------
+## POST /v1/challenges/refresh/daily
+Summary: Force refresh of the daily pack (e.g., cron or manual).
+Auth: required
+Response:
+{
+  "ok": true,
+  "pack_id": int,
+  "count": int  // number of items in the pack
+}
+
+--------------------------------------------------
+## POST /v1/challenges/refresh/monthly
+Summary: Force refresh of the monthly pack (e.g., cron or manual).
+Auth: required
+Response:
+{
+  "ok": true,
+  "pack_id": int,
+  "count": int
+}
+
+--------------------------------------------------
+## GET /v1/challenges/stats
+Summary: Get user’s verified/skipped/expired challenge stats with percentages.
+Auth: required
+Response (200 OK):
+[
+  {"status": "verified", "count": int, "percentage": float},
+  {"status": "skipped",  "count": int, "percentage": float},
+  {"status": "expired",  "count": int, "percentage": float}
+]
+Behavior:
+- Aggregates UserChallenge counts for each status.
+- Computes percentage of total.
+
+==================================================
+
+Examples — cURL
+---------------
+
+# Get total XP
+curl -X GET "$BASE/v1/challenges/get_challenges_xp" \
+  -H "Authorization: Bearer <token>"
+
+# Get daily pack
+curl -X GET "$BASE/v1/challenges/get_daily" \
+  -H "Authorization: Bearer <token>"
+
+# Start a challenge
+curl -X POST "$BASE/v1/challenges/start_challenge/123" \
+  -H "Authorization: Bearer <token>"
+
+# Verify text proof
+curl -X POST "$BASE/v1/challenges/verify/text/123" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "I completed the challenge by building a working app..."}'
+
+# Verify link proof
+curl -X POST "$BASE/v1/challenges/verify/link/123" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://github.com/me/project"}'
+
+# Verify photo proof
+curl -X POST "$BASE/v1/challenges/verify/photo/123" \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@proof.png"
+
+# Replace a challenge
+curl -X POST "$BASE/v1/challenges/replace/123" \
+  -H "Authorization: Bearer <token>"
+
+# Stats
+curl -X GET "$BASE/v1/challenges/stats" \
+  -H "Authorization: Bearer <token>"

@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
           'Authorization': token,
         },
         body: JSON.stringify({
-          link: body.link,
+          url: body.link,  // API expects 'url' field per spec
         }),
       })
       console.log("[API Proxy] External API response received")

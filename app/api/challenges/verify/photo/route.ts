@@ -66,8 +66,9 @@ export async function POST(request: NextRequest) {
     console.log("[API Proxy] Photo file size:", photo.size)
 
     // Create new FormData for the external API
+    // The external API expects the field to be named 'file', not 'photo'
     const apiFormData = new FormData()
-    apiFormData.append('photo', photo)
+    apiFormData.append('file', photo)
 
     let response: Response
     try {

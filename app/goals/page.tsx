@@ -45,6 +45,8 @@ import {
   Image,
   Link as LinkIcon,
   Type,
+  RefreshCw,
+  Loader2,
 } from "lucide-react"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -61,183 +63,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getStoredAccessToken } from "@/lib/auth-storage"
+import { goalCategories, activityPreferences, achievements, monthlyChallenges } from "./constants"
+import { mapApiChallengeToComponent } from "./utils"
+import { OnboardingFlow } from "./components/OnboardingFlow"
+import { VerificationModal } from "./components/VerificationModal"
 
-// Goal categories
-const goalCategories = [
-  {
-    id: "career",
-    name: "Career Growth",
-    icon: Briefcase,
-    gradient: "from-blue-500 via-purple-500 to-fuchsia-500",
-    description: "Advance your career and reach new heights",
-    color: "blue",
-  },
-  {
-    id: "learning",
-    name: "Skill Development",
-    icon: BookOpen,
-    gradient: "from-purple-500 via-pink-500 to-red-500",
-    description: "Master new skills and technologies",
-    color: "purple",
-  },
-  {
-    id: "financial",
-    name: "Financial Freedom",
-    icon: DollarSign,
-    gradient: "from-yellow-500 via-orange-500 to-red-500",
-    description: "Achieve financial independence and security",
-    color: "yellow",
-  },
-  {
-    id: "personal",
-    name: "Person Growth",
-    icon: Sparkles,
-    gradient: "from-pink-500 via-purple-500 to-indigo-500",
-    description: "Become the best version of yourself",
-    color: "pink",
-  },
-  {
-    id: "business",
-    name: "Entrepreneurship",
-    icon: Rocket,
-    gradient: "from-indigo-500 via-blue-500 to-cyan-500",
-    description: "Build and scale your business empire",
-    color: "indigo",
-  }
-]
-
-// Activity preferences
-const activityPreferences = [
-  { id: "coding", name: "Programming & Development", icon: Code, category: "learning" },
-  { id: "design", name: "UI/UX Design", icon: Palette, category: "learning" },
-  { id: "data", name: "Data Science & Analytics", icon: BarChart2, category: "learning" },
-  { id: "leadership", name: "Leadership & Management", icon: Users, category: "career" },
-  { id: "networking", name: "Networking & Communication", icon: MessageCircle, category: "career" },
-  { id: "fitness", name: "Health & Fitness", icon: Heart, category: "personal" },
-  { id: "mindfulness", name: "Mindfulness & Meditation", icon: Brain, category: "personal" },
-  { id: "investing", name: "Investing & Finance", icon: TrendingUp, category: "financial" },
-  { id: "entrepreneurship", name: "Entrepreneurship", icon: Rocket, category: "business" },
-  { id: "marketing", name: "Digital Marketing", icon: Sparkles, category: "business" },
-  { id: "languages", name: "Language Learning", icon: Globe, category: "learning" },
-  { id: "public-speaking", name: "Public Speaking", icon: Mic, category: "career" }
-]
-
-// Daily challenges with more detail
-const dailyChallenges = [
-  {
-    id: 1,
-    title: "Complete a Coding Challenge",
-    description: "Solve one problem on LeetCode or HackerRank to sharpen your skills",
-    xp: 100,
-    difficulty: "Medium",
-    timeEstimate: "30 mins",
-    category: "learning",
-    icon: Code,
-    participants: 234,
-    completions: 1847,
-  },
-  {
-    id: 2,
-    title: "Network with a Peer",
-    description: "Send a meaningful message to someone in your field and build connections",
-    xp: 75,
-      difficulty: "Easy",
-      timeEstimate: "15 mins",
-    category: "career",
-    icon: Users,
-    participants: 456,
-    completions: 3421,
-    },
-    {
-    id: 3,
-      title: "Read Industry Article",
-    description: "Read and summarize one tech industry article to stay informed",
-    xp: 50,
-      difficulty: "Easy",
-      timeEstimate: "20 mins",
-    category: "learning",
-    icon: BookOpen,
-    participants: 567,
-    completions: 4523,
-  },
-    {
-      id: 4,
-    title: "Practice Public Speaking",
-    description: "Record yourself giving a 3-minute presentation on any topic",
-    xp: 80,
-      difficulty: "Medium",
-    timeEstimate: "25 mins",
-    category: "career",
-    icon: Mic,
-    participants: 123,
-    completions: 892,
-    },
-    {
-      id: 5,
-    title: "Work on Side Project",
-    description: "Spend focused time building or improving your personal project",
-    xp: 120,
-    difficulty: "Medium",
-    timeEstimate: "45 mins",
-    category: "learning",
-    icon: Rocket,
-    participants: 345,
-    completions: 2156,
-    }
-  ]
-
-// Monthly challenges
-const monthlyChallenges = [
-  {
-    id: 1,
-    title: "Build a Complete Project",
-    description: "Create a full-stack application with modern technologies",
-    xp: 1000,
-    difficulty: "Hard",
-    timeEstimate: "20+ hours",
-    deadline: "2024-03-31",
-    progress: 35,
-    icon: Code,
-    reward: "Project Master Badge",
-    participants: 89,
-  },
-  {
-    id: 2,
-    title: "Get a Professional Certification",
-    description: "Complete AWS, Google Cloud, or similar certification",
-    xp: 1500,
-    difficulty: "Hard",
-    timeEstimate: "40+ hours",
-    deadline: "2024-04-15",
-    progress: 15,
-    icon: Award,
-    reward: "Certified Pro Badge",
-    participants: 156,
-  },
-  {
-    id: 3,
-    title: "Attend 3 Networking Events",
-    description: "Join virtual or in-person professional events",
-    xp: 500,
-    difficulty: "Medium",
-    timeEstimate: "6+ hours",
-    deadline: "2024-03-20",
-    progress: 66,
-    icon: Users,
-    reward: "Connector Badge",
-    participants: 234,
-  }
-]
-
-
-// Achievements/Badges
-const achievements = [
-  { id: 1, name: "Code Master", icon: Code, earned: true, rarity: "epic" },
-  { id: 2, name: "Streak Legend", icon: Flame, earned: true, rarity: "legendary" },
-  { id: 3, name: "Social Butterfly", icon: Users, earned: true, rarity: "rare" },
-  { id: 4, name: "Project Guru", icon: Rocket, earned: false, rarity: "epic" },
-  { id: 5, name: "Elite Learner", icon: BookOpen, earned: false, rarity: "legendary" },
-]
 
 // Leaderboard preview
 const leaderboardPreview = [
@@ -284,6 +114,12 @@ export default function GoalsPage() {
   const [challengesXP, setChallengesXP] = useState<Record<number, number>>({})
   const [isLoadingXP, setIsLoadingXP] = useState(false)
   const [userTotalXP, setUserTotalXP] = useState<number | null>(null)
+  const [challengeStats, setChallengeStats] = useState<Array<{
+    status: "verified" | "skipped" | "expired"
+    count: number
+    percentage: number
+  }>>([])
+  const [isLoadingStats, setIsLoadingStats] = useState(false)
 
   // Verification modal state
   const [showVerificationModal, setShowVerificationModal] = useState(false)
@@ -308,88 +144,13 @@ export default function GoalsPage() {
       low_conf_reason?: string
     }
   } | null>(null)
+  
+  // Processing verification state
+  const [isProcessingVerification, setIsProcessingVerification] = useState(false)
+  const [processingMessage, setProcessingMessage] = useState("Submitting verification...")
+  const [processingChallenge, setProcessingChallenge] = useState<{ id: number; title: string; uc_id?: number } | null>(null)
 
   const PARSER_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
-
-  // Helper function to map challenge data to icon based on goals/activities/tags
-  const getChallengeIcon = (challenge: any) => {
-    // Check activities first
-    if (challenge.activities && challenge.activities.length > 0) {
-      const activityName = challenge.activities[0]
-      const activity = activityPreferences.find(a => a.name === activityName)
-      if (activity) return activity.icon
-    }
-    
-    // Check goals
-    if (challenge.goals && challenge.goals.length > 0) {
-      const goalName = challenge.goals[0]
-      const goal = goalCategories.find(g => g.name === goalName)
-      if (goal) return goal.icon
-    }
-    
-    // Check tags for common keywords
-    if (challenge.tags && challenge.tags.length > 0) {
-      const tags = challenge.tags.map((t: string) => t.toLowerCase())
-      if (tags.some((t: string) => t.includes('code') || t.includes('programming'))) return Code
-      if (tags.some((t: string) => t.includes('network') || t.includes('connect'))) return Users
-      if (tags.some((t: string) => t.includes('read') || t.includes('book'))) return BookOpen
-      if (tags.some((t: string) => t.includes('speak') || t.includes('present'))) return Mic
-      if (tags.some((t: string) => t.includes('project') || t.includes('build'))) return Rocket
-    }
-    
-    // Default icon
-    return Target
-  }
-
-  // Helper function to get category from goals/activities
-  const getChallengeCategory = (challenge: any): string => {
-    if (challenge.activities && challenge.activities.length > 0) {
-      const activityName = challenge.activities[0]
-      const activity = activityPreferences.find(a => a.name === activityName)
-      if (activity) return activity.category
-    }
-    
-    if (challenge.goals && challenge.goals.length > 0) {
-      const goalName = challenge.goals[0]
-      const goal = goalCategories.find(g => g.name === goalName)
-      if (goal) return goal.id
-    }
-    
-    return "learning"
-  }
-
-  // Map API challenge to component format
-  const mapApiChallengeToComponent = (apiChallenge: any) => {
-    const icon = getChallengeIcon(apiChallenge)
-    const category = getChallengeCategory(apiChallenge)
-    const difficulty = apiChallenge.difficulty 
-      ? apiChallenge.difficulty.charAt(0).toUpperCase() + apiChallenge.difficulty.slice(1)
-      : "Medium"
-    const timeEstimate = apiChallenge.est_minutes 
-      ? `${apiChallenge.est_minutes} mins`
-      : "30 mins"
-    
-    return {
-      id: apiChallenge.challenge_id || apiChallenge.uc_id,
-      uc_id: apiChallenge.uc_id,
-      title: apiChallenge.title || "Untitled Challenge",
-      description: apiChallenge.description || "",
-      xp: apiChallenge.base_xp || 100,
-      difficulty,
-      timeEstimate,
-      category,
-      icon,
-      participants: 0, // Not in API response
-      completions: 0, // Not in API response
-      status: apiChallenge.status,
-      progress_pct: apiChallenge.progress_pct || 0,
-      due_at: apiChallenge.due_at,
-      goals: apiChallenge.goals || [],
-      activities: apiChallenge.activities || [],
-      tags: apiChallenge.tags || [],
-      cadence: apiChallenge.cadence || "daily",
-    }
-  }
 
   // Check for onboarding completion on mount
   useEffect(() => {
@@ -612,11 +373,166 @@ export default function GoalsPage() {
           setIsLoadingXP(false)
         }
       }
-      
-      fetchPreferences()
-      fetchDailyChallenges()
-      fetchMonthlyChallenges()
-      fetchChallengesXP()
+
+      // Fetch challenges stats from API
+      const fetchChallengesStats = async () => {
+        const token = getStoredAccessToken()
+        if (!token) {
+          console.log("[Challenges Stats] No token available for fetching stats")
+          return
+        }
+
+        setIsLoadingStats(true)
+        try {
+          console.log("[Challenges Stats] Fetching challenges stats from API...")
+          const response = await fetch("/api/challenges/stats", {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (!response.ok) {
+            console.error("[Challenges Stats] Failed to fetch stats:", response.status, response.statusText)
+            setIsLoadingStats(false)
+            return
+          }
+
+          const data = await response.json()
+          console.log("[Challenges Stats] Fetched stats:", data)
+          
+          if (data && Array.isArray(data)) {
+            setChallengeStats(data)
+            console.log("[Challenges Stats] Set stats:", data)
+          }
+        } catch (error) {
+          console.error("[Challenges Stats] Error fetching stats:", error)
+        } finally {
+          setIsLoadingStats(false)
+        }
+      }
+
+      // Refresh daily challenges if enough time has passed (24 hours)
+      const refreshDailyChallengesIfNeeded = async () => {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        const lastRefreshKey = "challenges.lastDailyRefresh"
+        const lastRefresh = localStorage.getItem(lastRefreshKey)
+        const now = Date.now()
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+
+        // Check if we need to refresh (no last refresh or more than 24 hours passed)
+        const shouldRefresh = !lastRefresh || (now - parseInt(lastRefresh)) >= TWENTY_FOUR_HOURS
+
+        if (shouldRefresh) {
+          try {
+            console.log("[Daily Refresh] Refreshing daily challenges...")
+            const response = await fetch("/api/challenges/refresh/daily", {
+              method: "POST",
+              headers: {
+                "Accept": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              console.log("[Daily Refresh] Refresh successful:", data)
+              // Update last refresh time
+              localStorage.setItem(lastRefreshKey, String(now))
+              // Refetch challenges after refresh
+              await fetchDailyChallenges()
+            } else {
+              // Don't throw - just log and continue with normal fetch
+              const errorData = await response.json().catch(() => ({ error: response.statusText }))
+              console.warn("[Daily Refresh] Refresh failed, continuing with normal fetch:", response.status, errorData)
+              // Don't update last refresh time on failure - will retry next time
+            }
+          } catch (error) {
+            // Don't throw - just log and continue
+            console.warn("[Daily Refresh] Error refreshing challenges, continuing with normal fetch:", error)
+            // Don't update last refresh time on failure - will retry next time
+          }
+        } else {
+          const timeUntilRefresh = TWENTY_FOUR_HOURS - (now - parseInt(lastRefresh))
+          const hoursUntilRefresh = Math.floor(timeUntilRefresh / (60 * 60 * 1000))
+          console.log(`[Daily Refresh] Next refresh in ${hoursUntilRefresh} hours`)
+        }
+      }
+
+      // Refresh monthly challenges if enough time has passed (30 days)
+      const refreshMonthlyChallengesIfNeeded = async () => {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        const lastRefreshKey = "challenges.lastMonthlyRefresh"
+        const lastRefresh = localStorage.getItem(lastRefreshKey)
+        const now = Date.now()
+        const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000 // 30 days in milliseconds
+
+        // Check if we need to refresh (no last refresh or more than 30 days passed)
+        const shouldRefresh = !lastRefresh || (now - parseInt(lastRefresh)) >= THIRTY_DAYS
+
+        if (shouldRefresh) {
+          try {
+            console.log("[Monthly Refresh] Refreshing monthly challenges...")
+            const response = await fetch("/api/challenges/refresh/monthly", {
+              method: "POST",
+              headers: {
+                "Accept": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              console.log("[Monthly Refresh] Refresh successful:", data)
+              // Update last refresh time
+              localStorage.setItem(lastRefreshKey, String(now))
+              // Refetch challenges after refresh
+              await fetchMonthlyChallenges()
+            } else {
+              // Don't throw - just log and continue with normal fetch
+              const errorData = await response.json().catch(() => ({ error: response.statusText }))
+              console.warn("[Monthly Refresh] Refresh failed, continuing with normal fetch:", response.status, errorData)
+              // Don't update last refresh time on failure - will retry next time
+            }
+          } catch (error) {
+            // Don't throw - just log and continue
+            console.warn("[Monthly Refresh] Error refreshing challenges, continuing with normal fetch:", error)
+            // Don't update last refresh time on failure - will retry next time
+          }
+        } else {
+          const timeUntilRefresh = THIRTY_DAYS - (now - parseInt(lastRefresh))
+          const daysUntilRefresh = Math.floor(timeUntilRefresh / (24 * 60 * 60 * 1000))
+          console.log(`[Monthly Refresh] Next refresh in ${daysUntilRefresh} days`)
+        }
+      }
+
+      // Initialize and fetch data
+      const initializeData = async () => {
+        await fetchPreferences()
+        // Try to refresh if needed (non-blocking - failures won't stop normal fetch)
+        try {
+          await refreshDailyChallengesIfNeeded()
+        } catch (error) {
+          console.warn("[Initialize] Daily refresh error (non-blocking):", error)
+        }
+        try {
+          await refreshMonthlyChallengesIfNeeded()
+        } catch (error) {
+          console.warn("[Initialize] Monthly refresh error (non-blocking):", error)
+        }
+        // Always fetch challenges normally (even if refresh failed)
+        fetchDailyChallenges()
+        fetchMonthlyChallenges()
+        fetchChallengesXP()
+        fetchChallengesStats()
+      }
+
+      initializeData()
     }
   }, [isAuthorized])
 
@@ -896,14 +812,23 @@ export default function GoalsPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Failed to start challenge" }))
         console.error("[Start Challenge] Failed to start challenge:", errorData)
+        alert(errorData.error || "Failed to start challenge. Please try again.")
         return
       }
 
       const data = await response.json()
       console.log("[Start Challenge] Challenge started successfully:", data)
       
+      // Find the challenge to get its details
+      const challenge = apiDailyChallenges.find(c => c.uc_id === ucId) || 
+                       apiMonthlyChallenges.find(c => c.uc_id === ucId)
+      
+      if (!challenge) {
+        console.error("[Start Challenge] Challenge not found in local state")
+        return
+      }
+      
       // Update the challenge status in the local state to "started"
-      // This ensures the challenge stays in "in progress" state
       setApiDailyChallenges(prev => 
         prev.map(c => {
           if (c.uc_id === ucId) {
@@ -920,10 +845,20 @@ export default function GoalsPage() {
           return c
         })
       )
+      
+      // Automatically open verification modal after starting
+      setPendingChallenge({ id: challenge.id, xp: challenge.xp, uc_id: ucId })
+      setShowVerificationModal(true)
+      setVerificationType("photo")
+      setVerificationPhoto(null)
+      setVerificationLink("")
+      setVerificationText("")
     } catch (error) {
       console.error("[Start Challenge] Error starting challenge:", error)
+      alert("Failed to start challenge. Please try again.")
     }
   }
+
 
   const handleChallengeComplete = (challengeId: number, xp: number, ucId?: number) => {
     // Show verification modal instead of directly completing
@@ -950,9 +885,16 @@ export default function GoalsPage() {
       alert("Please provide a link to verify completion")
       return
     }
-    if (verificationType === "text" && !verificationText.trim()) {
-      alert("Please provide text description to verify completion")
-      return
+    if (verificationType === "text") {
+      const trimmedText = verificationText.trim()
+      if (!trimmedText) {
+        alert("Please provide text description to verify completion")
+        return
+      }
+      if (trimmedText.length < 50) {
+        alert(`Text must be at least 50 characters long. You have ${trimmedText.length} characters. Please provide more details.`)
+        return
+      }
     }
 
     setIsSubmittingVerification(true)
@@ -964,7 +906,34 @@ export default function GoalsPage() {
       return
     }
 
+    // Close verification modal and show processing overlay
+    setShowVerificationModal(false)
+    setIsProcessingVerification(true)
+    setProcessingMessage("Submitting verification...")
+    
+    // Find challenge title for display
+    const challenge = apiDailyChallenges.find(c => c.uc_id === pendingChallenge.uc_id) || 
+                     apiMonthlyChallenges.find(c => c.uc_id === pendingChallenge.uc_id)
+    setProcessingChallenge({
+      id: pendingChallenge.id,
+      title: challenge?.title || "Challenge",
+      uc_id: pendingChallenge.uc_id
+    })
+
+    // Update challenge status to "verifying" immediately
+    setApiDailyChallenges(prev => 
+      prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "verifying" } : c)
+    )
+    setApiMonthlyChallenges(prev => 
+      prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "verifying" } : c)
+    )
+
     try {
+      // Update message after a short delay
+      setTimeout(() => {
+        setProcessingMessage("AI is analyzing your submission...")
+      }, 1000)
+
       let response: Response
       let apiUrl = ""
 
@@ -1014,18 +983,70 @@ export default function GoalsPage() {
         throw new Error("Invalid verification type")
       }
 
+      // Update message while waiting for response
+      setTimeout(() => {
+        setProcessingMessage("Verifying challenge completion...")
+      }, 2000)
+
       console.log("[Verification] API response status:", response.status)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to verify challenge" }))
+        let errorData: any = null
+        try {
+          const responseText = await response.text()
+          console.error("[Verification] Raw error response:", responseText)
+          try {
+            errorData = JSON.parse(responseText)
+            console.error("[Verification] Parsed error data:", errorData)
+          } catch (parseError) {
+            errorData = { error: responseText || "Failed to verify challenge" }
+          }
+        } catch (readError) {
+          console.error("[Verification] Failed to read error response:", readError)
+          errorData = { error: "Failed to verify challenge" }
+        }
+        
         console.error("[Verification] Verification failed:", errorData)
         
+        // Hide processing overlay
+        setIsProcessingVerification(false)
+        setProcessingChallenge(null)
+        
+        // Extract error message properly
         let errorMessage = "Failed to verify challenge. Please try again."
         if (response.status === 400) {
-          errorMessage = errorData.error || errorData.message || "Invalid verification data. Please check your input and try again."
+          // Handle different error response formats
+          if (typeof errorData?.error === 'string') {
+            errorMessage = errorData.error
+          } else if (errorData?.error?.error) {
+            errorMessage = errorData.error.error
+          } else if (errorData?.error?.message) {
+            errorMessage = errorData.error.message
+          } else if (errorData?.message) {
+            errorMessage = errorData.message
+          } else if (errorData?.error && typeof errorData.error === 'object') {
+            errorMessage = JSON.stringify(errorData.error)
+          } else {
+            errorMessage = "Invalid verification data. Please check your input and try again."
+            if (verificationType === "text") {
+              errorMessage = "Text must be at least 50 characters long. Please provide more details about how you completed the challenge."
+            } else if (verificationType === "link") {
+              errorMessage = "Invalid or unreachable URL. Please check your link and try again."
+            } else if (verificationType === "photo") {
+              errorMessage = "Invalid photo. Please ensure the file is a valid image (JPG, PNG) under 5MB."
+            }
+          }
         } else if (response.status === 404) {
           errorMessage = "Challenge not found. Please refresh and try again."
         }
+        
+        // Revert status from "verifying" back to "started"
+        setApiDailyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
+        setApiMonthlyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
         
         alert(errorMessage)
         setIsSubmittingVerification(false)
@@ -1035,17 +1056,52 @@ export default function GoalsPage() {
       const data = await response.json()
       console.log("[Verification] Verification response:", data)
 
-      // Show "Request Sent" notification first
-      setVerificationStatus({
-        show: true,
-        status: "sent",
-        message: "Verification request sent successfully",
-        details: data
-      })
+      // Hide processing overlay
+      setIsProcessingVerification(false)
+      setProcessingChallenge(null)
 
       // Check verification status from API response
-      const isVerified = data.verified === true || data.verdict === "approve"
-      const isQueued = data.queued === true
+      // IMPORTANT: Check verdict FIRST - if reject, show rejected immediately
+      const verdict = data.verdict || "approve"
+      const isRejected = verdict === "reject"
+      const isVerified = data.verified === true || verdict === "approve"
+      const isQueued = data.queued === true && !isRejected // Only queue if not rejected
+
+      // If rejected, show rejected status and allow retry
+      if (isRejected) {
+        setVerificationStatus({
+          show: true,
+          status: "rejected",
+          message: "Verification Rejected",
+          details: {
+            verified: false,
+            verdict: "reject",
+            ai_confidence: data.ai_confidence,
+            low_conf_reason: data.low_conf_reason || data.reason || "Verification was rejected"
+          }
+        })
+        
+        // Revert status from "verifying" back to "started" so user can try again
+        setApiDailyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
+        setApiMonthlyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
+        
+        // Reset form so user can submit again
+        setPendingChallenge(null)
+        setVerificationPhoto(null)
+        setVerificationLink("")
+        setVerificationText("")
+        setIsSubmittingVerification(false)
+        
+        // Auto-hide notification after 10 seconds
+        setTimeout(() => {
+          setVerificationStatus(null)
+        }, 10000)
+        return
+      }
 
       if (isQueued) {
         // Challenge is queued for review - show detailed status
@@ -1061,7 +1117,7 @@ export default function GoalsPage() {
           }
         })
         
-        // Update challenge status to queued
+        // Update challenge status to queued (keep verifying state visible)
         setApiDailyChallenges(prev => 
           prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "queued" } : c)
         )
@@ -1069,8 +1125,7 @@ export default function GoalsPage() {
           prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "queued" } : c)
         )
         
-        // Close modal and reset
-        setShowVerificationModal(false)
+        // Reset form
         setPendingChallenge(null)
         setVerificationPhoto(null)
         setVerificationLink("")
@@ -1085,7 +1140,7 @@ export default function GoalsPage() {
       }
 
       if (!isVerified) {
-        // Verification was rejected - show detailed status
+        // Verification was rejected - show detailed status (fallback case)
         setVerificationStatus({
           show: true,
           status: "rejected",
@@ -1094,9 +1149,23 @@ export default function GoalsPage() {
             verified: false,
             verdict: data.verdict || "reject",
             ai_confidence: data.ai_confidence,
-            low_conf_reason: data.low_conf_reason
+            low_conf_reason: data.low_conf_reason || data.reason
           }
         })
+        
+        // Revert status from "verifying" back to "started"
+        setApiDailyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
+        setApiMonthlyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
+        
+        // Reset form so user can try again
+        setPendingChallenge(null)
+        setVerificationPhoto(null)
+        setVerificationLink("")
+        setVerificationText("")
         setIsSubmittingVerification(false)
         
         // Auto-hide notification after 10 seconds
@@ -1122,13 +1191,13 @@ export default function GoalsPage() {
       if (!completedChallenges.includes(pendingChallenge.id)) {
         const newCompleted = [...completedChallenges, pendingChallenge.id]
         const newXP = (userTotalXP !== null ? userTotalXP : totalXP) + pendingChallenge.xp
-        setCompletedChallenges(newCompleted)
-        setTotalXP(newXP)
+      setCompletedChallenges(newCompleted)
+      setTotalXP(newXP)
         if (userTotalXP !== null) {
           setUserTotalXP(newXP)
         }
-        localStorage.setItem("goals.completedChallenges", JSON.stringify(newCompleted))
-        localStorage.setItem("goals.totalXP", String(newXP))
+      localStorage.setItem("goals.completedChallenges", JSON.stringify(newCompleted))
+      localStorage.setItem("goals.totalXP", String(newXP))
         
         // Update challenge status in API challenges
         setApiDailyChallenges(prev => 
@@ -1137,14 +1206,13 @@ export default function GoalsPage() {
         setApiMonthlyChallenges(prev => 
           prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "completed" } : c)
         )
-        
-        // Show celebration
-        setShowCelebration(true)
-        setTimeout(() => setShowCelebration(false), 3000)
+      
+      // Show celebration
+      setShowCelebration(true)
+      setTimeout(() => setShowCelebration(false), 3000)
       }
 
-      // Close modal and reset
-      setShowVerificationModal(false)
+      // Reset form
       setPendingChallenge(null)
       setVerificationPhoto(null)
       setVerificationLink("")
@@ -1156,6 +1224,21 @@ export default function GoalsPage() {
       }, 5000)
     } catch (error) {
       console.error("[Verification] Error submitting verification:", error)
+      
+      // Hide processing overlay
+      setIsProcessingVerification(false)
+      setProcessingChallenge(null)
+      
+      // Revert status from "verifying" back to "started"
+      if (pendingChallenge?.uc_id) {
+        setApiDailyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
+        setApiMonthlyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "started" } : c)
+        )
+      }
+      
       alert("Failed to submit verification. Please try again.")
     } finally {
       setIsSubmittingVerification(false)
@@ -1173,241 +1256,16 @@ export default function GoalsPage() {
   if (!hasCompletedOnboarding) {
   return (
       <DashboardLayout>
-        <div className="min-h-screen pb-20">
-          <div className="max-w-md mx-auto px-4 py-4 sm:py-6">
-            {onboardingStep === 'goals' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="space-y-4 sm:space-y-6"
-              >
-                <div className="text-center mb-6 sm:mb-8">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    className="flex justify-center mb-4"
-                  >
-            <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full blur-xl opacity-50 animate-pulse" />
-                      <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.8)]">
-                        <Target className="h-10 w-10 text-white" />
-              </div>
-            </div>
-                  </motion.div>
-                  <h1 className="text-3xl sm:text-4xl font-extrabold mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Choose Your Goals
-              </h1>
-                  <p className="text-sm sm:text-base text-zinc-400 mb-4 px-2 max-w-sm mx-auto">
-                    Select at least 2 areas you want to focus on. Join thousands of others on their journey.
-              </p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/40 px-3 py-1">
-                      <Users className="h-3 w-3 mr-1" />
-                      {selectedGoals.length} / 2+ selected
-                    </Badge>
-                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/40 px-3 py-1">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      15.2k active users
-                    </Badge>
-              </div>
-            </div>
-
-                <div className="space-y-3">
-                  {goalCategories.map((goal, index) => (
-                        <motion.div
-                      key={goal.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                        >
-                          <EnhancedCard
-                        variant={selectedGoals.includes(goal.id) ? "gradient" : "default"}
-                        className={cn(
-                          "cursor-pointer transition-all duration-300 relative overflow-hidden",
-                          selectedGoals.includes(goal.id)
-                            ? "border-blue-500/60 shadow-[0_0_30px_rgba(59,130,246,0.5)] scale-[1.02]"
-                            : "border-zinc-800 hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-                        )}
-                        onClick={() => handleGoalToggle(goal.id)}
-                      >
-                        {selectedGoals.includes(goal.id) && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10"
-                          />
-                        )}
-                        <EnhancedCardContent className="p-4 relative">
-                          <div className="flex items-center gap-3">
-                            <motion.div
-                              whileHover={{ scale: 1.1, rotate: 5 }}
-                              className={`w-16 h-16 rounded-xl bg-gradient-to-br ${goal.gradient} flex items-center justify-center shadow-lg`}
-                            >
-                              <goal.icon className="h-8 w-8 text-white" />
-                            </motion.div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-base sm:text-lg font-bold text-white mb-1">{goal.name}</h3>
-                              <p className="text-xs sm:text-sm text-zinc-400 line-clamp-2 mb-2">{goal.description}</p>
-                              <Badge variant="outline" className="text-xs text-zinc-500 border-zinc-700">
-                                <Users className="h-3 w-3 mr-1" />
-                                {Math.floor(Math.random() * 5000) + 2000} members
-                                        </Badge>
-                                    </div>
-                            <div className="flex-shrink-0">
-                              <motion.div
-                                animate={selectedGoals.includes(goal.id) ? { scale: [1, 1.2, 1] } : {}}
-                                transition={{ duration: 0.3 }}
-                              >
-                                {selectedGoals.includes(goal.id) ? (
-                                  <div className="h-7 w-7 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                                    <CheckCircle className="h-5 w-5 text-white" />
-                                  </div>
-                                ) : (
-                                  <div className="h-7 w-7 rounded-full border-2 border-zinc-600" />
-                                )}
-                              </motion.div>
-                                </div>
-                              </div>
-                            </EnhancedCardContent>
-                          </EnhancedCard>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                <EnhancedButton
-                  variant="gradient"
-                  className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 shadow-[0_0_30px_rgba(139,92,246,0.5)] h-14 text-base font-bold"
-                  onClick={() => setOnboardingStep('skills')}
-                  disabled={selectedGoals.length < 2}
-                >
-                  Continue to Skills
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </EnhancedButton>
-              </motion.div>
-            )}
-
-            {onboardingStep === 'skills' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="space-y-4 sm:space-y-6"
-              >
-                <div className="text-center mb-6 sm:mb-8">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    className="flex justify-center mb-4"
-                          >
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 rounded-full blur-xl opacity-50 animate-pulse" />
-                      <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center shadow-[0_0_40px_rgba(168,85,247,0.8)]">
-                        <Sparkles className="h-10 w-10 text-white" />
-                                </div>
-                                </div>
-                        </motion.div>
-                  <h1 className="text-3xl sm:text-4xl font-extrabold mb-3 bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
-                    Select Your Skills
-                  </h1>
-                  <p className="text-sm sm:text-base text-zinc-400 mb-4 px-2 max-w-sm mx-auto">
-                    Choose 3-4 activities to master. We'll create personalized challenges just for you.
-                  </p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/40 px-3 py-1">
-                      <Zap className="h-3 w-3 mr-1" />
-                      {selectedSkills.length} / 3-4 selected
-                    </Badge>
-                    </div>
-                    </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {activityPreferences.map((skill, index) => (
-                    <motion.div
-                      key={skill.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <EnhancedCard
-                        variant={selectedSkills.includes(skill.id) ? "gradient" : "default"}
-                        className={cn(
-                          "cursor-pointer transition-all duration-300",
-                          selectedSkills.includes(skill.id)
-                            ? "border-purple-500/60 shadow-[0_0_25px_rgba(168,85,247,0.5)] scale-[1.02]"
-                            : "border-zinc-800 hover:border-purple-500/40 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]"
-                        )}
-                        onClick={() => handleSkillToggle(skill.id)}
-                      >
-                        <EnhancedCardContent className="p-3">
-                          <div className="flex items-center gap-3">
-                            <motion.div
-                              whileHover={{ scale: 1.1 }}
-                              className="w-11 h-11 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg"
-                            >
-                              <skill.icon className="h-6 w-6 text-white" />
-                            </motion.div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-semibold text-white">{skill.name}</h4>
-                        </div>
-                            <div className="flex-shrink-0">
-                              <motion.div
-                                animate={selectedSkills.includes(skill.id) ? { scale: [1, 1.2, 1] } : {}}
-                                transition={{ duration: 0.3 }}
-                              >
-                                {selectedSkills.includes(skill.id) ? (
-                                  <div className="h-6 w-6 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-                                    <CheckCircle className="h-4 w-4 text-white" />
-                      </div>
-                                ) : (
-                                  <div className="h-6 w-6 rounded-full border-2 border-zinc-600" />
-                                )}
-                              </motion.div>
-                        </div>
-                    </div>
-                  </EnhancedCardContent>
-                </EnhancedCard>
-                    </motion.div>
-                        ))}
-                      </div>
-
-                <div className="flex gap-3">
-                  <EnhancedButton
-                    variant="outline"
-                    className="flex-1 h-12 border-zinc-700"
-                    onClick={() => setOnboardingStep('goals')}
-                  >
-                    Back
-                  </EnhancedButton>
-                  <EnhancedButton
-                    variant="gradient"
-                    className="flex-1 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 shadow-[0_0_30px_rgba(168,85,247,0.5)] h-12 font-bold"
-                    onClick={completeOnboarding}
-                    disabled={selectedSkills.length < 3 || selectedSkills.length > 4 || isSavingPreferences}
-                  >
-                    {isSavingPreferences ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                        />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        Start Journey
-                        <Sparkles className="ml-2 h-5 w-5" />
-                      </>
-                    )}
-                  </EnhancedButton>
-                    </div>
-              </motion.div>
-            )}
-        </div>
-        </div>
+        <OnboardingFlow
+          onboardingStep={onboardingStep}
+          selectedGoals={selectedGoals}
+          selectedSkills={selectedSkills}
+          isSavingPreferences={isSavingPreferences}
+          onGoalToggle={handleGoalToggle}
+          onSkillToggle={handleSkillToggle}
+          onStepChange={setOnboardingStep}
+          onComplete={completeOnboarding}
+        />
       </DashboardLayout>
     )
   }
@@ -1418,171 +1276,121 @@ export default function GoalsPage() {
       {/* Celebration Overlay */}
       <AnimatePresence>
         {showCelebration && (
-          <motion.div
+              <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
           >
-            <motion.div
+                  <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0, rotate: 180 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
               className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 rounded-full p-8 shadow-[0_0_100px_rgba(234,179,8,0.8)]"
                     >
               <PartyPopper className="h-20 w-20 text-white" />
-            </motion.div>
+                  </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Verification Modal */}
-      <Dialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-400" />
-              Verify Challenge Completion
-            </DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Please provide verification to complete this challenge
-            </DialogDescription>
-          </DialogHeader>
+      <VerificationModal
+        open={showVerificationModal}
+        onOpenChange={setShowVerificationModal}
+        verificationType={verificationType}
+        verificationPhoto={verificationPhoto}
+        verificationLink={verificationLink}
+        verificationText={verificationText}
+        isSubmittingVerification={isSubmittingVerification}
+        onTypeChange={setVerificationType}
+        onPhotoChange={setVerificationPhoto}
+        onLinkChange={setVerificationLink}
+        onTextChange={setVerificationText}
+        onSubmit={handleVerificationSubmit}
+        onCancel={() => {
+          setShowVerificationModal(false)
+          setPendingChallenge(null)
+        }}
+      />
 
-          <div className="space-y-4 mt-4">
-            {/* Verification Type Tabs */}
-            <Tabs value={verificationType} onValueChange={(v) => setVerificationType(v as "photo" | "link" | "text")}>
-              <TabsList className="grid w-full grid-cols-3 bg-zinc-800">
-                <TabsTrigger value="photo" className="data-[state=active]:bg-purple-600">
-                  <Image className="h-4 w-4 mr-1" />
-                  Photo
-                </TabsTrigger>
-                <TabsTrigger value="link" className="data-[state=active]:bg-purple-600">
-                  <LinkIcon className="h-4 w-4 mr-1" />
-                  Link
-                </TabsTrigger>
-                <TabsTrigger value="text" className="data-[state=active]:bg-purple-600">
-                  <Type className="h-4 w-4 mr-1" />
-                  Text
-                </TabsTrigger>
-              </TabsList>
+      {/* Full-Screen Processing Overlay */}
+      <AnimatePresence>
+        {isProcessingVerification && processingChallenge && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+                              <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl max-w-md w-full p-8"
+            >
+              <div className="flex flex-col items-center space-y-6">
+                {/* Animated Spinner */}
+                <div className="relative">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-20 h-20 rounded-full border-4 border-t-purple-500 border-r-pink-500 border-b-blue-500 border-l-transparent"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-purple-400 animate-spin" />
+                                  </div>
+                    </div>
 
-              {/* Photo Verification */}
-              <TabsContent value="photo" className="space-y-4 mt-4">
-                <div
-                  className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-purple-500 transition-all cursor-pointer"
-                  onClick={() => verificationPhotoInputRef.current?.click()}
-                >
-                  {verificationPhoto ? (
-                    <div className="space-y-2">
-                      <Image className="h-12 w-12 mx-auto text-green-400" />
-                      <p className="text-sm text-white font-medium">{verificationPhoto.name}</p>
-                      <p className="text-xs text-zinc-400">Click to change photo</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Image className="h-12 w-12 mx-auto text-zinc-500" />
-                      <p className="text-sm text-zinc-400">Click to upload photo</p>
-                      <p className="text-xs text-zinc-500">JPG, PNG, or GIF • Max 10MB</p>
-                    </div>
+                {/* Processing Message */}
+                <div className="text-center space-y-2">
+                  <h3 className="text-xl font-semibold text-white">
+                    Verifying Challenge
+                  </h3>
+                  <p className="text-sm text-zinc-400">
+                    {processingMessage}
+                  </p>
+                  {processingChallenge && (
+                    <p className="text-xs text-zinc-500 mt-2">
+                      {processingChallenge.title}
+                    </p>
                   )}
-                  <input
-                    ref={verificationPhotoInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoSelect}
-                    className="hidden"
-                  />
                 </div>
-              </TabsContent>
 
-              {/* Link Verification */}
-              <TabsContent value="link" className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white">Verification Link</label>
-                  <Input
-                    type="url"
-                    placeholder="https://example.com/proof"
-                    value={verificationLink}
-                    onChange={(e) => setVerificationLink(e.target.value)}
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                  />
-                  <p className="text-xs text-zinc-500">
-                    Provide a link that proves you completed this challenge
-                  </p>
-                </div>
-              </TabsContent>
-
-              {/* Text Verification */}
-              <TabsContent value="text" className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white">Verification Description</label>
-                  <Textarea
-                    placeholder="Describe how you completed this challenge..."
-                    value={verificationText}
-                    onChange={(e) => setVerificationText(e.target.value)}
-                    className="bg-zinc-800 border-zinc-700 text-white min-h-[120px]"
-                  />
-                  <p className="text-xs text-zinc-500">
-                    Provide a detailed description of how you completed this challenge
-                  </p>
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            {/* Submit Button */}
-            <div className="flex gap-3 pt-4">
-              <EnhancedButton
-                variant="outline"
-                className="flex-1 border-zinc-700"
-                onClick={() => {
-                  setShowVerificationModal(false)
-                  setPendingChallenge(null)
-                }}
-                disabled={isSubmittingVerification}
-              >
-                Cancel
-              </EnhancedButton>
-              <EnhancedButton
-                variant="gradient"
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
-                onClick={handleVerificationSubmit}
-                disabled={isSubmittingVerification}
-              >
-                {isSubmittingVerification ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                {/* Progress Indicator */}
+                <div className="w-full space-y-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-500">
+                    <span>Processing...</span>
+                    <span>Please wait</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                        <motion.div
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500"
                     />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    Submit Verification
-                    <CheckCircle className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </EnhancedButton>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+                                </div>
+                                </div>
+                    </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Verification Status Notification */}
       <AnimatePresence>
         {verificationStatus && verificationStatus.show && (
-          <motion.div
+                    <motion.div
             initial={{ opacity: 0, y: -50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -50, scale: 0.9 }}
             className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4"
-          >
-            <EnhancedCard
+                    >
+                      <EnhancedCard
               variant="gradient"
-              className={cn(
+                        className={cn(
                 "border shadow-2xl",
                 verificationStatus.status === "sent"
                   ? "bg-blue-900/90 border-blue-700/50"
@@ -1617,7 +1425,7 @@ export default function GoalsPage() {
                     {verificationStatus.status === "rejected" && (
                       <X className="h-5 w-5 text-white" />
                     )}
-                  </div>
+                        </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-sm font-semibold text-white">
@@ -1632,7 +1440,7 @@ export default function GoalsPage() {
                       >
                         <X className="h-4 w-4" />
                       </button>
-                    </div>
+                      </div>
                     <p className="text-xs text-zinc-300 mb-2">{verificationStatus.message}</p>
                     
                     {verificationStatus.details && (
@@ -1656,7 +1464,7 @@ export default function GoalsPage() {
                             <span className="text-white font-medium">
                               {(verificationStatus.details.ai_confidence * 100).toFixed(1)}%
                             </span>
-                          </div>
+                        </div>
                         )}
                         {verificationStatus.details.queued && (
                           <div className="flex items-center justify-between text-xs">
@@ -1664,7 +1472,7 @@ export default function GoalsPage() {
                             <Badge className="bg-yellow-900/40 text-yellow-400 border-yellow-700/50 text-xs px-2 py-0.5">
                               Queued
                             </Badge>
-                          </div>
+                    </div>
                         )}
                         {verificationStatus.details.low_conf_reason && (
                           <div className="text-xs mt-2">
@@ -1672,12 +1480,12 @@ export default function GoalsPage() {
                             <p className="text-zinc-300 bg-zinc-800/50 p-2 rounded border border-zinc-700/50">
                               {verificationStatus.details.low_conf_reason}
                             </p>
-                          </div>
-                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                        )}
+                    </div>
+            )}
+        </div>
+        </div>
               </EnhancedCardContent>
             </EnhancedCard>
           </motion.div>
@@ -1718,75 +1526,75 @@ export default function GoalsPage() {
               <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 shadow-xl rounded-2xl">
                 <EnhancedCardContent className="p-4">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="relative">
-                      <Avatar className="h-12 w-12 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]">
-                        <AvatarImage src="/placeholder.svg" />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold">
-                          U
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black">
-                        <span className="text-xs font-bold text-white">{level}</span>
-                      </div>
-                    </div>
+                <div className="relative">
+                  <Avatar className="h-12 w-12 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]">
+                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold">
+                      U
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black">
+                    <span className="text-xs font-bold text-white">{level}</span>
+                          </div>
+                        </div>
                     <div className="flex-1">
                       <h2 className="text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        Your Journey
+                    Your Journey
                       </h2>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/40 px-2 py-0 text-xs">
-                          Level {level}
-                        </Badge>
-                        <span className="text-xs text-zinc-500">Rank #3</span>
-                      </div>
-                    </div>
-                  </div>
+                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/40 px-2 py-0 text-xs">
+                      Level {level}
+                                </Badge>
+                    <span className="text-xs text-zinc-500">Rank #3</span>
+                              </div>
+                          </div>
+                              </div>
 
                   {/* Stats Cards */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 cursor-pointer">
-                        <EnhancedCardContent className="p-3 text-center">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <div className="grid grid-cols-3 gap-2">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 cursor-pointer">
+                  <EnhancedCardContent className="p-3 text-center">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                             <AnimatedCounter 
                               from={0} 
                               to={userTotalXP !== null ? userTotalXP : totalXP} 
                               duration={1.5} 
                             />
-                          </div>
-                          <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
-                            <Trophy className="h-3 w-3" />
-                            Total XP
-                          </div>
-                        </EnhancedCardContent>
-                      </EnhancedCard>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-green-700/40 cursor-pointer">
-                        <EnhancedCardContent className="p-3 text-center">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                            {completedChallenges.length}
-                          </div>
-                          <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Done
-                          </div>
-                        </EnhancedCardContent>
-                      </EnhancedCard>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-orange-700/40 cursor-pointer">
-                        <EnhancedCardContent className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
-                            <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
-                              {streak}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-zinc-400 mt-0.5">Day Streak</div>
-                        </EnhancedCardContent>
-                      </EnhancedCard>
-                    </motion.div>
+                            </div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
+                      <Trophy className="h-3 w-3" />
+                      Total XP
+                        </div>
+                      </EnhancedCardContent>
+                    </EnhancedCard>
+                  </motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-green-700/40 cursor-pointer">
+                  <EnhancedCardContent className="p-3 text-center">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                      {completedChallenges.length}
+              </div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Done
+                            </div>
+                  </EnhancedCardContent>
+                </EnhancedCard>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-orange-700/40 cursor-pointer">
+                  <EnhancedCardContent className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
+                      <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                        {streak}
+                          </span>
+                            </div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">Day Streak</div>
+                  </EnhancedCardContent>
+                </EnhancedCard>
+              </motion.div>
                   </div>
                 </EnhancedCardContent>
               </EnhancedCard>
@@ -1837,8 +1645,8 @@ export default function GoalsPage() {
                                   <h4 className="text-sm font-semibold text-white">{goal.name}</h4>
                                   <p className="text-xs text-zinc-400">{goal.description}</p>
                                 </div>
-                              </div>
-                            </motion.div>
+                            </div>
+          </motion.div>
                           )
                         })
                       ) : (
@@ -1913,105 +1721,188 @@ export default function GoalsPage() {
                     </div>
                   </div>
 
-                  {/* Challenges Analytics */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
-                      <BarChart2 className="h-4 w-4 mr-2 text-green-400" />
-                      Challenges Analytics
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                        <div className="text-xs text-zinc-400 mb-1">Completed</div>
-                        <div className="text-xl font-bold text-green-400">
-                          {apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length}
+                  {/* Challenge Statistics - Enhanced UI */}
+                  <div className="w-full">
+                    <div className="flex items-center justify-between mb-5 sm:mb-6">
+                      <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30">
+                          <BarChart2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
                         </div>
-                        <div className="text-[10px] text-zinc-500 mt-1">out of {apiDailyChallenges.length || 0} daily</div>
-                      </div>
-                      <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                        <div className="text-xs text-zinc-400 mb-1">Completion Rate</div>
-                        <div className="text-xl font-bold text-blue-400">
-                          {apiDailyChallenges.length > 0 
-                            ? Math.round((apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length / apiDailyChallenges.length) * 100)
-                            : 0}%
+                        <span>Challenge Statistics</span>
+                      </h3>
+                    </div>
+                    
+                    {isLoadingStats ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="flex flex-col items-center gap-3">
+                          <Loader2 className="h-6 w-6 animate-spin text-green-400" />
+                          <span className="text-xs sm:text-sm text-zinc-400">Loading statistics...</span>
                         </div>
-                        <div className="text-[10px] text-zinc-500 mt-1">Daily Challenges</div>
                       </div>
-                    </div>
-                    <div className="mt-2 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-zinc-400">Daily Challenges</span>
-                        <span className="text-xs font-bold text-white">
-                          {apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length} / {apiDailyChallenges.length || 0}
-                        </span>
+                    ) : challengeStats.length > 0 ? (
+                      <div className="space-y-4 sm:space-y-6">
+                        {/* Enhanced Stats Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                          {challengeStats.map((stat, index) => {
+                            const getColor = () => {
+                              if (stat.status === "verified") return {
+                                text: "text-green-400",
+                                bg: "from-green-500/30 via-emerald-500/20 to-green-500/10",
+                                border: "border-green-500/40",
+                                iconBg: "bg-green-500/20",
+                                iconBorder: "border-green-500/40",
+                                shadow: "shadow-[0_0_20px_rgba(34,197,94,0.2)]"
+                              }
+                              if (stat.status === "skipped") return {
+                                text: "text-yellow-400",
+                                bg: "from-yellow-500/30 via-orange-500/20 to-yellow-500/10",
+                                border: "border-yellow-500/40",
+                                iconBg: "bg-yellow-500/20",
+                                iconBorder: "border-yellow-500/40",
+                                shadow: "shadow-[0_0_20px_rgba(234,179,8,0.2)]"
+                              }
+                              if (stat.status === "expired") return {
+                                text: "text-red-400",
+                                bg: "from-red-500/30 via-pink-500/20 to-red-500/10",
+                                border: "border-red-500/40",
+                                iconBg: "bg-red-500/20",
+                                iconBorder: "border-red-500/40",
+                                shadow: "shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                              }
+                              return {
+                                text: "text-zinc-400",
+                                bg: "from-blue-500/30 via-purple-500/20 to-blue-500/10",
+                                border: "border-blue-500/40",
+                                iconBg: "bg-blue-500/20",
+                                iconBorder: "border-blue-500/40",
+                                shadow: ""
+                              }
+                            }
+                            const colors = getColor()
+                            const getLabel = () => {
+                              if (stat.status === "verified") return "Verified Challenges"
+                              if (stat.status === "skipped") return "Skipped Challenges"
+                              if (stat.status === "expired") return "Expired Challenges"
+                              return stat.status
+                            }
+                            const getIcon = () => {
+                              if (stat.status === "verified") return CheckCircle
+                              if (stat.status === "skipped") return X
+                              if (stat.status === "expired") return Clock
+                              return BarChart2
+                            }
+                            const Icon = getIcon()
+                            return (
+                              <motion.div
+                                key={stat.status}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1, duration: 0.4 }}
+                                whileHover={{ scale: 1.02, y: -2 }}
+                                className={`relative p-5 sm:p-6 rounded-2xl bg-gradient-to-br ${colors.bg} border ${colors.border} backdrop-blur-sm ${colors.shadow} overflow-hidden`}
+                              >
+                                {/* Decorative gradient overlay */}
+                                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full ${colors.bg} opacity-20 blur-3xl -z-0`} />
+                                
+                                <div className="relative z-10">
+                                  {/* Icon and Label */}
+                                  <div className="flex items-center gap-3 mb-5">
+                                    <div className={`p-2.5 sm:p-3 rounded-xl ${colors.iconBg} border ${colors.iconBorder} backdrop-blur-sm`}>
+                                      <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${colors.text}`} />
+                                    </div>
+                                    <span className="text-sm sm:text-base font-bold text-white leading-tight">
+                                      {getLabel()}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Count and Percentage */}
+                                  <div className="space-y-2">
+                                    <div className={`text-4xl sm:text-5xl font-extrabold ${colors.text} leading-none drop-shadow-lg`}>
+                                      {stat.count}
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="text-base sm:text-lg font-bold text-white">
+                                        {stat.percentage.toFixed(1)}%
+                                      </div>
+                                      <div className="text-xs sm:text-sm text-zinc-300 font-medium">
+                                        of total
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )
+                          })}
+                        </div>
+                        
+                        {/* Enhanced Progress Bars */}
+                        <div className="space-y-3 sm:space-y-4">
+                          {challengeStats.map((stat, index) => {
+                            const getGradient = () => {
+                              if (stat.status === "verified") return "bg-gradient-to-r from-green-500 via-emerald-500 to-green-400"
+                              if (stat.status === "skipped") return "bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-400"
+                              if (stat.status === "expired") return "bg-gradient-to-r from-red-500 via-pink-500 to-red-400"
+                              return "bg-gradient-to-r from-blue-500 via-purple-500 to-blue-400"
+                            }
+                            const getLabel = () => {
+                              if (stat.status === "verified") return "Verified"
+                              if (stat.status === "skipped") return "Skipped"
+                              if (stat.status === "expired") return "Expired"
+                              return stat.status
+                            }
+                            const getIcon = () => {
+                              if (stat.status === "verified") return CheckCircle
+                              if (stat.status === "skipped") return X
+                              if (stat.status === "expired") return Clock
+                              return BarChart2
+                            }
+                            const Icon = getIcon()
+                            const getIconColor = () => {
+                              if (stat.status === "verified") return "text-green-400"
+                              if (stat.status === "skipped") return "text-yellow-400"
+                              if (stat.status === "expired") return "text-red-400"
+                              return "text-zinc-400"
+                            }
+                            return (
+                              <motion.div
+                                key={stat.status}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: (challengeStats.length * 0.1) + (index * 0.1), duration: 0.4 }}
+                                className="p-4 sm:p-5 rounded-xl bg-zinc-800/60 border border-zinc-700/50 backdrop-blur-sm hover:bg-zinc-800/70 transition-colors"
+                              >
+                                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                  <div className="flex items-center gap-2 sm:gap-3">
+                                    <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${getIconColor()}`} />
+                                    <span className="text-base sm:text-lg font-bold text-white">{getLabel()}</span>
+                                  </div>
+                                  <span className="text-sm sm:text-base font-bold text-white bg-zinc-700/70 px-3 py-1.5 rounded-lg border border-zinc-600/50">
+                                    {stat.count} {stat.count === 1 ? 'challenge' : 'challenges'} ({stat.percentage.toFixed(1)}%)
+                                  </span>
+                                </div>
+                                <div className="relative">
+                                  <Progress
+                                    value={stat.percentage}
+                                    className="h-3.5 sm:h-4"
+                                    indicatorClassName={getGradient()}
+                                  />
+                                  {/* Progress percentage indicator */}
+                                  <div className="absolute right-0 top-1/2 -translate-y-1/2 text-xs sm:text-sm font-bold text-white bg-zinc-800/80 px-2 py-0.5 rounded">
+                                    {stat.percentage.toFixed(1)}%
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <Progress
-                        value={apiDailyChallenges.length > 0 
-                          ? (apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length / apiDailyChallenges.length) * 100
-                          : 0}
-                        className="h-1.5"
-                        indicatorClassName="bg-gradient-to-r from-blue-500 to-purple-500"
-                      />
-                    </div>
-                    <div className="mt-2 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-zinc-400">Monthly Challenges</span>
-                        <span className="text-xs font-bold text-white">
-                          {completedChallenges.filter(id => monthlyChallenges.some(c => c.id === id)).length} / {monthlyChallenges.length}
-                        </span>
+                    ) : (
+                      <div className="p-6 sm:p-8 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-center">
+                        <BarChart2 className="h-8 w-8 sm:h-10 sm:w-10 text-zinc-600 mx-auto mb-3" />
+                        <div className="text-sm sm:text-base text-zinc-500 font-medium">No statistics available</div>
+                        <div className="text-xs sm:text-sm text-zinc-600 mt-1">Complete challenges to see your statistics</div>
                       </div>
-                      <Progress
-                        value={(completedChallenges.filter(id => monthlyChallenges.some(c => c.id === id)).length / monthlyChallenges.length) * 100}
-                        className="h-1.5"
-                        indicatorClassName="bg-gradient-to-r from-purple-500 to-pink-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Achievements Preview */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
-                      <Award className="h-4 w-4 mr-2 text-yellow-400" />
-                      Achievements
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {achievements.slice(0, 3).map((achievement) => (
-                        <motion.div
-                          key={achievement.id}
-                          whileHover={{ scale: 1.05 }}
-                          className={cn(
-                            "aspect-square rounded-lg flex flex-col items-center justify-center p-2 relative",
-                            achievement.earned
-                              ? achievement.rarity === "legendary"
-                                ? "bg-gradient-to-br from-yellow-500 via-orange-500 to-red-500"
-                                : achievement.rarity === "epic"
-                                ? "bg-gradient-to-br from-purple-500 to-pink-500"
-                                : "bg-gradient-to-br from-blue-500 to-cyan-500"
-                              : "bg-zinc-800/50 border border-zinc-700 opacity-50"
-                          )}
-                        >
-                          {achievement.earned ? (
-                            <>
-                              <achievement.icon className="h-6 w-6 text-white mb-1" />
-                              <span className="text-[9px] font-bold text-white text-center">{achievement.name}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="h-6 w-6 text-zinc-600 mb-1" />
-                              <span className="text-[9px] text-zinc-600 text-center">Locked</span>
-                            </>
-                          )}
-                        </motion.div>
-                      ))}
-                    </div>
-                    <EnhancedButton
-                      variant="ghost"
-                      size="sm"
-                      className="w-full mt-2 text-xs"
-                      onClick={() => setActiveTab("challenges")}
-                    >
-                      View All Achievements
-                      <ChevronRight className="h-3 w-3 ml-1" />
-                    </EnhancedButton>
+                    )}
                   </div>
 
                   {/* Change Goals & Activities */}
@@ -2060,59 +1951,72 @@ export default function GoalsPage() {
                     apiDailyChallenges.map((challenge, index) => {
                       const isCompleted = completedChallenges.includes(challenge.id) || challenge.status === "completed"
                       const isStarted = challenge.status === "started"
+                      const isVerifying = challenge.status === "verifying" || challenge.status === "queued"
                       
                       return (
-                        <motion.div
-                          key={challenge.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          whileHover={{ scale: 1.02 }}
-                          className={cn(
+                      <motion.div
+                        key={challenge.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.02 }}
+                      className={cn(
                             "p-4 rounded-xl border transition-all",
                             isCompleted
-                              ? "bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-700/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                          ? "bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-700/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                              : isVerifying
+                              ? "bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-700/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]"
                               : isStarted
                               ? "bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-700/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
                               : "bg-zinc-800/50 border-zinc-700/50"
                           )}
                         >
                           <div className="flex items-start gap-3 mb-3">
-                            <motion.div
-                              whileHover={{ rotate: 5 }}
-                              className={cn(
-                                "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg",
+                        <motion.div
+                          whileHover={{ rotate: 5 }}
+                          className={cn(
+                            "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg",
                                 isCompleted
-                                  ? "bg-gradient-to-br from-green-500 to-emerald-500"
-                                  : "bg-gradient-to-br from-blue-500 to-purple-500"
-                              )}
-                            >
+                              ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                                  : isVerifying
+                                  ? "bg-gradient-to-br from-yellow-500 to-orange-500"
+                              : "bg-gradient-to-br from-blue-500 to-purple-500"
+                          )}
+                        >
                               {isCompleted ? (
-                                <CheckCircle className="h-6 w-6 text-white" />
-                              ) : (
-                                <challenge.icon className="h-6 w-6 text-white" />
-                              )}
-                            </motion.div>
-                            <div className="flex-1">
+                            <CheckCircle className="h-6 w-6 text-white" />
+                              ) : isVerifying ? (
+                                <Loader2 className="h-6 w-6 text-white animate-spin" />
+                          ) : (
+                            <challenge.icon className="h-6 w-6 text-white" />
+                          )}
+                        </motion.div>
+                          <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <h4 className={cn(
-                                  "text-sm font-semibold",
+                            <h4 className={cn(
+                                  "text-sm font-semibold flex-1",
                                   isCompleted ? "text-green-400 line-through" : "text-white"
-                                )}>
-                                  {challenge.title}
-                                </h4>
-                                <Badge className={cn(
-                                  "text-xs px-2 py-0.5",
-                                  challenge.difficulty === "Easy" ? "bg-green-900/40 text-green-400 border-green-700/50" :
-                                  challenge.difficulty === "Medium" ? "bg-yellow-900/40 text-yellow-400 border-yellow-700/50" :
-                                  "bg-red-900/40 text-red-400 border-red-700/50"
-                                )}>
-                                  {challenge.difficulty}
-                                </Badge>
-                                {isStarted && (
+                            )}>
+                                {challenge.title}
+                              </h4>
+                            <Badge className={cn(
+                              "text-xs px-2 py-0.5",
+                              challenge.difficulty === "Easy" ? "bg-green-900/40 text-green-400 border-green-700/50" :
+                              challenge.difficulty === "Medium" ? "bg-yellow-900/40 text-yellow-400 border-yellow-700/50" :
+                              "bg-red-900/40 text-red-400 border-red-700/50"
+                            )}>
+                                {challenge.difficulty}
+                              </Badge>
+                                {isStarted && !isVerifying && (
                                   <Badge className="text-xs px-2 py-0.5 bg-blue-900/40 text-blue-400 border-blue-700/50">
                                     <PlayCircle className="h-3 w-3 mr-1" />
                                     Started
+                                  </Badge>
+                                )}
+                                {isVerifying && (
+                                  <Badge className="text-xs px-2 py-0.5 bg-yellow-900/40 text-yellow-400 border-yellow-700/50">
+                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                    {challenge.status === "queued" ? "Queued" : "Verifying..."}
                                   </Badge>
                                 )}
                                 {isCompleted && (
@@ -2121,7 +2025,7 @@ export default function GoalsPage() {
                                     Completed
                                   </Badge>
                                 )}
-                              </div>
+                            </div>
                               <p className="text-xs text-zinc-400 mb-3">{challenge.description}</p>
                               
                               {/* Goals */}
@@ -2166,27 +2070,27 @@ export default function GoalsPage() {
                               )}
                               
                               <div className="flex items-center gap-3 text-xs flex-wrap mb-3">
-                                <span className="flex items-center gap-1 text-zinc-500">
-                                  <Timer className="h-3 w-3" />
-                                  {challenge.timeEstimate}
-                                </span>
-                                <span className="flex items-center gap-1 text-yellow-400 font-medium">
-                                  <Award className="h-3 w-3" />
+                            <span className="flex items-center gap-1 text-zinc-500">
+                                <Timer className="h-3 w-3" />
+                                {challenge.timeEstimate}
+                              </span>
+                            <span className="flex items-center gap-1 text-yellow-400 font-medium">
+                                <Award className="h-3 w-3" />
                                   {challengesXP[challenge.uc_id] !== undefined 
                                     ? `${challengesXP[challenge.uc_id]} XP`
                                     : `+${challenge.xp} XP`
                                   }
-                                </span>
+                              </span>
                                 {challenge.progress_pct > 0 && (
                                   <span className="flex items-center gap-1 text-blue-400">
                                     <BarChart2 className="h-3 w-3" />
                                     {challenge.progress_pct}% complete
-                                  </span>
+                            </span>
                                 )}
-                              </div>
+                            </div>
                               
-                              {/* Complete Button - only show when started */}
-                              {isStarted && !isCompleted && (
+                              {/* Verify Button - only show when started and not verifying */}
+                              {isStarted && !isCompleted && !isVerifying && (
                                 <EnhancedButton
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -2214,9 +2118,9 @@ export default function GoalsPage() {
                                   Start Challenge
                                 </EnhancedButton>
                               )}
-                            </div>
                           </div>
-                        </motion.div>
+                        </div>
+                      </motion.div>
                       )
                     })
                   ) : (
@@ -2254,30 +2158,35 @@ export default function GoalsPage() {
                     apiMonthlyChallenges.slice(0, 1).map((challenge, index) => {
                       const isCompleted = completedChallenges.includes(challenge.id) || challenge.status === "completed"
                       const isStarted = challenge.status === "started"
+                      const isVerifying = challenge.status === "verifying" || challenge.status === "queued"
                       
                       return (
-                        <motion.div
-                          key={challenge.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
+                      <motion.div
+                        key={challenge.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
                           className={cn(
                             "p-4 rounded-xl border transition-all",
                             isCompleted
                               ? "bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-700/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                              : isVerifying
+                              ? "bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-700/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]"
                               : isStarted
                               ? "bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-700/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
                               : "bg-gradient-to-r from-zinc-800/50 to-zinc-900/50 border-zinc-700/50"
                           )}
-                        >
-                          <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                              <motion.div
-                                whileHover={{ rotate: 5, scale: 1.1 }}
+                      >
+                        <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <motion.div
+                            whileHover={{ rotate: 5, scale: 1.1 }}
                                 className={cn(
                                   "w-14 h-14 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0",
                                   isCompleted
                                     ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                                    : isVerifying
+                                    ? "bg-gradient-to-br from-yellow-500 to-orange-500"
                                     : isStarted
                                     ? "bg-gradient-to-br from-blue-500 to-purple-500"
                                     : "bg-gradient-to-br from-purple-500 to-pink-500"
@@ -2285,13 +2194,15 @@ export default function GoalsPage() {
                               >
                                 {isCompleted ? (
                                   <CheckCircle className="h-7 w-7 text-white" />
+                                ) : isVerifying ? (
+                                  <Loader2 className="h-7 w-7 text-white animate-spin" />
                                 ) : (
-                                  <challenge.icon className="h-7 w-7 text-white" />
+                            <challenge.icon className="h-7 w-7 text-white" />
                                 )}
-                              </motion.div>
-                              <div className="flex-1">
+                          </motion.div>
+                            <div className="flex-1">
                                 <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2 flex-wrap flex-1">
                                     <h4 className={cn(
                                       "text-sm font-semibold",
                                       isCompleted ? "text-green-400 line-through" : "text-white"
@@ -2305,11 +2216,17 @@ export default function GoalsPage() {
                                       "bg-red-900/40 text-red-400 border-red-700/50"
                                     )}>
                                       {challenge.difficulty}
-                                    </Badge>
-                                    {isStarted && (
+                              </Badge>
+                                    {isStarted && !isVerifying && (
                                       <Badge className="text-xs px-2 py-0.5 bg-blue-900/40 text-blue-400 border-blue-700/50">
                                         <PlayCircle className="h-3 w-3 mr-1" />
                                         Started
+                                      </Badge>
+                                    )}
+                                    {isVerifying && (
+                                      <Badge className="text-xs px-2 py-0.5 bg-yellow-900/40 text-yellow-400 border-yellow-700/50">
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                        {challenge.status === "queued" ? "Queued" : "Verifying..."}
                                       </Badge>
                                     )}
                                     {isCompleted && (
@@ -2318,7 +2235,7 @@ export default function GoalsPage() {
                                         Completed
                                       </Badge>
                                     )}
-                                  </div>
+                            </div>
                                   <Badge className={cn(
                                     "text-xs",
                                     isCompleted
@@ -2375,64 +2292,56 @@ export default function GoalsPage() {
                                 
                                 <div className="flex items-center gap-3 text-xs text-zinc-500 flex-wrap mb-3">
                                   {challenge.due_at && (
-                                    <span className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
                                       Due {new Date(challenge.due_at).toLocaleDateString()}
                                     </span>
                                   )}
                                   <span className="flex items-center gap-1 text-zinc-500">
                                     <Timer className="h-3 w-3" />
                                     {challenge.timeEstimate}
-                                  </span>
-                                  <span className="flex items-center gap-1 text-yellow-400 font-medium">
-                                    <Trophy className="h-3 w-3" />
+                                </span>
+                              <span className="flex items-center gap-1 text-yellow-400 font-medium">
+                                <Trophy className="h-3 w-3" />
                                     {challengesXP[challenge.uc_id] !== undefined 
                                       ? `${challengesXP[challenge.uc_id]} XP`
                                       : `+${challenge.xp} XP`
                                     }
-                                  </span>
-                                </div>
+                                </span>
+                              </div>
                                 
                                 {/* Progress Bar */}
                                 <div className="space-y-2 mb-3">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-zinc-400">Progress</span>
+                          <div className="flex justify-between text-xs">
+                              <span className="text-zinc-400">Progress</span>
                                     <span className="text-purple-400 font-medium">{challenge.progress_pct || 0}%</span>
-                                  </div>
-                                  <Progress
+                            </div>
+                            <Progress
                                     value={challenge.progress_pct || 0}
-                                    className="h-2.5"
-                                    indicatorClassName="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                                  />
-                                </div>
+                            className="h-2.5"
+                            indicatorClassName="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                          />
+                          </div>
                                 
                                 {/* Action Buttons */}
                                 <div className="flex gap-2">
-                                  {/* In Progress Button - always show when not completed */}
-                                  {!isCompleted && challenge.uc_id && (
+                                  {/* Start Button - only show when not started */}
+                                  {!isStarted && !isCompleted && challenge.uc_id && (
                                     <EnhancedButton
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        if (!isStarted) {
-                                          handleStartChallenge(challenge.uc_id)
-                                        }
+                                        handleStartChallenge(challenge.uc_id)
                                       }}
                                       variant="gradient"
-                                      className={cn(
-                                        "flex-1",
-                                        isStarted
-                                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white cursor-not-allowed opacity-75"
-                                          : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white"
-                                      )}
-                                      disabled={isStarted}
+                                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white"
                                     >
                                       <PlayCircle className="h-4 w-4 mr-2" />
-                                      {isStarted ? "In Progress" : "Start Challenge"}
-                                    </EnhancedButton>
+                                      Start Challenge
+                    </EnhancedButton>
                                   )}
                                   
-                                  {/* Complete Button - only show when started and not completed */}
-                                  {isStarted && !isCompleted && (
+                                  {/* Verify Button - only show when started and not completed/verifying */}
+                                  {isStarted && !isCompleted && !isVerifying && (
                                     <EnhancedButton
                                       onClick={(e) => {
                                         e.stopPropagation()
@@ -2444,12 +2353,12 @@ export default function GoalsPage() {
                                       <CheckCircle className="h-4 w-4 mr-2" />
                                       Complete
                                     </EnhancedButton>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
+                            )}
                           </div>
-                        </motion.div>
+                      </div>
+                          </div>
+                          </div>
+                    </motion.div>
                       )
                     })
                   ) : (
@@ -2464,12 +2373,12 @@ export default function GoalsPage() {
               {/* Achievements Section */}
               <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-purple-700/40 shadow-xl rounded-2xl">
                 <EnhancedCardHeader className="pb-3">
-                  <EnhancedCardTitle className="text-lg flex items-center">
+                    <EnhancedCardTitle className="text-lg flex items-center">
                     <Award className="h-5 w-5 mr-2 text-purple-400" />
                     Your Achievements
-                  </EnhancedCardTitle>
-                </EnhancedCardHeader>
-                <EnhancedCardContent>
+                    </EnhancedCardTitle>
+                  </EnhancedCardHeader>
+                  <EnhancedCardContent>
                   <div className="grid grid-cols-3 gap-3">
                     {achievements.map((achievement, index) => (
                       <motion.div
@@ -2502,10 +2411,10 @@ export default function GoalsPage() {
                         )}
                       </motion.div>
                     ))}
-                  </div>
-                </EnhancedCardContent>
-              </EnhancedCard>
-          </TabsContent>
+                    </div>
+                  </EnhancedCardContent>
+                </EnhancedCard>
+            </TabsContent>
 
             {/* Resume Tab - Same as before */}
             <TabsContent value="resume" className="space-y-4">

@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
 
-export async function POST(request: NextRequest) {
-  console.log("[API Proxy] ===== VERIFY TEXT CHALLENGE REQUEST START =====")
+export async function GET(request: NextRequest) {
+  console.log("[API Proxy] ===== GET CHALLENGES STATS REQUEST START =====")
   console.log("[API Proxy] Timestamp:", new Date().toISOString())
   
   try {
     const token = request.headers.get('authorization')
     console.log("[API Proxy] Authorization header present:", !!token)
+    console.log("[API Proxy] Token preview:", token ? `${token.substring(0, 20)}...${token.substring(token.length - 10)}` : "none")
     
     if (!token) {
       console.error("[API Proxy] ERROR: No authorization header")
@@ -18,56 +19,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let body
-    try {
-      body = await request.json()
-      console.log("[API Proxy] Request body received:", JSON.stringify(body, null, 2))
-    } catch (parseError) {
-      console.error("[API Proxy] ERROR: Failed to parse request body:", parseError)
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
-    }
-
-    if (!body || typeof body !== 'object' || !body.uc_id) {
-      console.error("[API Proxy] ERROR: Invalid request body - uc_id required")
-      return NextResponse.json(
-        { error: 'uc_id is required' },
-        { status: 400 }
-      )
-    }
-
-    if (!body.text || typeof body.text !== 'string' || !body.text.trim()) {
-      console.error("[API Proxy] ERROR: Invalid request body - text is required")
-      return NextResponse.json(
-        { error: 'text is required' },
-        { status: 400 }
-      )
-    }
-
-    const ucId = body.uc_id
-    const targetUrl = `${API_BASE_URL}v1/challenges/verify/text/${ucId}`
+    const targetUrl = `${API_BASE_URL}v1/challenges/stats`
     console.log("[API Proxy] Target URL:", targetUrl)
-    console.log("[API Proxy] uc_id:", ucId)
+    console.log("[API Proxy] Making fetch request to external API...")
 
     let response: Response
     try {
       response = await fetch(targetUrl, {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
           'Authorization': token,
         },
-        body: JSON.stringify({
-          text: body.text,
-        }),
       })
       console.log("[API Proxy] External API response received")
       console.log("[API Proxy] Response status:", response.status, response.statusText)
+      console.log("[API Proxy] Response ok:", response.ok)
     } catch (fetchError) {
       console.error("[API Proxy] ERROR: Fetch failed:", fetchError)
+      if (fetchError instanceof Error) {
+        console.error("[API Proxy] Error name:", fetchError.name)
+        console.error("[API Proxy] Error message:", fetchError.message)
+        console.error("[API Proxy] Error stack:", fetchError.stack)
+      }
       return NextResponse.json(
         { 
           error: 'Failed to connect to external API',
@@ -79,53 +53,29 @@ export async function POST(request: NextRequest) {
 
     const contentType = response.headers.get('content-type')
     const isJson = contentType?.includes('application/json')
+    console.log("[API Proxy] Response content-type:", contentType)
+    console.log("[API Proxy] Is JSON:", isJson)
 
     if (!response.ok) {
       let errorText: any
-      let errorMessage = 'Failed to verify challenge'
       try {
         if (isJson) {
           errorText = await response.json()
           console.error("[API Proxy] External API error (JSON):", JSON.stringify(errorText, null, 2))
-          
-          // Extract error message from different possible formats
-          if (typeof errorText === 'string') {
-            errorMessage = errorText
-          } else if (errorText?.error) {
-            errorMessage = typeof errorText.error === 'string' ? errorText.error : JSON.stringify(errorText.error)
-          } else if (errorText?.message) {
-            errorMessage = errorText.message
-          } else if (errorText?.detail) {
-            errorMessage = errorText.detail
-          } else {
-            errorMessage = JSON.stringify(errorText)
-          }
         } else {
           errorText = await response.text()
           console.error("[API Proxy] External API error (text):", errorText)
-          errorMessage = errorText || `Status ${response.status}: ${response.statusText}`
         }
       } catch (readError) {
         console.error("[API Proxy] ERROR: Failed to read error response:", readError)
-        errorMessage = `Status ${response.status}: ${response.statusText}`
-      }
-      
-      // Provide user-friendly messages for common errors
-      if (response.status === 400) {
-        const lowerError = errorMessage.toLowerCase()
-        if (lowerError.includes('short') || lowerError.includes('50') || lowerError.includes('minimum')) {
-          errorMessage = "Text must be at least 50 characters long. Please provide more details about how you completed the challenge."
-        } else if (lowerError.includes('invalid')) {
-          errorMessage = "Invalid text. Please ensure your description is meaningful and at least 50 characters long."
-        }
+        errorText = `Status ${response.status}: ${response.statusText}`
       }
       
       return NextResponse.json(
         { 
-          error: errorMessage,
+          error: errorText || 'Failed to get challenges stats',
           status: response.status,
-          statusText: response.statusText,
-          details: errorText
+          statusText: response.statusText
         },
         { status: response.status }
       )
@@ -148,11 +98,17 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log("[API Proxy] ===== VERIFY TEXT CHALLENGE REQUEST SUCCESS =====")
+    console.log("[API Proxy] ===== GET CHALLENGES STATS REQUEST SUCCESS =====")
     return NextResponse.json(data, { status: 200 })
   } catch (error) {
     console.error("[API Proxy] ===== UNEXPECTED ERROR =====")
+    console.error("[API Proxy] Error type:", error instanceof Error ? error.constructor.name : typeof error)
     console.error("[API Proxy] Error:", error)
+    if (error instanceof Error) {
+      console.error("[API Proxy] Error name:", error.name)
+      console.error("[API Proxy] Error message:", error.message)
+      console.error("[API Proxy] Error stack:", error.stack)
+    }
     return NextResponse.json(
       { 
         error: 'Internal server error',
