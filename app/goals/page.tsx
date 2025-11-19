@@ -42,6 +42,9 @@ import {
   Settings,
   PartyPopper,
   Crown,
+  Image,
+  Link as LinkIcon,
+  Type,
 } from "lucide-react"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -54,6 +57,9 @@ import { cn } from "@/lib/utils"
 import AnimatedCounter from "@/components/ui/animated-counter"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 
 // Goal categories
@@ -263,14 +269,127 @@ export default function GoalsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Dashboard state
-  const [activeTab, setActiveTab] = useState("challenges")
+  const [activeTab, setActiveTab] = useState("overview")
   const [completedChallenges, setCompletedChallenges] = useState<number[]>([])
   const [totalXP, setTotalXP] = useState(12840)
   const [streak, setStreak] = useState(8)
   const [level, setLevel] = useState(7)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [fetchedPreferences, setFetchedPreferences] = useState<{ goals?: string[], activities?: string[] } | null>(null)
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false)
+  const [apiDailyChallenges, setApiDailyChallenges] = useState<any[]>([])
+  const [isLoadingDailyChallenges, setIsLoadingDailyChallenges] = useState(false)
+  const [apiMonthlyChallenges, setApiMonthlyChallenges] = useState<any[]>([])
+  const [isLoadingMonthlyChallenges, setIsLoadingMonthlyChallenges] = useState(false)
+  const [challengesXP, setChallengesXP] = useState<Record<number, number>>({})
+  const [isLoadingXP, setIsLoadingXP] = useState(false)
+  const [userTotalXP, setUserTotalXP] = useState<number | null>(null)
+
+  // Verification modal state
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [pendingChallenge, setPendingChallenge] = useState<{ id: number; xp: number; uc_id?: number } | null>(null)
+  const [verificationType, setVerificationType] = useState<"photo" | "link" | "text">("photo")
+  const [verificationPhoto, setVerificationPhoto] = useState<File | null>(null)
+  const [verificationLink, setVerificationLink] = useState("")
+  const [verificationText, setVerificationText] = useState("")
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false)
+  const verificationPhotoInputRef = useRef<HTMLInputElement>(null)
+  
+  // Verification status notification
+  const [verificationStatus, setVerificationStatus] = useState<{
+    show: boolean
+    status: "sent" | "queued" | "approved" | "rejected"
+    message: string
+    details?: {
+      queued?: boolean
+      verified?: boolean
+      verdict?: string
+      ai_confidence?: number
+      low_conf_reason?: string
+    }
+  } | null>(null)
 
   const PARSER_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
+
+  // Helper function to map challenge data to icon based on goals/activities/tags
+  const getChallengeIcon = (challenge: any) => {
+    // Check activities first
+    if (challenge.activities && challenge.activities.length > 0) {
+      const activityName = challenge.activities[0]
+      const activity = activityPreferences.find(a => a.name === activityName)
+      if (activity) return activity.icon
+    }
+    
+    // Check goals
+    if (challenge.goals && challenge.goals.length > 0) {
+      const goalName = challenge.goals[0]
+      const goal = goalCategories.find(g => g.name === goalName)
+      if (goal) return goal.icon
+    }
+    
+    // Check tags for common keywords
+    if (challenge.tags && challenge.tags.length > 0) {
+      const tags = challenge.tags.map((t: string) => t.toLowerCase())
+      if (tags.some((t: string) => t.includes('code') || t.includes('programming'))) return Code
+      if (tags.some((t: string) => t.includes('network') || t.includes('connect'))) return Users
+      if (tags.some((t: string) => t.includes('read') || t.includes('book'))) return BookOpen
+      if (tags.some((t: string) => t.includes('speak') || t.includes('present'))) return Mic
+      if (tags.some((t: string) => t.includes('project') || t.includes('build'))) return Rocket
+    }
+    
+    // Default icon
+    return Target
+  }
+
+  // Helper function to get category from goals/activities
+  const getChallengeCategory = (challenge: any): string => {
+    if (challenge.activities && challenge.activities.length > 0) {
+      const activityName = challenge.activities[0]
+      const activity = activityPreferences.find(a => a.name === activityName)
+      if (activity) return activity.category
+    }
+    
+    if (challenge.goals && challenge.goals.length > 0) {
+      const goalName = challenge.goals[0]
+      const goal = goalCategories.find(g => g.name === goalName)
+      if (goal) return goal.id
+    }
+    
+    return "learning"
+  }
+
+  // Map API challenge to component format
+  const mapApiChallengeToComponent = (apiChallenge: any) => {
+    const icon = getChallengeIcon(apiChallenge)
+    const category = getChallengeCategory(apiChallenge)
+    const difficulty = apiChallenge.difficulty 
+      ? apiChallenge.difficulty.charAt(0).toUpperCase() + apiChallenge.difficulty.slice(1)
+      : "Medium"
+    const timeEstimate = apiChallenge.est_minutes 
+      ? `${apiChallenge.est_minutes} mins`
+      : "30 mins"
+    
+    return {
+      id: apiChallenge.challenge_id || apiChallenge.uc_id,
+      uc_id: apiChallenge.uc_id,
+      title: apiChallenge.title || "Untitled Challenge",
+      description: apiChallenge.description || "",
+      xp: apiChallenge.base_xp || 100,
+      difficulty,
+      timeEstimate,
+      category,
+      icon,
+      participants: 0, // Not in API response
+      completions: 0, // Not in API response
+      status: apiChallenge.status,
+      progress_pct: apiChallenge.progress_pct || 0,
+      due_at: apiChallenge.due_at,
+      goals: apiChallenge.goals || [],
+      activities: apiChallenge.activities || [],
+      tags: apiChallenge.tags || [],
+      cadence: apiChallenge.cadence || "daily",
+    }
+  }
 
   // Check for onboarding completion on mount
   useEffect(() => {
@@ -294,6 +413,210 @@ export default function GoalsPage() {
       }
       if (storedXP) setTotalXP(Number(storedXP))
       if (storedCompleted) setCompletedChallenges(JSON.parse(storedCompleted))
+      
+      // Fetch preferences from API
+      const fetchPreferences = async () => {
+        const token = getStoredAccessToken()
+        if (!token) {
+          console.log("[Preferences] No token available for fetching preferences")
+          return
+        }
+
+        setIsLoadingPreferences(true)
+        try {
+          console.log("[Preferences] Fetching preferences from API...")
+          const response = await fetch("/api/preferences/get_preferences", {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (!response.ok) {
+            console.error("[Preferences] Failed to fetch preferences:", response.status, response.statusText)
+            setIsLoadingPreferences(false)
+            return
+          }
+
+          const data = await response.json()
+          console.log("[Preferences] Fetched preferences:", data)
+          
+          if (data && (data.goals || data.activities)) {
+            setFetchedPreferences(data)
+            
+            // Map API goals to goal IDs
+            if (data.goals && Array.isArray(data.goals)) {
+              const mappedGoalIds: string[] = data.goals
+                .map((goalName: string) => goalCategories.find(g => g.name === goalName)?.id)
+                .filter((id: string | undefined): id is string => Boolean(id))
+              if (mappedGoalIds.length > 0) {
+                setSelectedGoals(mappedGoalIds)
+                localStorage.setItem("goals.selectedGoals", JSON.stringify(mappedGoalIds))
+              }
+            }
+            
+            // Map API activities to activity IDs
+            if (data.activities && Array.isArray(data.activities)) {
+              const mappedActivityIds: string[] = data.activities
+                .map((activityName: string) => activityPreferences.find(a => a.name === activityName)?.id)
+                .filter((id: string | undefined): id is string => Boolean(id))
+              if (mappedActivityIds.length > 0) {
+                setSelectedSkills(mappedActivityIds)
+                localStorage.setItem("goals.selectedSkills", JSON.stringify(mappedActivityIds))
+              }
+            }
+          }
+        } catch (error) {
+          console.error("[Preferences] Error fetching preferences:", error)
+        } finally {
+          setIsLoadingPreferences(false)
+        }
+      }
+
+      // Fetch daily challenges from API
+      const fetchDailyChallenges = async () => {
+        const token = getStoredAccessToken()
+        if (!token) {
+          console.log("[Daily Challenges] No token available for fetching challenges")
+          return
+        }
+
+        setIsLoadingDailyChallenges(true)
+        try {
+          console.log("[Daily Challenges] Fetching daily challenges from API...")
+          const response = await fetch("/api/challenges/get_daily", {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (!response.ok) {
+            console.error("[Daily Challenges] Failed to fetch challenges:", response.status, response.statusText)
+            setIsLoadingDailyChallenges(false)
+            return
+          }
+
+          const data = await response.json()
+          console.log("[Daily Challenges] Fetched challenges:", data)
+          
+          if (data && Array.isArray(data)) {
+            const mappedChallenges = data.map(mapApiChallengeToComponent)
+            setApiDailyChallenges(mappedChallenges)
+            console.log("[Daily Challenges] Mapped challenges:", mappedChallenges)
+          }
+        } catch (error) {
+          console.error("[Daily Challenges] Error fetching challenges:", error)
+        } finally {
+          setIsLoadingDailyChallenges(false)
+        }
+      }
+
+      // Fetch monthly challenges from API
+      const fetchMonthlyChallenges = async () => {
+        const token = getStoredAccessToken()
+        if (!token) {
+          console.log("[Monthly Challenges] No token available for fetching challenges")
+          return
+        }
+
+        setIsLoadingMonthlyChallenges(true)
+        try {
+          console.log("[Monthly Challenges] Fetching monthly challenges from API...")
+          const response = await fetch("/api/challenges/get_monthly", {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (!response.ok) {
+            console.error("[Monthly Challenges] Failed to fetch challenges:", response.status, response.statusText)
+            setIsLoadingMonthlyChallenges(false)
+            return
+          }
+
+          const data = await response.json()
+          console.log("[Monthly Challenges] Fetched challenges:", data)
+          
+          if (data && Array.isArray(data)) {
+            const mappedChallenges = data.map(mapApiChallengeToComponent)
+            setApiMonthlyChallenges(mappedChallenges)
+            console.log("[Monthly Challenges] Mapped challenges:", mappedChallenges)
+          }
+        } catch (error) {
+          console.error("[Monthly Challenges] Error fetching challenges:", error)
+        } finally {
+          setIsLoadingMonthlyChallenges(false)
+        }
+      }
+
+      // Fetch challenges XP from API
+      const fetchChallengesXP = async () => {
+        const token = getStoredAccessToken()
+        if (!token) {
+          console.log("[Challenges XP] No token available for fetching XP")
+          return
+        }
+
+        setIsLoadingXP(true)
+        try {
+          console.log("[Challenges XP] Fetching challenges XP from API...")
+          const response = await fetch("/api/challenges/get_challenges_xp", {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (!response.ok) {
+            console.error("[Challenges XP] Failed to fetch XP:", response.status, response.statusText)
+            setIsLoadingXP(false)
+            return
+          }
+
+          const data = await response.json()
+          console.log("[Challenges XP] Fetched XP data:", data)
+          
+          // Handle different response formats
+          if (data) {
+            // Check if it's the total XP format: {user_id, total_xp}
+            if (data.total_xp !== undefined) {
+              setUserTotalXP(data.total_xp)
+              console.log("[Challenges XP] Set total XP:", data.total_xp)
+            }
+            
+            // Also handle per-challenge XP if provided
+            if (Array.isArray(data)) {
+              // If it's an array, convert to object
+              const xpMap: Record<number, number> = {}
+              data.forEach((item: any) => {
+                if (item.uc_id !== undefined && item.xp !== undefined) {
+                  xpMap[item.uc_id] = item.xp
+                }
+              })
+              setChallengesXP(xpMap)
+            } else if (typeof data === 'object' && data.total_xp === undefined) {
+              // If it's an object but not the total_xp format, assume it's per-challenge mapping
+              setChallengesXP(data)
+            }
+            console.log("[Challenges XP] Mapped XP data:", { challengesXP, userTotalXP: data.total_xp })
+          }
+        } catch (error) {
+          console.error("[Challenges XP] Error fetching XP:", error)
+        } finally {
+          setIsLoadingXP(false)
+        }
+      }
+      
+      fetchPreferences()
+      fetchDailyChallenges()
+      fetchMonthlyChallenges()
+      fetchChallengesXP()
     }
   }, [isAuthorized])
 
@@ -551,18 +874,298 @@ export default function GoalsPage() {
     setSelectedSkills([])
   }
 
-  const handleChallengeComplete = (challengeId: number, xp: number) => {
-    if (!completedChallenges.includes(challengeId)) {
-      const newCompleted = [...completedChallenges, challengeId]
-      const newXP = totalXP + xp
-      setCompletedChallenges(newCompleted)
-      setTotalXP(newXP)
-      localStorage.setItem("goals.completedChallenges", JSON.stringify(newCompleted))
-      localStorage.setItem("goals.totalXP", String(newXP))
+  const handleStartChallenge = async (ucId: number) => {
+    const token = getStoredAccessToken()
+    if (!token) {
+      console.error("[Start Challenge] No token available")
+      return
+    }
+
+    try {
+      console.log("[Start Challenge] Starting challenge with uc_id:", ucId)
+      const response = await fetch("/api/challenges/start_challenge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ uc_id: ucId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to start challenge" }))
+        console.error("[Start Challenge] Failed to start challenge:", errorData)
+        return
+      }
+
+      const data = await response.json()
+      console.log("[Start Challenge] Challenge started successfully:", data)
       
-      // Show celebration
-      setShowCelebration(true)
-      setTimeout(() => setShowCelebration(false), 3000)
+      // Update the challenge status in the local state to "started"
+      // This ensures the challenge stays in "in progress" state
+      setApiDailyChallenges(prev => 
+        prev.map(c => {
+          if (c.uc_id === ucId) {
+            return { ...c, status: "started" }
+          }
+          return c
+        })
+      )
+      setApiMonthlyChallenges(prev => 
+        prev.map(c => {
+          if (c.uc_id === ucId) {
+            return { ...c, status: "started" }
+          }
+          return c
+        })
+      )
+    } catch (error) {
+      console.error("[Start Challenge] Error starting challenge:", error)
+    }
+  }
+
+  const handleChallengeComplete = (challengeId: number, xp: number, ucId?: number) => {
+    // Show verification modal instead of directly completing
+    setPendingChallenge({ id: challengeId, xp, uc_id: ucId })
+    setShowVerificationModal(true)
+    setVerificationType("photo")
+    setVerificationPhoto(null)
+    setVerificationLink("")
+    setVerificationText("")
+  }
+
+  const handleVerificationSubmit = async () => {
+    if (!pendingChallenge || !pendingChallenge.uc_id) {
+      alert("Invalid challenge. Please try again.")
+      return
+    }
+
+    // Validate based on verification type
+    if (verificationType === "photo" && !verificationPhoto) {
+      alert("Please upload a photo to verify completion")
+      return
+    }
+    if (verificationType === "link" && !verificationLink.trim()) {
+      alert("Please provide a link to verify completion")
+      return
+    }
+    if (verificationType === "text" && !verificationText.trim()) {
+      alert("Please provide text description to verify completion")
+      return
+    }
+
+    setIsSubmittingVerification(true)
+    const token = getStoredAccessToken()
+    
+    if (!token) {
+      alert("Authentication required. Please log in again.")
+      setIsSubmittingVerification(false)
+      return
+    }
+
+    try {
+      let response: Response
+      let apiUrl = ""
+
+      // Call the appropriate verification endpoint
+      if (verificationType === "photo" && verificationPhoto) {
+        apiUrl = "/api/challenges/verify/photo"
+        const formData = new FormData()
+        formData.append("uc_id", String(pendingChallenge.uc_id))
+        formData.append("photo", verificationPhoto)
+
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        })
+      } else if (verificationType === "link") {
+        apiUrl = "/api/challenges/verify/link"
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            uc_id: pendingChallenge.uc_id,
+            link: verificationLink,
+          }),
+        })
+      } else if (verificationType === "text") {
+        apiUrl = "/api/challenges/verify/text"
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            uc_id: pendingChallenge.uc_id,
+            text: verificationText,
+          }),
+        })
+      } else {
+        throw new Error("Invalid verification type")
+      }
+
+      console.log("[Verification] API response status:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to verify challenge" }))
+        console.error("[Verification] Verification failed:", errorData)
+        
+        let errorMessage = "Failed to verify challenge. Please try again."
+        if (response.status === 400) {
+          errorMessage = errorData.error || errorData.message || "Invalid verification data. Please check your input and try again."
+        } else if (response.status === 404) {
+          errorMessage = "Challenge not found. Please refresh and try again."
+        }
+        
+        alert(errorMessage)
+        setIsSubmittingVerification(false)
+        return
+      }
+
+      const data = await response.json()
+      console.log("[Verification] Verification response:", data)
+
+      // Show "Request Sent" notification first
+      setVerificationStatus({
+        show: true,
+        status: "sent",
+        message: "Verification request sent successfully",
+        details: data
+      })
+
+      // Check verification status from API response
+      const isVerified = data.verified === true || data.verdict === "approve"
+      const isQueued = data.queued === true
+
+      if (isQueued) {
+        // Challenge is queued for review - show detailed status
+        setVerificationStatus({
+          show: true,
+          status: "queued",
+          message: "Verification Queued for Review",
+          details: {
+            queued: true,
+            verdict: data.verdict,
+            ai_confidence: data.ai_confidence,
+            low_conf_reason: data.low_conf_reason
+          }
+        })
+        
+        // Update challenge status to queued
+        setApiDailyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "queued" } : c)
+        )
+        setApiMonthlyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "queued" } : c)
+        )
+        
+        // Close modal and reset
+        setShowVerificationModal(false)
+        setPendingChallenge(null)
+        setVerificationPhoto(null)
+        setVerificationLink("")
+        setVerificationText("")
+        setIsSubmittingVerification(false)
+        
+        // Auto-hide notification after 8 seconds
+        setTimeout(() => {
+          setVerificationStatus(null)
+        }, 8000)
+        return
+      }
+
+      if (!isVerified) {
+        // Verification was rejected - show detailed status
+        setVerificationStatus({
+          show: true,
+          status: "rejected",
+          message: "Verification Rejected",
+          details: {
+            verified: false,
+            verdict: data.verdict || "reject",
+            ai_confidence: data.ai_confidence,
+            low_conf_reason: data.low_conf_reason
+          }
+        })
+        setIsSubmittingVerification(false)
+        
+        // Auto-hide notification after 10 seconds
+        setTimeout(() => {
+          setVerificationStatus(null)
+        }, 10000)
+        return
+      }
+
+      // Show approved status
+      setVerificationStatus({
+        show: true,
+        status: "approved",
+        message: "Verification Approved!",
+        details: {
+          verified: true,
+          verdict: data.verdict || "approve",
+          ai_confidence: data.ai_confidence
+        }
+      })
+
+      // Only complete the challenge if verified and approved
+      if (!completedChallenges.includes(pendingChallenge.id)) {
+        const newCompleted = [...completedChallenges, pendingChallenge.id]
+        const newXP = (userTotalXP !== null ? userTotalXP : totalXP) + pendingChallenge.xp
+        setCompletedChallenges(newCompleted)
+        setTotalXP(newXP)
+        if (userTotalXP !== null) {
+          setUserTotalXP(newXP)
+        }
+        localStorage.setItem("goals.completedChallenges", JSON.stringify(newCompleted))
+        localStorage.setItem("goals.totalXP", String(newXP))
+        
+        // Update challenge status in API challenges
+        setApiDailyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "completed" } : c)
+        )
+        setApiMonthlyChallenges(prev => 
+          prev.map(c => c.uc_id === pendingChallenge.uc_id ? { ...c, status: "completed" } : c)
+        )
+        
+        // Show celebration
+        setShowCelebration(true)
+        setTimeout(() => setShowCelebration(false), 3000)
+      }
+
+      // Close modal and reset
+      setShowVerificationModal(false)
+      setPendingChallenge(null)
+      setVerificationPhoto(null)
+      setVerificationLink("")
+      setVerificationText("")
+      
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => {
+        setVerificationStatus(null)
+      }, 5000)
+    } catch (error) {
+      console.error("[Verification] Error submitting verification:", error)
+      alert("Failed to submit verification. Please try again.")
+    } finally {
+      setIsSubmittingVerification(false)
+    }
+  }
+
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setVerificationPhoto(file)
     }
   }
 
@@ -834,118 +1437,271 @@ export default function GoalsPage() {
         )}
       </AnimatePresence>
 
+      {/* Verification Modal */}
+      <Dialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-400" />
+              Verify Challenge Completion
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Please provide verification to complete this challenge
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            {/* Verification Type Tabs */}
+            <Tabs value={verificationType} onValueChange={(v) => setVerificationType(v as "photo" | "link" | "text")}>
+              <TabsList className="grid w-full grid-cols-3 bg-zinc-800">
+                <TabsTrigger value="photo" className="data-[state=active]:bg-purple-600">
+                  <Image className="h-4 w-4 mr-1" />
+                  Photo
+                </TabsTrigger>
+                <TabsTrigger value="link" className="data-[state=active]:bg-purple-600">
+                  <LinkIcon className="h-4 w-4 mr-1" />
+                  Link
+                </TabsTrigger>
+                <TabsTrigger value="text" className="data-[state=active]:bg-purple-600">
+                  <Type className="h-4 w-4 mr-1" />
+                  Text
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Photo Verification */}
+              <TabsContent value="photo" className="space-y-4 mt-4">
+                <div
+                  className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-purple-500 transition-all cursor-pointer"
+                  onClick={() => verificationPhotoInputRef.current?.click()}
+                >
+                  {verificationPhoto ? (
+                    <div className="space-y-2">
+                      <Image className="h-12 w-12 mx-auto text-green-400" />
+                      <p className="text-sm text-white font-medium">{verificationPhoto.name}</p>
+                      <p className="text-xs text-zinc-400">Click to change photo</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Image className="h-12 w-12 mx-auto text-zinc-500" />
+                      <p className="text-sm text-zinc-400">Click to upload photo</p>
+                      <p className="text-xs text-zinc-500">JPG, PNG, or GIF • Max 10MB</p>
+                    </div>
+                  )}
+                  <input
+                    ref={verificationPhotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </div>
+              </TabsContent>
+
+              {/* Link Verification */}
+              <TabsContent value="link" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white">Verification Link</label>
+                  <Input
+                    type="url"
+                    placeholder="https://example.com/proof"
+                    value={verificationLink}
+                    onChange={(e) => setVerificationLink(e.target.value)}
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                  <p className="text-xs text-zinc-500">
+                    Provide a link that proves you completed this challenge
+                  </p>
+                </div>
+              </TabsContent>
+
+              {/* Text Verification */}
+              <TabsContent value="text" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white">Verification Description</label>
+                  <Textarea
+                    placeholder="Describe how you completed this challenge..."
+                    value={verificationText}
+                    onChange={(e) => setVerificationText(e.target.value)}
+                    className="bg-zinc-800 border-zinc-700 text-white min-h-[120px]"
+                  />
+                  <p className="text-xs text-zinc-500">
+                    Provide a detailed description of how you completed this challenge
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Submit Button */}
+            <div className="flex gap-3 pt-4">
+              <EnhancedButton
+                variant="outline"
+                className="flex-1 border-zinc-700"
+                onClick={() => {
+                  setShowVerificationModal(false)
+                  setPendingChallenge(null)
+                }}
+                disabled={isSubmittingVerification}
+              >
+                Cancel
+              </EnhancedButton>
+              <EnhancedButton
+                variant="gradient"
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+                onClick={handleVerificationSubmit}
+                disabled={isSubmittingVerification}
+              >
+                {isSubmittingVerification ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                    />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    Submit Verification
+                    <CheckCircle className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </EnhancedButton>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verification Status Notification */}
+      <AnimatePresence>
+        {verificationStatus && verificationStatus.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4"
+          >
+            <EnhancedCard
+              variant="gradient"
+              className={cn(
+                "border shadow-2xl",
+                verificationStatus.status === "sent"
+                  ? "bg-blue-900/90 border-blue-700/50"
+                  : verificationStatus.status === "queued"
+                  ? "bg-yellow-900/90 border-yellow-700/50"
+                  : verificationStatus.status === "approved"
+                  ? "bg-green-900/90 border-green-700/50"
+                  : "bg-red-900/90 border-red-700/50"
+              )}
+            >
+              <EnhancedCardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                    verificationStatus.status === "sent"
+                      ? "bg-blue-600"
+                      : verificationStatus.status === "queued"
+                      ? "bg-yellow-600"
+                      : verificationStatus.status === "approved"
+                      ? "bg-green-600"
+                      : "bg-red-600"
+                  )}>
+                    {verificationStatus.status === "sent" && (
+                      <CheckCircle className="h-5 w-5 text-white" />
+                    )}
+                    {verificationStatus.status === "queued" && (
+                      <Clock className="h-5 w-5 text-white" />
+                    )}
+                    {verificationStatus.status === "approved" && (
+                      <CheckCircle className="h-5 w-5 text-white" />
+                    )}
+                    {verificationStatus.status === "rejected" && (
+                      <X className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-sm font-semibold text-white">
+                        {verificationStatus.status === "sent" && "Request Sent"}
+                        {verificationStatus.status === "queued" && "Queued for Review"}
+                        {verificationStatus.status === "approved" && "Verification Approved"}
+                        {verificationStatus.status === "rejected" && "Verification Rejected"}
+                      </h4>
+                      <button
+                        onClick={() => setVerificationStatus(null)}
+                        className="text-zinc-400 hover:text-white transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-zinc-300 mb-2">{verificationStatus.message}</p>
+                    
+                    {verificationStatus.details && (
+                      <div className="space-y-1.5 mt-2 pt-2 border-t border-zinc-700/50">
+                        {verificationStatus.details.verdict && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-zinc-400">Verdict:</span>
+                            <Badge className={cn(
+                              "text-xs px-2 py-0.5",
+                              verificationStatus.details.verdict === "approve"
+                                ? "bg-green-900/40 text-green-400 border-green-700/50"
+                                : "bg-red-900/40 text-red-400 border-red-700/50"
+                            )}>
+                              {verificationStatus.details.verdict === "approve" ? "Approved" : "Rejected"}
+                            </Badge>
+                          </div>
+                        )}
+                        {verificationStatus.details.ai_confidence !== undefined && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-zinc-400">AI Confidence:</span>
+                            <span className="text-white font-medium">
+                              {(verificationStatus.details.ai_confidence * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                        {verificationStatus.details.queued && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-zinc-400">Status:</span>
+                            <Badge className="bg-yellow-900/40 text-yellow-400 border-yellow-700/50 text-xs px-2 py-0.5">
+                              Queued
+                            </Badge>
+                          </div>
+                        )}
+                        {verificationStatus.details.low_conf_reason && (
+                          <div className="text-xs mt-2">
+                            <span className="text-zinc-400 block mb-1">Reason:</span>
+                            <p className="text-zinc-300 bg-zinc-800/50 p-2 rounded border border-zinc-700/50">
+                              {verificationStatus.details.low_conf_reason}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </EnhancedCardContent>
+            </EnhancedCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="min-h-screen pb-20">
         <div className="max-w-md mx-auto px-4 py-4 sm:py-6">
-          {/* Premium Header with Avatar */}
-                    <motion.div
-            initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Avatar className="h-12 w-12 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]">
-                    <AvatarImage src="/placeholder.svg" />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold">
-                      U
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black">
-                    <span className="text-xs font-bold text-white">{level}</span>
-                          </div>
-                        </div>
-                <div>
-                  <h1 className="text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Your Journey
-                  </h1>
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/40 px-2 py-0 text-xs">
-                      Level {level}
-                                </Badge>
-                    <span className="text-xs text-zinc-500">Rank #3</span>
-                              </div>
-                        </div>
-                      </div>
-              <div className="flex gap-2">
-                  <EnhancedButton
-                  variant="ghost"
-                    size="sm"
-                  className="h-10 w-10 p-0"
-                  >
-                  <Bell className="h-5 w-5" />
-                  </EnhancedButton>
-                <EnhancedButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetOnboarding}
-                  className="h-10 w-10 p-0"
-                >
-                  <Settings className="h-5 w-5" />
-                </EnhancedButton>
-                          </div>
-                              </div>
-
-            {/* Enhanced Stats Cards with Animations */}
-            <div className="grid grid-cols-3 gap-2">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 cursor-pointer">
-                  <EnhancedCardContent className="p-3 text-center">
-                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                      <AnimatedCounter from={0} to={totalXP} duration={1.5} />
-                            </div>
-                    <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
-                      <Trophy className="h-3 w-3" />
-                      Total XP
-                        </div>
-                      </EnhancedCardContent>
-                    </EnhancedCard>
-                  </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-green-700/40 cursor-pointer">
-                  <EnhancedCardContent className="p-3 text-center">
-                    <div className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                      {completedChallenges.length}
-              </div>
-                    <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Done
-                            </div>
-                  </EnhancedCardContent>
-                </EnhancedCard>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-orange-700/40 cursor-pointer">
-                  <EnhancedCardContent className="p-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
-                      <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
-                        {streak}
-                          </span>
-                            </div>
-                    <div className="text-[10px] text-zinc-400 mt-0.5">Day Streak</div>
-                  </EnhancedCardContent>
-                </EnhancedCard>
-              </motion.div>
-                            </div>
-          </motion.div>
-
           {/* Premium Tabs Navigation */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-zinc-900/80 border border-blue-700/40 rounded-xl p-1 mb-6 shadow-[0_0_30px_rgba(80,0,255,0.3)] grid grid-cols-3 w-full">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white data-[state=active]:shadow-[0_0_15px_rgba(80,0,255,0.5)] rounded-lg transition-all duration-300 text-xs"
+              >
+                <BarChart2 className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Overview</span>
+              </TabsTrigger>
               <TabsTrigger
                 value="challenges"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white data-[state=active]:shadow-[0_0_15px_rgba(80,0,255,0.5)] rounded-lg transition-all duration-300 text-xs"
               >
                 <Zap className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Tasks</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="leaderboard"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white data-[state=active]:shadow-[0_0_15px_rgba(80,0,255,0.5)] rounded-lg transition-all duration-300 text-xs"
-              >
-                <Trophy className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Rank</span>
               </TabsTrigger>
               <TabsTrigger
                 value="resume"
@@ -956,7 +1712,327 @@ export default function GoalsPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Challenges Tab - CONTINUED IN NEXT PART DUE TO LENGTH */}
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-4">
+              {/* Your Journey Header Section */}
+              <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 shadow-xl rounded-2xl">
+                <EnhancedCardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="relative">
+                      <Avatar className="h-12 w-12 border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]">
+                        <AvatarImage src="/placeholder.svg" />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold">
+                          U
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full w-6 h-6 flex items-center justify-center border-2 border-black">
+                        <span className="text-xs font-bold text-white">{level}</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        Your Journey
+                      </h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/40 px-2 py-0 text-xs">
+                          Level {level}
+                        </Badge>
+                        <span className="text-xs text-zinc-500">Rank #3</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 cursor-pointer">
+                        <EnhancedCardContent className="p-3 text-center">
+                          <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            <AnimatedCounter 
+                              from={0} 
+                              to={userTotalXP !== null ? userTotalXP : totalXP} 
+                              duration={1.5} 
+                            />
+                          </div>
+                          <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
+                            <Trophy className="h-3 w-3" />
+                            Total XP
+                          </div>
+                        </EnhancedCardContent>
+                      </EnhancedCard>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-green-700/40 cursor-pointer">
+                        <EnhancedCardContent className="p-3 text-center">
+                          <div className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                            {completedChallenges.length}
+                          </div>
+                          <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center justify-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Done
+                          </div>
+                        </EnhancedCardContent>
+                      </EnhancedCard>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-orange-700/40 cursor-pointer">
+                        <EnhancedCardContent className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Flame className="h-5 w-5 text-orange-400 animate-pulse" />
+                            <span className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                              {streak}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 mt-0.5">Day Streak</div>
+                        </EnhancedCardContent>
+                      </EnhancedCard>
+                    </motion.div>
+                  </div>
+                </EnhancedCardContent>
+              </EnhancedCard>
+
+              {/* Settings & Analytics Section */}
+              <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-purple-700/40 shadow-xl rounded-2xl">
+                <EnhancedCardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <EnhancedCardTitle className="text-lg flex items-center">
+                      <Settings className="h-5 w-5 mr-2 text-purple-400" />
+                      Settings & Analytics
+                    </EnhancedCardTitle>
+                  </div>
+                </EnhancedCardHeader>
+                <EnhancedCardContent className="space-y-4">
+                  {/* Current Goals */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
+                      <Target className="h-4 w-4 mr-2 text-blue-400" />
+                      Current Goals
+                      {isLoadingPreferences && (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="h-3 w-3 border-2 border-purple-400 border-t-transparent rounded-full ml-2"
+                        />
+                      )}
+                    </h3>
+                    <div className="space-y-2">
+                      {isLoadingPreferences ? (
+                        <p className="text-xs text-zinc-500 text-center py-2">Loading goals...</p>
+                      ) : selectedGoals.length > 0 ? (
+                        selectedGoals.map((goalId) => {
+                          const goal = goalCategories.find(g => g.id === goalId)
+                          if (!goal) return null
+                          return (
+                            <motion.div
+                              key={goalId}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${goal.gradient} flex items-center justify-center`}>
+                                  <goal.icon className="h-5 w-5 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-semibold text-white">{goal.name}</h4>
+                                  <p className="text-xs text-zinc-400">{goal.description}</p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )
+                        })
+                      ) : (
+                        <p className="text-xs text-zinc-500 text-center py-2">No goals selected</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Selected Skills/Activities */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
+                      <Sparkles className="h-4 w-4 mr-2 text-purple-400" />
+                      Selected Activities
+                      {isLoadingPreferences && (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="h-3 w-3 border-2 border-purple-400 border-t-transparent rounded-full ml-2"
+                        />
+                      )}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {isLoadingPreferences ? (
+                        <p className="text-xs text-zinc-500">Loading activities...</p>
+                      ) : selectedSkills.length > 0 ? (
+                        selectedSkills.map((skillId) => {
+                          const skill = activityPreferences.find(s => s.id === skillId)
+                          if (!skill) return null
+                          return (
+                            <Badge
+                              key={skillId}
+                              variant="outline"
+                              className="text-xs border-purple-700/50 text-purple-400 bg-purple-900/20"
+                            >
+                              <skill.icon className="h-3 w-3 mr-1" />
+                              {skill.name}
+                            </Badge>
+                          )
+                        })
+                      ) : (
+                        <p className="text-xs text-zinc-500">No activities selected</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Level Progress */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-2 text-yellow-400" />
+                      Level Progress
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Current Level</span>
+                        <span className="text-white font-bold">Level {level}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-zinc-400">Total XP</span>
+                        <span className="text-blue-400 font-bold">{totalXP.toLocaleString()} XP</span>
+                      </div>
+                      <div className="bg-zinc-800/50 rounded-lg p-2 border border-zinc-700/50">
+                        <div className="text-[10px] text-zinc-500 mb-1">XP to Next Level (estimated)</div>
+                        <Progress
+                          value={((totalXP % 2000) / 2000) * 100}
+                          className="h-2"
+                          indicatorClassName="bg-gradient-to-r from-yellow-500 to-orange-500"
+                        />
+                        <div className="text-[10px] text-zinc-400 mt-1">
+                          {2000 - (totalXP % 2000)} XP until Level {level + 1}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Challenges Analytics */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
+                      <BarChart2 className="h-4 w-4 mr-2 text-green-400" />
+                      Challenges Analytics
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                        <div className="text-xs text-zinc-400 mb-1">Completed</div>
+                        <div className="text-xl font-bold text-green-400">
+                          {apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 mt-1">out of {apiDailyChallenges.length || 0} daily</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                        <div className="text-xs text-zinc-400 mb-1">Completion Rate</div>
+                        <div className="text-xl font-bold text-blue-400">
+                          {apiDailyChallenges.length > 0 
+                            ? Math.round((apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length / apiDailyChallenges.length) * 100)
+                            : 0}%
+                        </div>
+                        <div className="text-[10px] text-zinc-500 mt-1">Daily Challenges</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-zinc-400">Daily Challenges</span>
+                        <span className="text-xs font-bold text-white">
+                          {apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length} / {apiDailyChallenges.length || 0}
+                        </span>
+                      </div>
+                      <Progress
+                        value={apiDailyChallenges.length > 0 
+                          ? (apiDailyChallenges.filter(c => c.status === "completed" || completedChallenges.includes(c.id)).length / apiDailyChallenges.length) * 100
+                          : 0}
+                        className="h-1.5"
+                        indicatorClassName="bg-gradient-to-r from-blue-500 to-purple-500"
+                      />
+                    </div>
+                    <div className="mt-2 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-zinc-400">Monthly Challenges</span>
+                        <span className="text-xs font-bold text-white">
+                          {completedChallenges.filter(id => monthlyChallenges.some(c => c.id === id)).length} / {monthlyChallenges.length}
+                        </span>
+                      </div>
+                      <Progress
+                        value={(completedChallenges.filter(id => monthlyChallenges.some(c => c.id === id)).length / monthlyChallenges.length) * 100}
+                        className="h-1.5"
+                        indicatorClassName="bg-gradient-to-r from-purple-500 to-pink-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Achievements Preview */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center">
+                      <Award className="h-4 w-4 mr-2 text-yellow-400" />
+                      Achievements
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {achievements.slice(0, 3).map((achievement) => (
+                        <motion.div
+                          key={achievement.id}
+                          whileHover={{ scale: 1.05 }}
+                          className={cn(
+                            "aspect-square rounded-lg flex flex-col items-center justify-center p-2 relative",
+                            achievement.earned
+                              ? achievement.rarity === "legendary"
+                                ? "bg-gradient-to-br from-yellow-500 via-orange-500 to-red-500"
+                                : achievement.rarity === "epic"
+                                ? "bg-gradient-to-br from-purple-500 to-pink-500"
+                                : "bg-gradient-to-br from-blue-500 to-cyan-500"
+                              : "bg-zinc-800/50 border border-zinc-700 opacity-50"
+                          )}
+                        >
+                          {achievement.earned ? (
+                            <>
+                              <achievement.icon className="h-6 w-6 text-white mb-1" />
+                              <span className="text-[9px] font-bold text-white text-center">{achievement.name}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="h-6 w-6 text-zinc-600 mb-1" />
+                              <span className="text-[9px] text-zinc-600 text-center">Locked</span>
+                            </>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                    <EnhancedButton
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-2 text-xs"
+                      onClick={() => setActiveTab("challenges")}
+                    >
+                      View All Achievements
+                      <ChevronRight className="h-3 w-3 ml-1" />
+                    </EnhancedButton>
+                  </div>
+
+                  {/* Change Goals & Activities */}
+                  <div className="pt-4 border-t border-zinc-700/50">
+                    <EnhancedButton
+                      variant="outline"
+                      className="w-full border-purple-700/50 text-purple-400 hover:bg-purple-900/20 hover:border-purple-600/50"
+                      onClick={resetOnboarding}
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      Change Goals & Activities
+                    </EnhancedButton>
+                    <p className="text-xs text-zinc-500 text-center mt-2">
+                      Update your goals and activities preferences
+                    </p>
+                  </div>
+                </EnhancedCardContent>
+              </EnhancedCard>
+            </TabsContent>
+
+            {/* Challenges Tab */}
             <TabsContent value="challenges" className="space-y-4">
               {/* Daily Challenges */}
               <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 shadow-xl rounded-2xl">
@@ -972,73 +2048,183 @@ export default function GoalsPage() {
                   </div>
                   </EnhancedCardHeader>
                 <EnhancedCardContent className="space-y-3">
-                  {dailyChallenges.map((challenge, index) => (
+                  {isLoadingDailyChallenges ? (
+                    <div className="flex items-center justify-center py-8">
                       <motion.div
-                        key={challenge.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      whileHover={{ scale: 1.02 }}
-                      className={cn(
-                        "p-3 rounded-xl border transition-all cursor-pointer",
-                          completedChallenges.includes(challenge.id)
-                          ? "bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-700/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
-                          : "bg-zinc-800/50 border-zinc-700/50 hover:border-blue-500/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                      )}
-                      onClick={() => !completedChallenges.includes(challenge.id) && handleChallengeComplete(challenge.id, challenge.xp)}
-                      >
-                      <div className="flex items-start gap-3">
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"
+                      />
+                    </div>
+                  ) : apiDailyChallenges.length > 0 ? (
+                    apiDailyChallenges.map((challenge, index) => {
+                      const isCompleted = completedChallenges.includes(challenge.id) || challenge.status === "completed"
+                      const isStarted = challenge.status === "started"
+                      
+                      return (
                         <motion.div
-                          whileHover={{ rotate: 5 }}
+                          key={challenge.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          whileHover={{ scale: 1.02 }}
                           className={cn(
-                            "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg",
-                            completedChallenges.includes(challenge.id)
-                              ? "bg-gradient-to-br from-green-500 to-emerald-500"
-                              : "bg-gradient-to-br from-blue-500 to-purple-500"
+                            "p-4 rounded-xl border transition-all",
+                            isCompleted
+                              ? "bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-700/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                              : isStarted
+                              ? "bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-700/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                              : "bg-zinc-800/50 border-zinc-700/50"
                           )}
                         >
-                          {completedChallenges.includes(challenge.id) ? (
-                            <CheckCircle className="h-6 w-6 text-white" />
-                          ) : (
-                            <challenge.icon className="h-6 w-6 text-white" />
-                          )}
-                        </motion.div>
-                          <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h4 className={cn(
-                              "text-sm font-semibold",
-                                completedChallenges.includes(challenge.id) ? "text-green-400 line-through" : "text-white"
-                            )}>
-                                {challenge.title}
-                              </h4>
-                            <Badge className={cn(
-                              "text-xs px-2 py-0.5",
-                              challenge.difficulty === "Easy" ? "bg-green-900/40 text-green-400 border-green-700/50" :
-                              challenge.difficulty === "Medium" ? "bg-yellow-900/40 text-yellow-400 border-yellow-700/50" :
-                              "bg-red-900/40 text-red-400 border-red-700/50"
-                            )}>
-                                {challenge.difficulty}
-                              </Badge>
-                            </div>
-                          <p className="text-xs text-zinc-400 mb-2 line-clamp-2">{challenge.description}</p>
-                          <div className="flex items-center gap-3 text-xs">
-                            <span className="flex items-center gap-1 text-zinc-500">
-                                <Timer className="h-3 w-3" />
-                                {challenge.timeEstimate}
-                              </span>
-                            <span className="flex items-center gap-1 text-yellow-400 font-medium">
-                                <Award className="h-3 w-3" />
-                                +{challenge.xp} XP
-                              </span>
-                            <span className="flex items-center gap-1 text-zinc-500">
-                              <Users className="h-3 w-3" />
-                              {challenge.participants} active
-                            </span>
+                          <div className="flex items-start gap-3 mb-3">
+                            <motion.div
+                              whileHover={{ rotate: 5 }}
+                              className={cn(
+                                "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg",
+                                isCompleted
+                                  ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                                  : "bg-gradient-to-br from-blue-500 to-purple-500"
+                              )}
+                            >
+                              {isCompleted ? (
+                                <CheckCircle className="h-6 w-6 text-white" />
+                              ) : (
+                                <challenge.icon className="h-6 w-6 text-white" />
+                              )}
+                            </motion.div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <h4 className={cn(
+                                  "text-sm font-semibold",
+                                  isCompleted ? "text-green-400 line-through" : "text-white"
+                                )}>
+                                  {challenge.title}
+                                </h4>
+                                <Badge className={cn(
+                                  "text-xs px-2 py-0.5",
+                                  challenge.difficulty === "Easy" ? "bg-green-900/40 text-green-400 border-green-700/50" :
+                                  challenge.difficulty === "Medium" ? "bg-yellow-900/40 text-yellow-400 border-yellow-700/50" :
+                                  "bg-red-900/40 text-red-400 border-red-700/50"
+                                )}>
+                                  {challenge.difficulty}
+                                </Badge>
+                                {isStarted && (
+                                  <Badge className="text-xs px-2 py-0.5 bg-blue-900/40 text-blue-400 border-blue-700/50">
+                                    <PlayCircle className="h-3 w-3 mr-1" />
+                                    Started
+                                  </Badge>
+                                )}
+                                {isCompleted && (
+                                  <Badge className="text-xs px-2 py-0.5 bg-green-900/40 text-green-400 border-green-700/50">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Completed
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-zinc-400 mb-3">{challenge.description}</p>
+                              
+                              {/* Goals */}
+                              {challenge.goals && challenge.goals.length > 0 && (
+                                <div className="mb-2">
+                                  <div className="text-[10px] text-zinc-500 mb-1">Goals:</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {challenge.goals.map((goal: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 border-blue-700/50 text-blue-400 bg-blue-900/20">
+                                        {goal}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Activities */}
+                              {challenge.activities && challenge.activities.length > 0 && (
+                                <div className="mb-2">
+                                  <div className="text-[10px] text-zinc-500 mb-1">Activities:</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {challenge.activities.map((activity: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 border-purple-700/50 text-purple-400 bg-purple-900/20">
+                                        {activity}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Tags */}
+                              {challenge.tags && challenge.tags.length > 0 && (
+                                <div className="mb-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    {challenge.tags.map((tag: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 border-zinc-700/50 text-zinc-400 bg-zinc-800/50">
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center gap-3 text-xs flex-wrap mb-3">
+                                <span className="flex items-center gap-1 text-zinc-500">
+                                  <Timer className="h-3 w-3" />
+                                  {challenge.timeEstimate}
+                                </span>
+                                <span className="flex items-center gap-1 text-yellow-400 font-medium">
+                                  <Award className="h-3 w-3" />
+                                  {challengesXP[challenge.uc_id] !== undefined 
+                                    ? `${challengesXP[challenge.uc_id]} XP`
+                                    : `+${challenge.xp} XP`
+                                  }
+                                </span>
+                                {challenge.progress_pct > 0 && (
+                                  <span className="flex items-center gap-1 text-blue-400">
+                                    <BarChart2 className="h-3 w-3" />
+                                    {challenge.progress_pct}% complete
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Complete Button - only show when started */}
+                              {isStarted && !isCompleted && (
+                                <EnhancedButton
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleChallengeComplete(challenge.id, challenge.xp, challenge.uc_id)
+                                  }}
+                                  variant="gradient"
+                                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Complete
+                                </EnhancedButton>
+                              )}
+                              
+                              {/* Start Button - only show when not started */}
+                              {!isStarted && !isCompleted && challenge.uc_id && (
+                                <EnhancedButton
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleStartChallenge(challenge.uc_id)
+                                  }}
+                                  variant="gradient"
+                                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white"
+                                >
+                                  <PlayCircle className="h-4 w-4 mr-2" />
+                                  Start Challenge
+                                </EnhancedButton>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      )
+                    })
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-zinc-400 mb-2">No daily challenges available</p>
+                      <p className="text-xs text-zinc-500">Check back later for new challenges!</p>
+                    </div>
+                  )}
                   </EnhancedCardContent>
                 </EnhancedCard>
 
@@ -1056,154 +2242,234 @@ export default function GoalsPage() {
                   </div>
                   </EnhancedCardHeader>
                   <EnhancedCardContent className="space-y-4">
-                  {monthlyChallenges.map((challenge, index) => (
+                  {isLoadingMonthlyChallenges ? (
+                    <div className="flex items-center justify-center py-8">
                       <motion.div
-                        key={challenge.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="p-4 rounded-xl border bg-gradient-to-r from-zinc-800/50 to-zinc-900/50 border-zinc-700/50 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] transition-all"
-                      >
-                        <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <motion.div
-                            whileHover={{ rotate: 5, scale: 1.1 }}
-                            className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg flex-shrink-0"
-                          >
-                            <challenge.icon className="h-7 w-7 text-white" />
-                          </motion.div>
-                            <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="text-sm font-semibold text-white">{challenge.title}</h4>
-                              <Badge className="bg-purple-900/40 text-purple-400 border-purple-700/50 text-xs">
-                                {challenge.progress}%
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-zinc-400 mb-2">{challenge.description}</p>
-                            <div className="flex items-center gap-3 text-xs text-zinc-500">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  Due {new Date(challenge.deadline).toLocaleDateString()}
-                                </span>
-                              <span className="flex items-center gap-1 text-yellow-400 font-medium">
-                                <Trophy className="h-3 w-3" />
-                                  +{challenge.xp} XP
-                                </span>
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full"
+                      />
+                    </div>
+                  ) : apiMonthlyChallenges.length > 0 ? (
+                    apiMonthlyChallenges.slice(0, 1).map((challenge, index) => {
+                      const isCompleted = completedChallenges.includes(challenge.id) || challenge.status === "completed"
+                      const isStarted = challenge.status === "started"
+                      
+                      return (
+                        <motion.div
+                          key={challenge.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className={cn(
+                            "p-4 rounded-xl border transition-all",
+                            isCompleted
+                              ? "bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-700/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                              : isStarted
+                              ? "bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-700/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                              : "bg-gradient-to-r from-zinc-800/50 to-zinc-900/50 border-zinc-700/50"
+                          )}
+                        >
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-3">
+                              <motion.div
+                                whileHover={{ rotate: 5, scale: 1.1 }}
+                                className={cn(
+                                  "w-14 h-14 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0",
+                                  isCompleted
+                                    ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                                    : isStarted
+                                    ? "bg-gradient-to-br from-blue-500 to-purple-500"
+                                    : "bg-gradient-to-br from-purple-500 to-pink-500"
+                                )}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle className="h-7 w-7 text-white" />
+                                ) : (
+                                  <challenge.icon className="h-7 w-7 text-white" />
+                                )}
+                              </motion.div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className={cn(
+                                      "text-sm font-semibold",
+                                      isCompleted ? "text-green-400 line-through" : "text-white"
+                                    )}>
+                                      {challenge.title}
+                                    </h4>
+                                    <Badge className={cn(
+                                      "text-xs px-2 py-0.5",
+                                      challenge.difficulty === "Easy" ? "bg-green-900/40 text-green-400 border-green-700/50" :
+                                      challenge.difficulty === "Medium" ? "bg-yellow-900/40 text-yellow-400 border-yellow-700/50" :
+                                      "bg-red-900/40 text-red-400 border-red-700/50"
+                                    )}>
+                                      {challenge.difficulty}
+                                    </Badge>
+                                    {isStarted && (
+                                      <Badge className="text-xs px-2 py-0.5 bg-blue-900/40 text-blue-400 border-blue-700/50">
+                                        <PlayCircle className="h-3 w-3 mr-1" />
+                                        Started
+                                      </Badge>
+                                    )}
+                                    {isCompleted && (
+                                      <Badge className="text-xs px-2 py-0.5 bg-green-900/40 text-green-400 border-green-700/50">
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Completed
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Badge className={cn(
+                                    "text-xs",
+                                    isCompleted
+                                      ? "bg-green-900/40 text-green-400 border-green-700/50"
+                                      : isStarted
+                                      ? "bg-blue-900/40 text-blue-400 border-blue-700/50"
+                                      : "bg-purple-900/40 text-purple-400 border-purple-700/50"
+                                  )}>
+                                    {challenge.progress_pct || 0}%
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-zinc-400 mb-3">{challenge.description}</p>
+                                
+                                {/* Goals */}
+                                {challenge.goals && challenge.goals.length > 0 && (
+                                  <div className="mb-2">
+                                    <div className="text-[10px] text-zinc-500 mb-1">Goals:</div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {challenge.goals.map((goal: string, idx: number) => (
+                                        <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 border-blue-700/50 text-blue-400 bg-blue-900/20">
+                                          {goal}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Activities */}
+                                {challenge.activities && challenge.activities.length > 0 && (
+                                  <div className="mb-2">
+                                    <div className="text-[10px] text-zinc-500 mb-1">Activities:</div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {challenge.activities.map((activity: string, idx: number) => (
+                                        <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 border-purple-700/50 text-purple-400 bg-purple-900/20">
+                                          {activity}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Tags */}
+                                {challenge.tags && challenge.tags.length > 0 && (
+                                  <div className="mb-3">
+                                    <div className="flex flex-wrap gap-1">
+                                      {challenge.tags.map((tag: string, idx: number) => (
+                                        <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 border-zinc-700/50 text-zinc-400 bg-zinc-800/50">
+                                          {tag}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <div className="flex items-center gap-3 text-xs text-zinc-500 flex-wrap mb-3">
+                                  {challenge.due_at && (
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      Due {new Date(challenge.due_at).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1 text-zinc-500">
+                                    <Timer className="h-3 w-3" />
+                                    {challenge.timeEstimate}
+                                  </span>
+                                  <span className="flex items-center gap-1 text-yellow-400 font-medium">
+                                    <Trophy className="h-3 w-3" />
+                                    {challengesXP[challenge.uc_id] !== undefined 
+                                      ? `${challengesXP[challenge.uc_id]} XP`
+                                      : `+${challenge.xp} XP`
+                                    }
+                                  </span>
+                                </div>
+                                
+                                {/* Progress Bar */}
+                                <div className="space-y-2 mb-3">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-zinc-400">Progress</span>
+                                    <span className="text-purple-400 font-medium">{challenge.progress_pct || 0}%</span>
+                                  </div>
+                                  <Progress
+                                    value={challenge.progress_pct || 0}
+                                    className="h-2.5"
+                                    indicatorClassName="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                                  />
+                                </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex gap-2">
+                                  {/* In Progress Button - always show when not completed */}
+                                  {!isCompleted && challenge.uc_id && (
+                                    <EnhancedButton
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (!isStarted) {
+                                          handleStartChallenge(challenge.uc_id)
+                                        }
+                                      }}
+                                      variant="gradient"
+                                      className={cn(
+                                        "flex-1",
+                                        isStarted
+                                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white cursor-not-allowed opacity-75"
+                                          : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white"
+                                      )}
+                                      disabled={isStarted}
+                                    >
+                                      <PlayCircle className="h-4 w-4 mr-2" />
+                                      {isStarted ? "In Progress" : "Start Challenge"}
+                                    </EnhancedButton>
+                                  )}
+                                  
+                                  {/* Complete Button - only show when started and not completed */}
+                                  {isStarted && !isCompleted && (
+                                    <EnhancedButton
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleChallengeComplete(challenge.id, challenge.xp, challenge.uc_id)
+                                      }}
+                                      variant="gradient"
+                                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white"
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Complete
+                                    </EnhancedButton>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                          <div className="space-y-2">
-                          <div className="flex justify-between text-xs">
-                              <span className="text-zinc-400">Progress</span>
-                            <span className="text-purple-400 font-medium">{challenge.progress}%</span>
-                            </div>
-                            <Progress
-                              value={challenge.progress}
-                            className="h-2.5"
-                            indicatorClassName="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                          />
-                          <div className="flex items-center justify-between pt-2">
-                            <Badge variant="outline" className="text-xs text-zinc-500 border-zinc-700">
-                              <Award className="h-3 w-3 mr-1 text-yellow-400" />
-                              {challenge.reward}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs text-zinc-500 border-zinc-700">
-                              <Users className="h-3 w-3 mr-1" />
-                              {challenge.participants} joined
-                            </Badge>
-                          </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </EnhancedCardContent>
-                </EnhancedCard>
-          </TabsContent>
-
-            {/* Leaderboard Tab */}
-            <TabsContent value="leaderboard" className="space-y-4">
-              <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-yellow-700/40 shadow-xl rounded-2xl">
-                <EnhancedCardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <EnhancedCardTitle className="text-lg flex items-center">
-                      <Crown className="h-5 w-5 mr-2 text-yellow-400" />
-                      Top Performers
-                    </EnhancedCardTitle>
-                    <EnhancedButton variant="ghost" size="sm" className="text-xs">
-                      View All
-                      <ChevronRight className="h-3 w-3 ml-1" />
-                    </EnhancedButton>
-                  </div>
-                  </EnhancedCardHeader>
-                <EnhancedCardContent className="space-y-2">
-                  {leaderboardPreview.map((user, index) => (
-                    <motion.div
-                      key={user.rank}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      whileHover={{ scale: 1.02 }}
-                      className={cn(
-                        "p-3 rounded-xl transition-all cursor-pointer",
-                        user.name === "You"
-                          ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-2 border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-                          : "bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600"
-                      )}
-                    >
-                        <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0",
-                          user.rank === 1 ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-[0_0_20px_rgba(234,179,8,0.5)]" :
-                          user.rank === 2 ? "bg-gradient-to-r from-gray-400 to-gray-600 text-white shadow-[0_0_15px_rgba(156,163,175,0.5)]" :
-                          user.rank === 3 ? "bg-gradient-to-r from-orange-600 to-yellow-600 text-white shadow-[0_0_15px_rgba(234,88,12,0.5)]" :
-                          "bg-zinc-700 text-zinc-300"
-                        )}>
-                          {user.badge || `#${user.rank}`}
-                          </div>
-                        <Avatar className="h-10 w-10 border-2 border-zinc-700">
-                          <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-bold">
-                            {user.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={cn(
-                              "text-sm font-semibold",
-                              user.name === "You" ? "text-blue-400" : "text-white"
-                            )}>
-                              {user.name}
-                            </span>
-                            {user.rank <= 3 && (
-                              <Medal className={cn(
-                                "h-4 w-4",
-                                user.rank === 1 ? "text-yellow-400" :
-                                user.rank === 2 ? "text-gray-400" :
-                                "text-orange-400"
-                              )} />
-                            )}
-                          </div>
-                          <div className="text-xs text-zinc-500">{user.xp.toLocaleString()} XP</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-                            #{user.rank}
-                      </div>
-                          </div>
-                          </div>
-                    </motion.div>
-                  ))}
+                        </motion.div>
+                      )
+                    })
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-zinc-400 mb-2">No monthly challenges available</p>
+                      <p className="text-xs text-zinc-500">Check back later for new challenges!</p>
+                    </div>
+                  )}
                   </EnhancedCardContent>
                 </EnhancedCard>
 
-              {/* Achievements */}
+              {/* Achievements Section */}
               <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-purple-700/40 shadow-xl rounded-2xl">
                 <EnhancedCardHeader className="pb-3">
-                    <EnhancedCardTitle className="text-lg flex items-center">
+                  <EnhancedCardTitle className="text-lg flex items-center">
                     <Award className="h-5 w-5 mr-2 text-purple-400" />
                     Your Achievements
-                    </EnhancedCardTitle>
-                  </EnhancedCardHeader>
-                  <EnhancedCardContent>
+                  </EnhancedCardTitle>
+                </EnhancedCardHeader>
+                <EnhancedCardContent>
                   <div className="grid grid-cols-3 gap-3">
                     {achievements.map((achievement, index) => (
                       <motion.div
@@ -1236,10 +2502,10 @@ export default function GoalsPage() {
                         )}
                       </motion.div>
                     ))}
-                    </div>
-                  </EnhancedCardContent>
-                </EnhancedCard>
-            </TabsContent>
+                  </div>
+                </EnhancedCardContent>
+              </EnhancedCard>
+          </TabsContent>
 
             {/* Resume Tab - Same as before */}
             <TabsContent value="resume" className="space-y-4">
