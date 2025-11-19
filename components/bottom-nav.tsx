@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
-import { Home, Search, Circle, UserPlus } from "lucide-react"
+import { Home, Search, Circle, UserPlus, FileText } from "lucide-react"
 
 export function BottomNav() {
   const pathname = usePathname()
@@ -19,7 +19,7 @@ export function BottomNav() {
 
   const navItems = [
     { name: "Home", href: "/home", icon: Home },
-    { name: "Search", href: "/search", icon: Search },
+    { name: "RESUME", href: "/search", icon: FileText },
     { name: "Goals", href: "/goals", icon: Circle },
     { name: "Community", href: "/community", icon: UserPlus },
   ]

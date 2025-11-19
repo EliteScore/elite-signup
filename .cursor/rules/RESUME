@@ -1,347 +1,274 @@
-# EliteScore API — v1 (Extract: CV / Resume Editor)
+# EliteScore API — v2 (Extract: Parser & CV Evaluation)
 
-**Base URL**  
-All endpoints below are prefixed with `/v1`.
+Base URL
+--------
+All endpoints are prefixed with `/v2/parser`.
 
-## If not clear refer to andreas_first_task.md
+Content Types
+-------------
+- Request: multipart/form-data (for file uploads)
+- Response: application/json
 
-## Content Types
-- **Request:** `application/json`
-- **Response:** `application/json`
+==================================================
+# Resource Path: /v2/parser
 
-## Response Envelope
-**Schema:** `ApiResponse<T>` — fields:  
-- `success` *(boolean)*  
-- `message` *(string)*  
-- `data` *(T or null)*
-
-## Authentication
-- JWT required.  
-- The authenticated user id is read from the request attribute `userId` (set by the auth filter).  
-- **No user id appears in the path.** All routes act on the caller’s own CV.
-
-## Storage Notes
-- CV JSON is stored in `public.user_profile_info.resume` (PostgreSQL `jsonb`).  
-- The handler **updates only this column** (+ `updated_at`), assuming the row already exists.  
-- Stored JSON is **wrapped** as:
-  ```json
-  {
-    "profile": { ...parts... }
-  }
-  ```
-  (Legacy, unwrapped JSON is tolerated on read.)
-
----
-
-## Data Model
-
-### Cv (wrapper)
-```json
+## GET /v2/parser/health
+Summary: Service health check for the main OpenAI CV evaluation pipeline.
+Auth: none
+Response (200 OK):
 {
-  "profile": { ... }  // see Profile below
+  "status": "ok",
+  "openai_key": boolean,
+  "primary_model": string,
+  "escalation_model": string,
+  "auto_escalate": boolean,
+  "min_confidence": number,
+  "max_mb": number
 }
-```
 
-### Profile (target shape under `profile`)
-```jsonc
+--------------------------------------------------
+## GET /v2/parser/acc/health
+Summary: Service health check for the ACC (secondary) OpenAI pipeline.
+Auth: none
+Response (200 OK):
 {
-  "basics": {
-    "full_name": "",
-    "headline": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "summary": "",
-    "urls": {
-      "linkedin": "",
-      "github": "",
-      "portfolio": "",
-      "website": ""
+  "status": "ok",
+  "openai_key": boolean,
+  "primary_model": string,
+  "auto_escalate": string,
+  "min_confidence": string,
+  "max_mb": number
+}
+
+--------------------------------------------------
+## POST /v2/parser/resume/score
+Summary: Upload a CV/Resume file for AI evaluation (synchronous scoring).
+Auth: none
+Consumes: multipart/form-data
+Form Data:
+- file: UploadFile (.pdf, .doc, .docx, ≤10 MB)
+Response (200 OK):
+{
+  "score": number,               // overall score (0–100)
+  "parsed": {
+    "name": string,
+    "email": string,
+    "skills": [string],
+    "overall_score": number,
+    "components": {
+      "education": number,
+      "experience": number,
+      "skills": number,
+      "ai_signal": number,
+      "projects": number
+    },
+    "weights": {
+      "education": number,
+      "experience": number,
+      "skills": number,
+      "ai_signal": number,
+      "projects": number
+    },
+    "confidence": number,
+    "explanation": {
+      "highlights": [string],
+      "top_archetype_matches": [
+        { "name": string, "match_pct": number }
+      ],
+      "notes": {
+        "strengths": [string],
+        "weaknesses": [string]
+      }
     }
-  },
-  "experience": [ { /* ExperienceEntry */ } ],
-  "education":  [ { /* EducationEntry  */ } ],
-  "projects":   [ { /* ProjectEntry    */ } ],
-  "skills":     [ "Java", "SQL", "AWS" ],
-  "certifications": [ { /* CertificationEntry */ } ],
-  "languages":      [ { /* LanguageEntry      */ } ],
-  "publications":   [ { /* PublicationEntry   */ } ],
-  "honors_awards":  [ { /* HonorAwardEntry    */ } ],
-  "volunteer":      [ { /* VolunteerEntry     */ } ]
+  }
 }
-```
 
-### PATCH/PUT Semantics
-- **PUT (basics or collection):** replace the whole object/array at that part.
-- **PATCH (basics or bulk):** deep-merge objects; arrays/scalars replace; `null` **clears** a field.
-- For **collections** (`experience`, `skills`, …):  
-  - `PUT` replaces the entire array.  
-  - `POST` appends one or many items.  
-  - `DELETE` clears the array.
-
-### Validation Highlights
-- Dates accept `YYYY-MM` or `YYYY-MM-DD`.  
-- Typical field length limits are enforced in the model (e.g., basics names/headline).
-
----
-
-# Resource: `/v1/users/cv`
-
-> Acts on the authenticated user (derived from `request.getAttribute("userId")`).
-
-## Bulk
-
-### GET `/v1/users/cv`
-**Summary:** Get the full CV (wrapped in `profile`).  
-**Auth:** required
-
-**Response `data`:**
-```json
+## POST /v2/parser/resume/score 
+Summary: Same as the previous one , scores the resume score inside the DB.
+--------------------------------------------------
+## POST /v2/parser/resume/acc/score_async
+Summary: Start asynchronous CV evaluation on the ACC model (background job).
+Auth: required
+Consumes: multipart/form-data
+Form Data:
+- file: UploadFile (.pdf, .doc, .docx)
+Response (202 Accepted):
 {
-  "profile": { ... }
+  "proc_id": string,
+  "status": "queued"
 }
-```
 
-**Codes**
-- `200 OK` — `"ok"`
+Notes:
+- Returns immediately with a process ID.
+- Use `/resume/task_status/{task_id}` and `/resume/result/{task_id}` to track progress and fetch results.
 
----
+--------------------------------------------------
+## GET /v2/parser/resume/task_status/{task_id}
+Summary: Poll job status for an asynchronous ACC evaluation.
+Auth: required
+Path Params:
+- task_id (string) — process ID
+Response (200 OK):
+{
+  "proc_id": string,
+  "status": "queued"|"running"|"done"|"failed",
+  "stage": string,
+  "progress": number,
+  "created_at": int,
+  "started_at": int | null,
+  "finished_at": int | null,
+  "acc": boolean,
+  "filename": string
+}
+Errors:
+- 401 Unauthorized
+- 403 Forbidden — not owner of process ID
+- 404 Not Found — invalid process ID
 
-### PUT `/v1/users/cv`
-**Summary:** Replace the whole CV (only `resume` is updated in DB).  
-**Auth:** required
+--------------------------------------------------
+## GET /v2/parser/resume/result/{task_id}
+Summary: Retrieve the final result of a completed ACC evaluation job.
+Auth: required
+Path Params:
+- task_id (string)
+Response (200 OK):
+{
+  "score": number,
+  "parsed": { ...same structure as /resume/score... }
+}
+Errors:
+- 401 Unauthorized
+- 404 Not Found — result not ready or process failed
 
-**Body (Cv):**
-```json
+--------------------------------------------------
+## POST /v2/parser/resume/cv
+Summary: Extract structured LinkedIn-style profile data from a CV or resume.
+Auth: none
+Consumes: multipart/form-data
+Form Data:
+- file: UploadFile (.pdf, .doc, .docx)
+Response (200 OK):
 {
   "profile": {
-    "basics": { ... },
-    "experience": [ ... ],
-    "skills": [ ... ],
-    ...
+    "basics": {
+      "full_name": string,
+      "headline": string,
+      "email": string,
+      "phone": string,
+      "location": string,
+      "summary": string,
+      "urls": {
+        "linkedin": string,
+        "github": string,
+        "portfolio": string,
+        "website": string
+      }
+    },
+    "experience": [
+      {
+        "title": string,
+        "company": string,
+        "employment_type": string,
+        "location": string,
+        "start_date": string,
+        "end_date": string | null,
+        "is_current": boolean,
+        "description": string,
+        "achievements": [string]
+      }
+    ],
+    "education": [
+      {
+        "school": string,
+        "degree": string,
+        "field_of_study": string,
+        "start_date": string,
+        "end_date": string | null,
+        "grade": string,
+        "activities": string,
+        "description": string
+      }
+    ],
+    "projects": [
+      {
+        "name": string,
+        "role": string,
+        "start_date": string,
+        "end_date": string | null,
+        "url": string,
+        "description": string,
+        "highlights": [string],
+        "tech": [string]
+      }
+    ],
+    "skills": [string],
+    "certifications": [
+      {
+        "name": string,
+        "issuer": string,
+        "issue_date": string,
+        "credential_id": string,
+        "credential_url": string
+      }
+    ],
+    "languages": [
+      { "name": string, "proficiency": string }
+    ],
+    "publications": [
+      {
+        "title": string,
+        "publisher": string,
+        "date": string,
+        "url": string,
+        "summary": string
+      }
+    ],
+    "honors_awards": [
+      {
+        "title": string,
+        "issuer": string,
+        "date": string,
+        "description": string
+      }
+    ],
+    "volunteer": [
+      {
+        "role": string,
+        "organization": string,
+        "cause": string,
+        "start_date": string,
+        "end_date": string | null,
+        "description": string
+      }
+    ]
   }
 }
-```
 
-**Behavior**
-- The entire JSON under `profile` replaces what’s stored.  
-- Non-provided parts become absent/empty per the payload you send.
+==================================================
 
-**Codes**
-- `200 OK` — `"updated"`
-- `404` if your `user_id` row does not exist (handler maps internal not-found).
+Examples — cURL
+---------------
 
----
+# Health check
+curl -X GET "$BASE/v2/parser/health"
 
-### PATCH `/v1/users/cv`
-**Summary:** Deep-merge multiple parts at once.  
-**Auth:** required
+# Score CV
+curl -X POST "$BASE/v2/parser/resume/score" \
+  -F "file=@cv.pdf"
 
-**Body (Cv or unwrapped Profile):**
-```json
-{
-  "profile": {
-    "basics": { "headline": "New role", "urls": { "website": null } },
-    "skills": ["Java","Kotlin"]   // arrays replace
-  }
-}
-```
+# Start async ACC scoring
+curl -X POST "$BASE/v2/parser/resume/acc/score_async" \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@cv.pdf"
 
-**Behavior**
-- Objects merge; arrays/scalars replace; `null` clears a field.
+# Check job status
+curl -X GET "$BASE/v2/parser/resume/task_status/<proc_id>" \
+  -H "Authorization: Bearer <token>"
 
-**Codes**
-- `200 OK` — `"patched"`
-- `404` if profile row missing.
+# Get final result
+curl -X GET "$BASE/v2/parser/resume/result/<proc_id>" \
+  -H "Authorization: Bearer <token>"
 
----
-
-## Basics (object)
-
-### GET `/v1/users/cv/basics`
-**Summary:** Get only the `basics` object.  
-**Auth:** required
-
-**Response `data`:** the `basics` object (may be `{}` if empty).
-
-**Codes**
-- `200 OK` — `"ok"`
-
----
-
-### PUT `/v1/users/cv/basics`
-**Summary:** Replace the `basics` object.  
-**Auth:** required
-
-**Body (examples)**
-```json
-{
-  "full_name": "Aarav Mehta",
-  "headline": "Full Stack Engineer",
-  "email": "aarav@example.com",
-  "urls": { "github": "https://github.com/aarav" }
-}
-```
-
-**Behavior**
-- Entire `basics` is replaced with the provided JSON.  
-- Omitted fields are removed.
-
-**Codes**
-- `200 OK` — `"updated"`
-- `404` if profile row missing.
-
----
-
-### PATCH `/v1/users/cv/basics`
-**Summary:** Partially update `basics`.  
-**Auth:** required
-
-**Body (examples)**
-```json
-{ "headline": "Senior Full Stack Engineer", "urls": { "website": null } }
-```
-
-**Behavior**
-- Only provided fields are updated; `null` clears fields.
-
-**Codes**
-- `200 OK` — `"patched"`
-- `404` if profile row missing.
-
----
-
-## Collections (arrays)
-
-**Shared path prefix:** `/v1/users/cv/{part}`  
-Where `{part}` is one of:
-`experience | education | projects | skills | certifications | languages | publications | honors_awards | volunteer`
-
-### GET `/v1/users/cv/{part}`
-**Summary:** Get the array at `{part}`.  
-**Auth:** required  
-**Codes:** `200 OK` — `"ok"`
-
----
-
-### PUT `/v1/users/cv/{part}`
-**Summary:** Replace the full array at `{part}`.  
-**Auth:** required
-
-**Body**
-- A JSON **array** for object parts (e.g., experience).  
-- For `skills`, a JSON array of strings.
-
-**Example (experience)**
-```json
-[{
-  "title": "Senior Software Engineer",
-  "company": "TechNova Labs",
-  "start_date": "2021-05-01",
-  "is_current": true,
-  "description": "Lead engineer..."
-}]
-```
-
-**Codes**
-- `200 OK` — `"updated"`
-- `404` if profile row missing.
-
----
-
-### POST `/v1/users/cv/{part}`
-**Summary:** Append to the array at `{part}`.  
-**Auth:** required
-
-**Body**
-- Either a **single object/string** or an **array** of them.
-
-**Examples**
-```json
-{ "title":"Data Scientist","company":"Beta Ltd","start_date":"2023-01","is_current":true }
-```
-```json
-["Docker","Kubernetes"]
-```
-
-**Codes**
-- `200 OK` — `"appended"`
-- `404` if profile row missing.
-
----
-
-### DELETE `/v1/users/cv/{part}`
-**Summary:** Clear the array at `{part}` (becomes `[]`).  
-**Auth:** required
-
-**Codes**
-- `204 No Content`
-- `404` if profile row missing.
-
----
-
-## Error Codes (typical)
-- `400 Bad Request` — malformed JSON / schema violations
-- `401 Unauthorized` — missing/invalid JWT
-- `403 Forbidden` — (reserved; not used by CV endpoints today)
-- `404 Not Found` — profile row not present for this user
-- `409 Conflict` — (reserved)
-- `422 Unprocessable Entity` — failed validation (e.g., invalid date format)
-
----
-
-## Examples — cURL
-
-### Get full CV
-```bash
-curl -X GET "$BASE/v1/users/cv"   -H "Authorization: Bearer <token>"
-```
-
-### Replace full CV
-```bash
-curl -X PUT "$BASE/v1/users/cv"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{
-    "profile": {
-      "basics": { "full_name": "Aarav Mehta", "email": "aarav@example.com" },
-      "skills": ["JavaScript","AWS","Docker"]
-    }
-  }'
-```
-
-### Patch multiple parts
-```bash
-curl -X PATCH "$BASE/v1/users/cv"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{
-    "profile": {
-      "basics": { "headline": "Senior Engineer", "urls": { "website": null } },
-      "skills": ["Kotlin"]
-    }
-  }'
-```
-
-### Replace basics
-```bash
-curl -X PUT "$BASE/v1/users/cv/basics"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{
-    "full_name": "Aarav Mehta",
-    "email": "aarav@example.com",
-    "headline": "Full Stack Engineer"
-  }'
-```
-
-### Patch basics
-```bash
-curl -X PATCH "$BASE/v1/users/cv/basics"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '{ "headline": "Staff Engineer", "urls": { "github": "https://github.com/aarav" } }'
-```
-
-### Replace experience
-```bash
-curl -X PUT "$BASE/v1/users/cv/experience"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '[{ "title":"Software Engineer","company":"Acme","start_date":"2022-01" }]'
-```
-
-### Append a new skill
-```bash
-curl -X POST "$BASE/v1/users/cv/skills"   -H "Authorization: Bearer <token)"   -H "Content-Type: application/json"   -d '"PostgreSQL"'
-```
-
-### Clear languages
-```bash
-curl -X DELETE "$BASE/v1/users/cv/languages"   -H "Authorization: Bearer <token)"
-```
+# Parse CV to LinkedIn-style profile
+curl -X POST "$BASE/v2/parser/resume/cv" \
+  -F "file=@cv.pdf"

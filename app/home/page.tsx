@@ -756,9 +756,9 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen mobile-scroll-region">
+      <div className="min-h-screen">
         {/* Full width on phones, centred & capped on tablets/desktops */}
-        <div className="w-full sm:max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden scroll-smooth mobile-scroll-region touch-pan-y">
+        <div className="w-full sm:max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
           {/* Main Feed */}
           <div className="space-y-6 sm:space-y-6">
 
