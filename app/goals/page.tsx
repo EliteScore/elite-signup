@@ -416,8 +416,13 @@ export default function GoalsPage() {
       // Use Next.js API route to proxy the request (avoids CORS issues)
       const url = "/api/preferences/set_preferences"
       
-      console.log("[Preferences] Making request to:", url)
-      console.log("[Preferences] Payload:", { goals: goalsPayload, activities: activitiesPayload })
+      console.log("[Preferences] ===== STARTING API CALL =====")
+      console.log("[Preferences] Timestamp:", new Date().toISOString())
+      console.log("[Preferences] Request URL:", url)
+      console.log("[Preferences] Goals payload:", JSON.stringify(goalsPayload, null, 2))
+      console.log("[Preferences] Activities payload:", JSON.stringify(activitiesPayload, null, 2))
+      console.log("[Preferences] Token present:", !!token)
+      console.log("[Preferences] Token preview:", token ? `${token.substring(0, 20)}...${token.substring(token.length - 10)}` : "none")
       
       // Add timeout and better error handling
       const controller = new AbortController()
@@ -425,6 +430,7 @@ export default function GoalsPage() {
 
       let response: Response
       try {
+        console.log("[Preferences] Making fetch request...")
         response = await fetch(url, {
           method: "PATCH",
           headers: {
@@ -439,30 +445,56 @@ export default function GoalsPage() {
           signal: controller.signal,
         })
         clearTimeout(timeoutId)
+        console.log("[Preferences] Fetch request completed")
       } catch (fetchError) {
         clearTimeout(timeoutId)
+        console.error("[Preferences] ===== FETCH ERROR =====")
         if (fetchError instanceof Error) {
+          console.error("[Preferences] Error name:", fetchError.name)
+          console.error("[Preferences] Error message:", fetchError.message)
+          console.error("[Preferences] Error stack:", fetchError.stack)
           if (fetchError.name === 'AbortError') {
             console.error("[Preferences] Request timeout after 30 seconds")
             throw new Error("Request timed out. Please check your connection and try again.")
           }
-          console.error("[Preferences] Fetch error:", fetchError.message, fetchError)
+          console.error("[Preferences] Full error object:", fetchError)
           throw new Error(`Network error: ${fetchError.message}`)
         }
+        console.error("[Preferences] Unknown error type:", typeof fetchError, fetchError)
         throw fetchError
       }
 
-      console.log("[Preferences] Response status:", response.status)
+      console.log("[Preferences] Response received")
+      console.log("[Preferences] Response status:", response.status, response.statusText)
       console.log("[Preferences] Response ok:", response.ok)
+      console.log("[Preferences] Response headers:", Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
+        console.error("[Preferences] ===== API ERROR RESPONSE =====")
+        console.error("[Preferences] Status:", response.status, response.statusText)
+        
         let errorText = ""
+        let errorJson: any = null
         try {
-          errorText = await response.text()
-          console.error("[Preferences] API error response:", errorText)
+          const contentType = response.headers.get('content-type')
+          if (contentType?.includes('application/json')) {
+            errorJson = await response.json()
+            errorText = JSON.stringify(errorJson, null, 2)
+            console.error("[Preferences] Error response (JSON):", errorText)
+          } else {
+            errorText = await response.text()
+            console.error("[Preferences] Error response (text):", errorText)
+          }
         } catch (e) {
-          console.error("[Preferences] Could not read error response")
+          console.error("[Preferences] Could not read error response:", e)
+          errorText = `Status ${response.status}: ${response.statusText}`
         }
+        
+        console.error("[Preferences] Full error details:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorJson || errorText
+        })
         
         // Still save locally even if API call fails
         localStorage.setItem("goals.onboarding.complete", "true")
@@ -475,10 +507,19 @@ export default function GoalsPage() {
 
       let result
       try {
-        result = await response.json()
-        console.log("[Preferences] Successfully saved:", result)
+        const contentType = response.headers.get('content-type')
+        if (contentType?.includes('application/json')) {
+          result = await response.json()
+          console.log("[Preferences] ===== SUCCESS =====")
+          console.log("[Preferences] Response data:", JSON.stringify(result, null, 2))
+        } else {
+          result = await response.text()
+          console.log("[Preferences] ===== SUCCESS (non-JSON) =====")
+          console.log("[Preferences] Response data:", result)
+        }
       } catch (e) {
         console.warn("[Preferences] Response was not JSON, but status was OK")
+        console.warn("[Preferences] Parse error:", e)
         result = null
       }
 

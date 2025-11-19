@@ -1,114 +1,173 @@
-# EliteScore API — v1 (Extract: Users/Follow)
+# Follow & Follow-Request API Documentation
 
-Base URL
---------
-All endpoints are prefixed with `/v1`. :contentReference[oaicite:0]{index=0}
+## Overview
 
-Content Types
--------------
-- Request: application/json
-- Response: application/json
+This document describes the follow, unfollow, follow-request, and
+request‑management API logic implemented in `FollowResource`.
 
-Response Envelope
------------------
-Schema: ApiResponse<T>  — fields: success (bool), message (string), data (T or null). :contentReference[oaicite:1]{index=1}
+The system supports: - Normal follow for public accounts. -
+Follow‑request workflow for private accounts. - Accepting, declining,
+and cancelling requests. - Checking follower/following relationships. -
+Viewing own followers, following, incoming requests, and sent requests.
 
-==================================================
-# Resource Path: /v1/users
-(All endpoints below come from this resource.) :contentReference[oaicite:2]{index=2}
+------------------------------------------------------------------------
 
-## POST /v1/users/follow
-Summary: Follow another user by ID.
-Auth: required (JWT; `userId` from request context)
-Body:
-{
-"userId": integer   // target user ID
-}
-Responses:
-- 200 OK — "Followed successfully"; data: null
-- 400 Bad Request — "Already following this user"
-- 401 Unauthorized — "User does not exist" (if requester/receiver/profile missing)
-  Notes:
-- Looks up requester via request attribute `userId` (String → int). :contentReference[oaicite:3]{index=3}
+## Endpoints
 
---------------------------------------------------
-## POST /v1/users/unfollow
-Summary: Unfollow a user by ID.
-Auth: required
-Body:
-{
-"userId": integer
-}
-Responses:
-- 200 OK — "Unfollowed successfully"; data: null
-- 400 Bad Request — "You are not following this user"
-- 401 Unauthorized — "User does not exist"
-  Notes:
-- Same auth/validation pattern as follow. :contentReference[oaicite:4]{index=4}
+### POST /users/follow
 
---------------------------------------------------
-## GET /v1/users/getFollowers/{userId}
-Summary: List follower IDs for a given user.
-Auth: none (public)
-Path Params:
-- userId (int) — target user
-  Responses:
-- 200 OK — data: number[] of follower user IDs (message: "Your followers retrieved")
-  Notes:
-- Returns only integer IDs, not full profiles. :contentReference[oaicite:5]{index=5}
+Follow a user.\
+If the target profile is private, a follow request is created.\
+If public, the follow is immediate.
 
---------------------------------------------------
-## GET /v1/users/getFollowing/{userId}
-Summary: List IDs the given user is following.
-Auth: none (public)
-Path Params:
-- userId (int) — target user
-  Responses:
-- 200 OK — data: number[] (message: "Following retrieved") :contentReference[oaicite:6]{index=6}
+**Request**
 
---------------------------------------------------
-## GET /v1/users/get_own_followers
-Summary: List your own follower IDs.
-Auth: required
-Responses:
-- 200 OK — data: number[] (message: "Your followers retrieved")
-- 401 Unauthorized — "User does not exist" (if requester missing) :contentReference[oaicite:7]{index=7}
+    { "userId": <targetUserId> }
 
---------------------------------------------------
-## GET /v1/users/get_own_following
-Summary: List IDs you are following.
-Auth: required
-Responses:
-- 200 OK — data: number[] (message: "Following retrieved")
-- 401 Unauthorized — "User does not exist" (if requester missing) :contentReference[oaicite:8]{index=8}
+**Responses** - 200: Followed or follow request sent. - 400: Already
+following, already requested, blocked, or invalid action. - 401: User
+does not exist.
 
-==================================================
+------------------------------------------------------------------------
 
-Examples — cURL
----------------
+### POST /users/unfollow
 
-# Follow
-curl -X POST "$BASE/v1/users/follow" \
--H "Authorization: Bearer <token>" \
--H "Content-Type: application/json" \
--d '{"userId": 42}'
+Unfollow a user.
 
-# Unfollow
-curl -X POST "$BASE/v1/users/unfollow" \
--H "Authorization: Bearer <token>" \
--H "Content-Type: application/json" \
--d '{"userId": 42}'
+**Request**
 
-# Public: followers of a user
-curl -X GET "$BASE/v1/users/getFollowers/42"
+    { "userId": <targetUserId> }
 
-# Public: who a user follows
-curl -X GET "$BASE/v1/users/getFollowing/42"
+**Responses** - 200: Unfollowed. - 400: Not following. - 401: User does
+not exist.
 
-# My followers
-curl -X GET "$BASE/v1/users/get_own_followers" \
--H "Authorization: Bearer <token>"
+------------------------------------------------------------------------
 
-# Who I follow
-curl -X GET "$BASE/v1/users/get_own_following" \
--H "Authorization: Bearer <token>"
+### POST /users/check_follow
+
+Check if the current user is following another user.
+
+**Responses** - 200: success true or false. - 400 / 401: User blocked or
+invalid.
+
+------------------------------------------------------------------------
+
+### POST /users/check_following
+
+Check if another user is following the current user.
+
+**Responses** - 200: success true or false. - 400 / 401: Blocked or
+invalid.
+
+------------------------------------------------------------------------
+
+### GET /users/getFollowers/{userId}
+
+Returns a list of follower user IDs.
+
+------------------------------------------------------------------------
+
+### GET /users/getFollowing/{userId}
+
+Returns a list of following user IDs.
+
+------------------------------------------------------------------------
+
+### GET /users/get_own_following
+
+Returns the authenticated user's following list.
+
+------------------------------------------------------------------------
+
+### GET /users/get_own_followers
+
+Returns the authenticated user's followers.
+
+------------------------------------------------------------------------
+
+## Follow Requests (Private Accounts Only)
+
+Private accounts can receive and act on follow requests.
+
+### GET /users/get_own_requests
+
+Returns incoming follow requests.
+
+Allowed only for private accounts.
+
+------------------------------------------------------------------------
+
+### GET /users/get_sent_requests
+
+Returns follow requests the user has sent to other private accounts.
+
+------------------------------------------------------------------------
+
+### POST /users/check_request_sent
+
+Checks if the current user has sent a follow request to another user.
+
+------------------------------------------------------------------------
+
+### POST /users/accept_request
+
+Accept a follow request.
+
+Allowed only for private account owners.
+
+------------------------------------------------------------------------
+
+### POST /users/decline_request
+
+Decline a follow request.
+
+Allowed only for private account owners.
+
+------------------------------------------------------------------------
+
+### POST /users/cancel_request
+
+Cancel a follow request that the current user previously sent.
+
+Allowed only when the target account is private.
+
+------------------------------------------------------------------------
+
+## Private Account Check
+
+A private account is defined as:
+
+    profile.getVisibility() == ProfileVisibility.PRIVATE
+
+Some endpoints are restricted to private accounts to maintain consistent
+follow‑request behavior.
+
+------------------------------------------------------------------------
+
+## Request Body Format
+
+All POST endpoints expecting a target user use:
+
+    {
+      "userId": <targetUserId>
+    }
+
+------------------------------------------------------------------------
+
+## Error Structure
+
+All responses use:
+
+    {
+      "success": true|false,
+      "message": "...",
+      "data": ...
+    }
+
+------------------------------------------------------------------------
+
+## Notes
+
+-   You cannot follow yourself.
+-   You cannot bypass blocks.
+-   Only private accounts manage incoming follow requests.

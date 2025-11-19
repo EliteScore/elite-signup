@@ -1,0 +1,101 @@
+# EliteScore API — v1 (Extract: Preferences)
+
+Base URL
+--------
+All endpoints are prefixed with `/v1/preferences`.
+
+Content Types
+-------------
+- Request: application/json
+- Response: application/json
+
+
+Data Model
+----------
+Preference (user goals & activities)
+{
+  "goals": [string],
+  "activities": [string]
+}
+
+Validation Rules
+----------------
+- Allowed goals:
+  ["Career Growth","Skill Development","Financial Freedom","Person Growth","Entrepreneurship"]
+- Allowed activities:
+  [
+    "Programming & Development",
+    "UI/UX Design",
+    "Data Science & Analytics",
+    "Leadership & Management",
+    "Networking & Communication",
+    "Health & Fitness",
+    "Mindfulness & Meditation",
+    "Investing & Finance",
+    "Entrepreneurship",
+    "Digital Marketing",
+    "Language Learning",
+    "Public Speaking"
+  ]
+- If an unlisted goal/activity is provided, endpoint returns `422 Unprocessable Entity` with a detail payload listing invalid fields.
+
+==================================================
+# Resource Path: /v1/preferences
+
+## GET /v1/preferences/get_preferences
+Summary: Retrieve the current user’s challenge preferences.
+Auth: required
+Response (200 OK):
+{
+  "goals": [string],
+  "activities": [string]
+}
+Errors:
+- 401 Unauthorized — if `user_id` missing in request context.
+- 404 Not Found — if user has no saved preferences (may return nulls or error depending on implementation).
+
+Notes:
+- Returns an empty array if preferences not yet set.
+
+--------------------------------------------------
+## PATCH /v1/preferences/set_preferences
+Summary: Create or update challenge preference settings for the authenticated user.
+Auth: required
+Consumes: application/json
+Request Body:
+{
+  "goals": [string],
+  "activities": [string]
+}
+Responses:
+- 200 OK — Updated or newly created preferences:
+  {
+    "goals": [string],
+    "activities": [string]
+  }
+- 422 Unprocessable Entity — Invalid goal or activity value.
+- 401 Unauthorized — Missing user_id in request context.
+
+Behavior:
+- Validates the payload against allowed lists.
+- Updates existing record if present; creates new one otherwise.
+- Commits immediately.
+- Returns the updated preferences.
+
+==================================================
+
+Examples — cURL
+---------------
+
+# Get preferences
+curl -X GET "$BASE/v1/preferences/get_preferences" \
+  -H "Authorization: Bearer <token>"
+
+# Set or update preferences
+curl -X PATCH "$BASE/v1/preferences/set_preferences" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "goals":["Career Growth","Skill Development"],
+        "activities":["Programming & Development","Leadership & Management"]
+      }'
