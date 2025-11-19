@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
+const RESUME_SCORES_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
 
 type Resume = {
   currentRole?: string | null
@@ -58,6 +59,7 @@ type SearchResult = {
   followersCount: number | null
   followingCount: number | null
   visibility: "PUBLIC" | "PRIVATE" | null
+  resumeScore: number | null
 }
 
 const pickFirstValidPicture = (...candidates: Array<string | null | undefined>) => {
@@ -155,6 +157,7 @@ const mapProfileInfoToResult = (profile: ProfileInfo): SearchResult => {
     followersCount: profile.followersCount,
     followingCount: profile.followingCount,
     visibility: profile.visibility,
+    resumeScore: null, // Will be enriched later
   }
 }
 
@@ -239,6 +242,68 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
         // swallow enrichment errors; base search results will still render
         console.warn(`[Search] Enrichment error for user ${user.userId}:`, error)
         return user
+      }
+    }),
+  )
+}
+
+// Fetch resume scores for multiple users
+async function enrichResultsWithResumeScores(results: SearchResult[]): Promise<SearchResult[]> {
+  const token = getStoredAccessToken()
+  if (!token) {
+    console.log("[Search] No token available, skipping resume scores enrichment")
+    return results
+  }
+
+  if (results.length === 0) {
+    return results
+  }
+
+  console.log("[Search] Enriching", results.length, "results with resume scores")
+
+  return Promise.all(
+    results.map(async (user) => {
+      try {
+        const url = `${RESUME_SCORES_API_BASE_URL}v1/users/resume-scores/${user.userId}`
+
+        const resp = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!resp.ok) {
+          // 404 means no resume score, which is fine
+          if (resp.status === 404) {
+            console.log(`[Search] No resume score found for user ${user.userId}`)
+            return { ...user, resumeScore: null }
+          }
+          console.warn(`[Search] Resume score fetch failed for user ${user.userId}:`, resp.status, resp.statusText)
+          return { ...user, resumeScore: null }
+        }
+
+        let result
+        try {
+          result = await resp.json()
+        } catch (parseError) {
+          console.warn(`[Search] Failed to parse resume score response for user ${user.userId}:`, parseError)
+          return { ...user, resumeScore: null }
+        }
+
+        // Handle wrapped response
+        const data = result?.data || result
+        const score = data?.overall_score || null
+
+        return {
+          ...user,
+          resumeScore: typeof score === 'number' ? score : null,
+        }
+      } catch (error) {
+        // swallow errors; continue without resume score
+        console.warn(`[Search] Resume score enrichment error for user ${user.userId}:`, error)
+        return { ...user, resumeScore: null }
       }
     }),
   )
@@ -705,7 +770,10 @@ export default function SearchPage() {
         const uniqueResults = await enrichResultsWithProfiles(dedupedResults)
         console.log("[Search] Final enriched results:", uniqueResults.length)
         
-        setSearchResults(uniqueResults)
+        const resultsWithScores = await enrichResultsWithResumeScores(uniqueResults)
+        console.log("[Search] Results with resume scores:", resultsWithScores.length)
+        
+        setSearchResults(resultsWithScores)
       } else {
         console.log("[Search] No results in payload:", {
           success: payload?.success,
@@ -970,6 +1038,12 @@ export default function SearchPage() {
                                 >
                                   {person.followingCount.toLocaleString()} following
                                 </button>
+                              )}
+                              {typeof person.resumeScore === "number" && (
+                                <span className="flex items-center gap-1 text-zinc-400">
+                                  <Trophy className="h-3 w-3" />
+                                  Resume: {person.resumeScore}
+                                </span>
                               )}
                             </div>
                           </div>

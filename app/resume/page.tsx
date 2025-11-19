@@ -186,6 +186,8 @@ export default function ResumePage() {
   }
 
 	const handleFileUpload = async (uploadedFile: File) => {
+		let uploadInterval: NodeJS.Timeout | null = null
+		
 		try {
 			setErrorMessage(null)
 			
@@ -204,26 +206,40 @@ export default function ResumePage() {
 				return
 			}
 
-    // Simulate upload progress
-    const uploadInterval = setInterval(() => {
-      setUploadProgress((prev) => {
+			// Simulate upload progress
+			uploadInterval = setInterval(() => {
+				setUploadProgress((prev) => {
 					if (prev >= 90) {
-          clearInterval(uploadInterval)
+						if (uploadInterval) clearInterval(uploadInterval)
 						return 90
-        }
-        return prev + 10
-      })
+					}
+					return prev + 10
+				})
 			}, 200)
 
 			// Prepare form data
 			const formData = new FormData()
 			formData.append("file", uploadedFile)
 
+			// Clear upload interval before API call
+			if (uploadInterval) {
+				clearInterval(uploadInterval)
+				uploadInterval = null
+			}
+			
 			// Call the API
 			setUploadState("processing")
 			setUploadProgress(100)
 			
-			const response = await fetch(`${PARSER_API_BASE_URL}v2/parser/resume/store/score`, {
+			// Remove trailing slash from base URL to avoid double slashes
+			const baseUrl = PARSER_API_BASE_URL.endsWith('/') 
+				? PARSER_API_BASE_URL.slice(0, -1) 
+				: PARSER_API_BASE_URL
+			
+			const apiUrl = `${baseUrl}/v2/parser/resume/store/score`
+			console.log("[Resume Score] Uploading to:", apiUrl)
+			
+			const response = await fetch(apiUrl, {
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${token}`,
@@ -232,25 +248,58 @@ export default function ResumePage() {
 			})
 
 			if (!response.ok) {
-				const errorText = await response.text()
-				console.error("[Resume Score] API error:", response.status, errorText)
-				throw new Error(`Failed to analyze resume: ${response.status}`)
+				let errorMessage = "Failed to analyze resume"
+				try {
+					const errorData = await response.json().catch(() => null)
+					const errorText = errorData ? JSON.stringify(errorData) : await response.text()
+					console.error("[Resume Score] API error:", response.status, errorText)
+					
+					if (response.status === 404) {
+						errorMessage = "Resume analysis service is currently unavailable. Please try again later or contact support."
+					} else if (response.status === 401 || response.status === 403) {
+						errorMessage = "Authentication failed. Please log in again."
+					} else if (response.status === 413) {
+						errorMessage = "File is too large. Please upload a file smaller than 10MB."
+					} else if (response.status >= 500) {
+						errorMessage = "Server error. Please try again later."
+					} else {
+						errorMessage = `Failed to analyze resume (${response.status}). Please try again.`
+					}
+				} catch (parseError) {
+					console.error("[Resume Score] Error parsing error response:", parseError)
+					errorMessage = `Failed to analyze resume (${response.status}). Please try again.`
+				}
+				throw new Error(errorMessage)
 			}
 
 			const result = await response.json()
 			console.log("[Resume Score] API response:", result)
 
+			// Clear interval if still running
+			if (uploadInterval) {
+				clearInterval(uploadInterval)
+				uploadInterval = null
+			}
+
 			// Map API response to our state
 			setScore(result.score || result.parsed?.overall_score || 0)
 			setResumeAnalysis(result)
-          setUploadState("complete")
+			setUploadState("complete")
 		} catch (error) {
 			console.error("[Resume Score] Error:", error)
-			setErrorMessage(
-				error instanceof Error 
-					? error.message 
-					: "Failed to analyze resume. Please try again."
-			)
+			// Clear any intervals that might still be running
+			if (uploadInterval) {
+				clearInterval(uploadInterval)
+			}
+			
+			let errorMsg = "Failed to analyze resume. Please try again."
+			if (error instanceof Error) {
+				errorMsg = error.message
+			} else if (typeof error === 'string') {
+				errorMsg = error
+			}
+			
+			setErrorMessage(errorMsg)
 			setUploadState("error")
 		}
   }

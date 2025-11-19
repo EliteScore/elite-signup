@@ -40,29 +40,8 @@ import { cn } from "@/lib/utils"
 import AnimatedCounter from "@/components/ui/animated-counter"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getStoredAccessToken } from "@/lib/auth-storage"
 
-// Mock leaderboard data
-const leaderboardData = [
-	{ name: "Sarah Chen", score: 94, rank: 1, school: "Stanford", change: "+3", avatar: null },
-	{ name: "Michael Park", score: 91, rank: 2, school: "MIT", change: "+5", avatar: null },
-	{ name: "You", score: 87, rank: 3, school: "UC Berkeley", change: "+2", avatar: null },
-	{ name: "Emily Rodriguez", score: 85, rank: 4, school: "Harvard", change: "+1", avatar: null },
-	{ name: "David Kim", score: 82, rank: 5, school: "CMU", change: "+4", avatar: null },
-	{ name: "Jessica Lee", score: 79, rank: 6, school: "UCLA", change: "+2", avatar: null },
-	{ name: "Alex Thompson", score: 76, rank: 7, school: "Georgia Tech", change: "+1", avatar: null },
-	{ name: "Maria Garcia", score: 74, rank: 8, school: "UT Austin", change: "+3", avatar: null },
-	{ name: "James Wilson", score: 72, rank: 9, school: "UC Berkeley", change: "+1", avatar: null },
-	{ name: "Sophia Brown", score: 70, rank: 10, school: "NYU", change: "+2", avatar: null },
-]
-
-// Mock school leaderboard
-const schoolLeaderboard = [
-	{ school: "Stanford", avgScore: 89, students: 1247, rank: 1 },
-	{ school: "MIT", avgScore: 87, students: 892, rank: 2 },
-	{ school: "UC Berkeley", avgScore: 85, students: 2156, rank: 3 },
-	{ school: "Harvard", avgScore: 84, students: 1103, rank: 4 },
-	{ school: "CMU", avgScore: 83, students: 678, rank: 5 },
-]
 
 export default function ResumeReportPage() {
 	const isAuthorized = useRequireAuth()
@@ -71,6 +50,61 @@ export default function ResumeReportPage() {
 	const [activeTab, setActiveTab] = useState("overview")
 	const [resumeData, setResumeData] = useState<any>(null)
 	const [userScore, setUserScore] = useState<number | null>(null)
+	const [resumeScores, setResumeScores] = useState<{
+		user_id: number
+		overall_score: number
+		projects_score: number
+		experience_score: number
+		education_score: number
+		skills_score: number
+	} | null>(null)
+	const [isLoadingScores, setIsLoadingScores] = useState(false)
+
+	// Fetch resume scores from API
+	useEffect(() => {
+		if (!isAuthorized) return
+
+		async function fetchResumeScores() {
+			const token = getStoredAccessToken()
+			if (!token) {
+				console.warn("[Resume Report] No token available for fetching resume scores")
+				return
+			}
+
+			setIsLoadingScores(true)
+			try {
+				console.log("[Resume Report] Fetching resume scores from API...")
+				const response = await fetch("/api/users/resume-scores", {
+					method: "GET",
+					headers: {
+						"Accept": "application/json",
+						Authorization: `Bearer ${token}`,
+					},
+				})
+
+				if (response.ok) {
+					const data = await response.json()
+					console.log("[Resume Report] Fetched resume scores:", data)
+					setResumeScores(data)
+					// Update userScore if we got overall_score from API
+					if (data.overall_score !== undefined) {
+						setUserScore(data.overall_score)
+					}
+				} else if (response.status === 404) {
+					console.log("[Resume Report] No resume scores found (404)")
+					// This is okay - user might not have scores yet
+				} else {
+					console.warn("[Resume Report] Failed to fetch resume scores:", response.status, response.statusText)
+				}
+			} catch (error) {
+				console.error("[Resume Report] Error fetching resume scores:", error)
+			} finally {
+				setIsLoadingScores(false)
+			}
+		}
+
+		fetchResumeScores()
+	}, [isAuthorized])
 
 	// Load resume data from URL params or localStorage
 	useEffect(() => {
@@ -109,10 +143,10 @@ export default function ResumeReportPage() {
 		}
 		
 		// Only use URL param if we don't have API data (fallback)
-		if (scoreParam && !resumeData) {
+		if (scoreParam && !resumeData && !resumeScores) {
 			setUserScore(Number(scoreParam))
 		}
-	}, [isAuthorized, searchParams, resumeData])
+	}, [isAuthorized, searchParams, resumeData, resumeScores])
 
 	// Redirect if no data (after authorization check)
 	useEffect(() => {
@@ -153,13 +187,22 @@ export default function ResumeReportPage() {
 		)
 	}
 
-	// Extract score from API response structure (same as resume page)
-	const score = resumeData?.score || resumeData?.parsed?.overall_score || userScore || 0
-	const components = resumeData?.parsed?.components || {}
-	const explanation = resumeData?.parsed?.explanation || { highlights: [], notes: { strengths: [], weaknesses: [] } }
+	// Extract score from API response structure - prioritize API scores over local data
+	const score = resumeScores?.overall_score || resumeData?.score || resumeData?.parsed?.overall_score || userScore || 0
+	// Use API scores if available, otherwise fall back to parsed components
+	const components = resumeScores ? {
+		experience: resumeScores.experience_score,
+		skills: resumeScores.skills_score,
+		education: resumeScores.education_score,
+		projects: resumeScores.projects_score,
+		ai_signal: 0 // Not provided by API
+	} : (resumeData?.parsed?.components || {})
+	const explanation = resumeData?.parsed?.explanation || { 
+		highlights: [], 
+		notes: { strengths: [], weaknesses: [] },
+		top_archetype_matches: []
+	}
 
-	// Find user's rank
-	const userRank = leaderboardData.findIndex((entry) => entry.name === "You") + 1
 
 	return (
 		<DashboardLayout>
@@ -257,7 +300,7 @@ export default function ResumeReportPage() {
 
 					{/* Tabs */}
 					<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-						<TabsList className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-1 mb-4 sm:mb-6 grid grid-cols-3 w-full h-10 sm:h-12">
+						<TabsList className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-1 mb-4 sm:mb-6 grid grid-cols-2 w-full h-10 sm:h-12">
 							<TabsTrigger
 								value="overview"
 								className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white rounded-lg transition-all duration-300 text-xs sm:text-sm"
@@ -272,14 +315,6 @@ export default function ResumeReportPage() {
 							>
 								<Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
 								Insights
-							</TabsTrigger>
-							<TabsTrigger
-								value="leaderboard"
-								className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600/30 data-[state=active]:to-purple-600/30 data-[state=active]:text-white rounded-lg transition-all duration-300 text-xs sm:text-sm"
-							>
-								<Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-								<span className="hidden sm:inline">Leaderboard</span>
-								<span className="sm:hidden">Rank</span>
 							</TabsTrigger>
 						</TabsList>
 
@@ -298,22 +333,6 @@ export default function ResumeReportPage() {
 											{score}
 										</div>
 										<div className="text-[10px] sm:text-xs text-zinc-400 mt-1">Score</div>
-									</EnhancedCardContent>
-								</EnhancedCard>
-								<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800">
-									<EnhancedCardContent className="p-3 sm:p-4 text-center">
-										<div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-											#{userRank}
-										</div>
-										<div className="text-[10px] sm:text-xs text-zinc-400 mt-1">Rank</div>
-									</EnhancedCardContent>
-								</EnhancedCard>
-								<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800">
-									<EnhancedCardContent className="p-3 sm:p-4 text-center">
-										<div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-											{Math.round((userRank / leaderboardData.length) * 100)}%
-										</div>
-										<div className="text-[10px] sm:text-xs text-zinc-400 mt-1">Top %</div>
 									</EnhancedCardContent>
 								</EnhancedCard>
 								<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800">
@@ -457,163 +476,39 @@ export default function ResumeReportPage() {
 									</EnhancedCard>
 								</motion.div>
 							)}
+
+							{/* Top Archetype Matches */}
+							{explanation.top_archetype_matches && explanation.top_archetype_matches.length > 0 && (
+								<motion.div
+									initial={{ opacity: 0, y: 20 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ delay: 0.4 }}
+								>
+									<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800 shadow-xl rounded-2xl">
+										<EnhancedCardHeader className="pb-3">
+											<EnhancedCardTitle className="text-lg sm:text-xl flex items-center gap-2">
+												<Users className="h-5 w-5 text-purple-400" />
+												Top Career Archetype Matches
+											</EnhancedCardTitle>
+										</EnhancedCardHeader>
+										<EnhancedCardContent className="space-y-3">
+											{explanation.top_archetype_matches.map((match: { name: string; match_pct: number }, index: number) => (
+												<div key={index} className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
+													<div className="flex items-center gap-3">
+														<div className="w-2 h-2 bg-purple-400 rounded-full flex-shrink-0"></div>
+														<span className="text-sm font-medium text-white">{match.name}</span>
+													</div>
+													<Badge className="bg-purple-900/50 text-purple-300 border-purple-700/50">
+														{match.match_pct}% match
+													</Badge>
+												</div>
+											))}
+										</EnhancedCardContent>
+									</EnhancedCard>
+								</motion.div>
+							)}
 						</TabsContent>
 
-						{/* Leaderboard Tab */}
-						<TabsContent value="leaderboard" className="space-y-4 sm:space-y-6 mt-0">
-							{/* Global Leaderboard */}
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.1 }}
-							>
-								<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800 shadow-xl rounded-2xl">
-									<EnhancedCardHeader className="pb-3">
-										<EnhancedCardTitle className="text-lg sm:text-xl flex items-center gap-2">
-											<Crown className="h-5 w-5 text-yellow-400" />
-											Global Leaderboard
-										</EnhancedCardTitle>
-									</EnhancedCardHeader>
-									<EnhancedCardContent className="space-y-3">
-										{leaderboardData.map((entry, index) => {
-											const isYou = entry.name === "You"
-											return (
-												<motion.div
-													key={entry.rank}
-													initial={{ opacity: 0, x: -20 }}
-													animate={{ opacity: 1, x: 0 }}
-													transition={{ delay: 0.1 + index * 0.05 }}
-													className={cn(
-														"flex items-center gap-3 p-3 sm:p-4 rounded-lg transition-all duration-300",
-														isYou
-															? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-2 border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-															: "bg-zinc-800/50 border border-zinc-700/50",
-													)}
-												>
-													{/* Rank Badge */}
-													<div
-														className={cn(
-															"w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0",
-															entry.rank === 1
-																? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-[0_0_16px_rgba(234,179,8,0.5)]"
-																: entry.rank === 2
-																	? "bg-gradient-to-r from-gray-400 to-gray-600 text-white"
-																	: entry.rank === 3
-																		? "bg-gradient-to-r from-orange-600 to-yellow-600 text-white"
-																		: "bg-zinc-700 text-zinc-300",
-														)}
-													>
-														{entry.rank === 1 ? <Crown className="h-5 w-5" /> : entry.rank}
-													</div>
-
-													{/* Avatar */}
-													<Avatar className="h-12 w-12 border-2 border-zinc-700 flex-shrink-0">
-														<AvatarImage src={entry.avatar || undefined} />
-														<AvatarFallback className={cn(
-															"bg-gradient-to-br text-white font-bold",
-															isYou ? "from-blue-500 to-purple-600" : "from-zinc-600 to-zinc-700"
-														)}>
-															{entry.name.charAt(0)}
-														</AvatarFallback>
-													</Avatar>
-
-													{/* User Info */}
-													<div className="flex-1 min-w-0">
-														<div className="flex items-center gap-2 mb-1">
-															<h4 className={cn(
-																"font-bold text-sm truncate",
-																isYou ? "text-blue-400" : "text-white"
-															)}>
-																{entry.name}
-															</h4>
-															{isYou && (
-																<Badge className="bg-blue-900/50 text-blue-300 border-blue-700/50 text-xs px-2 py-0.5">
-																	You
-																</Badge>
-															)}
-														</div>
-														<div className="flex items-center gap-2 text-xs text-zinc-400">
-															<GraduationCap className="h-3 w-3" />
-															<span className="truncate">{entry.school}</span>
-														</div>
-													</div>
-
-													{/* Score & Change */}
-													<div className="text-right flex-shrink-0">
-														<div className="text-xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-															{entry.score}
-														</div>
-														<div className="flex items-center gap-1 text-xs text-green-400">
-															<TrendingUp className="h-3 w-3" />
-															{entry.change}
-														</div>
-													</div>
-												</motion.div>
-											)
-										})}
-									</EnhancedCardContent>
-								</EnhancedCard>
-							</motion.div>
-
-							{/* School Leaderboard */}
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.2 }}
-							>
-								<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800 shadow-xl rounded-2xl">
-									<EnhancedCardHeader className="pb-3">
-										<EnhancedCardTitle className="text-lg sm:text-xl flex items-center gap-2">
-											<Users className="h-5 w-5 text-purple-400" />
-											School Rankings
-										</EnhancedCardTitle>
-									</EnhancedCardHeader>
-									<EnhancedCardContent className="space-y-3">
-										{schoolLeaderboard.map((school, index) => (
-											<motion.div
-												key={school.rank}
-												initial={{ opacity: 0, x: -20 }}
-												animate={{ opacity: 1, x: 0 }}
-												transition={{ delay: 0.1 + index * 0.05 }}
-												className="flex items-center gap-3 p-3 sm:p-4 bg-zinc-800/50 border border-zinc-700/50 rounded-lg transition-all"
-											>
-												{/* Rank */}
-												<div
-													className={cn(
-														"w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0",
-														school.rank === 1
-															? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white"
-															: school.rank === 2
-																? "bg-gradient-to-r from-gray-400 to-gray-600 text-white"
-																: school.rank === 3
-																	? "bg-gradient-to-r from-orange-600 to-yellow-600 text-white"
-																	: "bg-zinc-700 text-zinc-300",
-													)}
-												>
-													{school.rank === 1 ? <Medal className="h-5 w-5" /> : school.rank}
-												</div>
-
-												{/* School Info */}
-												<div className="flex-1 min-w-0">
-													<h4 className="font-bold text-white text-sm mb-1 truncate">{school.school}</h4>
-													<div className="text-xs text-zinc-400">
-														{school.students.toLocaleString()} students
-													</div>
-												</div>
-
-												{/* Average Score */}
-												<div className="text-right flex-shrink-0">
-													<div className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-														{school.avgScore}
-													</div>
-													<div className="text-xs text-zinc-400">Avg Score</div>
-												</div>
-											</motion.div>
-										))}
-									</EnhancedCardContent>
-								</EnhancedCard>
-							</motion.div>
-						</TabsContent>
 					</Tabs>
 				</div>
 			</div>

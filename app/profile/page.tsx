@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useRequireAuth } from "@/hooks/useRequireAuth"
 import {
@@ -38,6 +39,7 @@ import { LevelIndicator } from "@/components/level-indicator"
 import { getStoredAccessToken, getStoredAuthValue } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
+const RESUME_SCORES_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
 const BLOCKED_BIO_MESSAGE = "You have blocked this user"
 
 type ResumeData = {
@@ -94,10 +96,40 @@ export default function ProfilePage() {
   const [isLoadingModalProfiles, setIsLoadingModalProfiles] = useState(false)
   const [viewedUserFollowersIds, setViewedUserFollowersIds] = useState<number[] | null>(null)
   const [viewedUserFollowingIds, setViewedUserFollowingIds] = useState<number[] | null>(null)
+  const [resumeScores, setResumeScores] = useState<{
+    user_id: number
+    overall_score: number
+    projects_score: number
+    experience_score: number
+    education_score: number
+    skills_score: number
+  } | null>(null)
+  const [isLoadingResumeScores, setIsLoadingResumeScores] = useState(false)
+  const [hasNoResumeScores, setHasNoResumeScores] = useState(false)
+  // Resume scores for viewed user (when viewing someone else's profile)
+  const [viewedUserResumeScores, setViewedUserResumeScores] = useState<{
+    user_id: number
+    overall_score: number
+    projects_score: number
+    experience_score: number
+    education_score: number
+    skills_score: number
+  } | null>(null)
+  const [isLoadingViewedUserResumeScores, setIsLoadingViewedUserResumeScores] = useState(false)
+  const [hasNoViewedUserResumeScores, setHasNoViewedUserResumeScores] = useState(false)
 
   const numericViewingUserId = viewingUserId ? Number(viewingUserId) : null
-  const isViewingOwnProfile =
-    !viewingUserId || (currentUserId !== null && numericViewingUserId === currentUserId)
+  // Only consider it "own profile" if we have currentUserId loaded (not just null check)
+  const isViewingOwnProfile = useMemo(() => {
+    if (viewingUserId) {
+      // If viewingUserId is provided, we're viewing someone else's profile
+      // Only consider it "own profile" if currentUserId is loaded and matches
+      return currentUserId !== null && numericViewingUserId === currentUserId
+    }
+    // If no viewingUserId, we're viewing own profile
+    // But wait until currentUserId is loaded to avoid race conditions
+    return currentUserId !== null
+  }, [viewingUserId, currentUserId, numericViewingUserId])
 
   const getProfilePictureKey = (id?: number | null) =>
     id ? `profile.picture.${id}` : "profile.picture.default"
@@ -722,6 +754,21 @@ export default function ProfilePage() {
           // If following, update the profile in modal to reflect follow state
           setModalProfiles((prev) => prev.map((p) => (p.userId === userId ? { ...p } : p)))
         }
+
+        // If we're viewing someone else's profile and we just followed/unfollowed them, refresh their stats
+        if (!isViewingOwnProfile && numericViewingUserId === userId) {
+          setProfileRefreshKey((prev) => prev + 1)
+          try {
+            const [followersIds, followingIds] = await Promise.all([
+              fetchUserFollowersIds(numericViewingUserId),
+              fetchUserFollowingIds(numericViewingUserId),
+            ])
+            setViewedUserFollowersIds(followersIds)
+            setViewedUserFollowingIds(followingIds)
+          } catch (error) {
+            console.warn("[Profile] Error refreshing viewed user stats after modal follow/unfollow:", error)
+          }
+        }
       } else {
         console.warn("[Profile] Follow/unfollow failed in modal:", response.status)
       }
@@ -755,6 +802,8 @@ export default function ProfilePage() {
   // Fetch CV data (only for own profile)
   useEffect(() => {
     if (!isAuthorized || !isViewingOwnProfile) return
+    // Wait until currentUserId is loaded when viewing own profile
+    if (!viewingUserId && currentUserId === null) return
 
     async function fetchCv() {
       try {
@@ -791,7 +840,106 @@ export default function ProfilePage() {
     }
 
     fetchCv()
-  }, [isAuthorized, isViewingOwnProfile, profileRefreshKey, cvRefreshTrigger])
+  }, [isAuthorized, isViewingOwnProfile, profileRefreshKey, cvRefreshTrigger, currentUserId, viewingUserId])
+
+  // Fetch resume scores for own profile
+  useEffect(() => {
+    if (!isAuthorized || !isViewingOwnProfile) return
+    // Wait until currentUserId is loaded when viewing own profile
+    if (!viewingUserId && currentUserId === null) return
+
+    async function fetchResumeScores() {
+      const token = getStoredAccessToken()
+      if (!token) {
+        console.warn("[Profile] No token available for fetching resume scores")
+        setIsLoadingResumeScores(false)
+        return
+      }
+
+      setIsLoadingResumeScores(true)
+      try {
+        console.log("[Profile] Fetching resume scores from API...")
+        const response = await fetch("/api/users/resume-scores", {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("[Profile] Fetched resume scores:", data)
+          setResumeScores(data)
+          setHasNoResumeScores(false)
+        } else if (response.status === 404) {
+          console.log("[Profile] No resume scores found (404)")
+          // User needs to upload their resume
+          setResumeScores(null)
+          setHasNoResumeScores(true)
+        } else {
+          console.warn("[Profile] Failed to fetch resume scores:", response.status, response.statusText)
+          setHasNoResumeScores(false)
+        }
+      } catch (error) {
+        console.error("[Profile] Error fetching resume scores:", error)
+        setHasNoResumeScores(false)
+      } finally {
+        setIsLoadingResumeScores(false)
+      }
+    }
+
+    fetchResumeScores()
+  }, [isAuthorized, isViewingOwnProfile, profileRefreshKey, currentUserId, viewingUserId])
+
+  // Fetch resume scores for viewed user (when viewing someone else's profile)
+  useEffect(() => {
+    if (!isAuthorized || isViewingOwnProfile || !numericViewingUserId) return
+
+    async function fetchViewedUserResumeScores() {
+      const token = getStoredAccessToken()
+      if (!token) {
+        console.warn("[Profile] No token available for fetching viewed user resume scores")
+        setIsLoadingViewedUserResumeScores(false)
+        return
+      }
+
+      setIsLoadingViewedUserResumeScores(true)
+      try {
+        console.log("[Profile] Fetching resume scores for viewed user:", numericViewingUserId)
+        const url = `${RESUME_SCORES_API_BASE_URL}v1/users/resume-scores/${numericViewingUserId}`
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const data = result?.data || result
+          console.log("[Profile] Fetched viewed user resume scores:", data)
+          setViewedUserResumeScores(data)
+          setHasNoViewedUserResumeScores(false)
+        } else if (response.status === 404) {
+          console.log("[Profile] No resume scores found for viewed user (404)")
+          setViewedUserResumeScores(null)
+          setHasNoViewedUserResumeScores(true)
+        } else {
+          console.warn("[Profile] Failed to fetch viewed user resume scores:", response.status, response.statusText)
+          setHasNoViewedUserResumeScores(false)
+        }
+      } catch (error) {
+        console.error("[Profile] Error fetching viewed user resume scores:", error)
+        setHasNoViewedUserResumeScores(false)
+      } finally {
+        setIsLoadingViewedUserResumeScores(false)
+      }
+    }
+
+    fetchViewedUserResumeScores()
+  }, [isAuthorized, isViewingOwnProfile, numericViewingUserId, profileRefreshKey])
 
   // Fetch profile data on mount
   useEffect(() => {
@@ -1128,7 +1276,7 @@ export default function ProfilePage() {
   const headline = resumeBasics.headline || resumeBasics.summary || null
 
   const level = 4 // TODO: Get from user stats
-  const resumeScore = 87 // TODO: Calculate from resume
+  const resumeScore = resumeScores?.overall_score || 87 // Use API score if available
   const resumeDelta = 5 // TODO: Calculate delta
 
   // Animation variants
@@ -1263,6 +1411,43 @@ export default function ProfilePage() {
         }
         return current
       })
+
+      // Update viewed user's followers count immediately
+      if (currentUserId) {
+        if (!isCurrentlyFollowing) {
+          // Following: add current user to viewed user's followers list
+          setViewedUserFollowersIds((prev) => {
+            const current = Array.isArray(prev) ? prev : []
+            if (!current.includes(currentUserId)) {
+              return [...current, currentUserId]
+            }
+            return current
+          })
+        } else {
+          // Unfollowing: remove current user from viewed user's followers list
+          setViewedUserFollowersIds((prev) => {
+            const current = Array.isArray(prev) ? prev : []
+            return current.filter((id) => id !== currentUserId)
+          })
+        }
+      }
+
+      // Refresh profile data and stats to ensure everything is in sync
+      setProfileRefreshKey((prev) => prev + 1)
+      
+      // Refresh viewed user's followers/following stats
+      if (numericViewingUserId) {
+        try {
+          const [followersIds, followingIds] = await Promise.all([
+            fetchUserFollowersIds(numericViewingUserId),
+            fetchUserFollowingIds(numericViewingUserId),
+          ])
+          setViewedUserFollowersIds(followersIds)
+          setViewedUserFollowingIds(followingIds)
+        } catch (error) {
+          console.warn("[Profile] Error refreshing viewed user stats after follow/unfollow:", error)
+        }
+      }
     } catch (error) {
       console.warn("[Profile] Error during follow/unfollow:", error)
     } finally {
@@ -1345,7 +1530,22 @@ export default function ProfilePage() {
         })
       }
 
+      // Refresh profile data and stats to ensure everything is in sync
       setProfileRefreshKey((prev) => prev + 1)
+      
+      // Refresh viewed user's followers/following stats
+      if (numericViewingUserId) {
+        try {
+          const [followersIds, followingIds] = await Promise.all([
+            fetchUserFollowersIds(numericViewingUserId),
+            fetchUserFollowingIds(numericViewingUserId),
+          ])
+          setViewedUserFollowersIds(followersIds)
+          setViewedUserFollowingIds(followingIds)
+        } catch (error) {
+          console.warn("[Profile] Error refreshing viewed user stats after block/unblock:", error)
+        }
+      }
     } catch (error) {
       console.warn("[Profile] Error during block/unblock:", error)
     } finally {
@@ -1469,17 +1669,103 @@ export default function ProfilePage() {
                 </div>
               )}
               
-              {/* Quick Stats: Resume Score + Level */}
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                <div className="px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-xs text-zinc-200 flex items-center gap-2">
-                  <span className="font-semibold">Resume Score</span>
-                  <span className="font-bold text-white">{resumeScore}</span>
-                  <span className="text-emerald-400 font-medium">+{resumeDelta}</span>
+              {/* Quick Stats: Resume Score + Level - For own profile */}
+              {isViewingOwnProfile && (
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                  {isLoadingResumeScores ? (
+                    <div className="px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-xs text-zinc-400 flex items-center gap-2">
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
+                      <span>Loading score...</span>
+                    </div>
+                  ) : hasNoResumeScores ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-900/90 to-purple-900/90 border border-blue-700/50 backdrop-blur-sm shadow-lg"
+                    >
+                      <EnhancedButton
+                        size="sm"
+                        rounded="full"
+                        variant="gradient"
+                        animation="shimmer"
+                        className="px-4 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                        onClick={() => router.push("/resume")}
+                      >
+                        <FileText className="h-3 w-3 mr-2" />
+                        Upload your resume now!
+                      </EnhancedButton>
+                    </motion.div>
+                  ) : resumeScores ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5"
+                    >
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-white">{resumeScores.overall_score}</span>
+                      {resumeDelta > 0 && (
+                        <span className="text-xs sm:text-sm font-bold text-emerald-400">+{resumeDelta}</span>
+                      )}
+                    </motion.div>
+                  ) : (
+                    <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5">
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-white">{resumeScore}</span>
+                      {resumeDelta > 0 && (
+                        <span className="text-xs sm:text-sm font-bold text-emerald-400">+{resumeDelta}</span>
+                      )}
+                    </div>
+                  )}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg"
+                  >
+                    <span className="text-xs sm:text-sm font-semibold text-zinc-300">Level</span>
+                    <span className="text-lg sm:text-xl font-extrabold text-white ml-2">{level}</span>
+                  </motion.div>
                 </div>
-                <div className="px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-xs text-zinc-200">
-                  Level <span className="font-bold text-white">{level}</span>
+              )}
+
+              {/* Quick Stats: Resume Score + Level - For viewed user profile */}
+              {!isViewingOwnProfile && numericViewingUserId && (
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                  {isLoadingViewedUserResumeScores ? (
+                    <div className="px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-xs text-zinc-400 flex items-center gap-2">
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
+                      <span>Loading score...</span>
+                    </div>
+                  ) : hasNoViewedUserResumeScores ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5"
+                    >
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-zinc-500">N/A</span>
+                    </motion.div>
+                  ) : viewedUserResumeScores ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5"
+                    >
+                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-white">{viewedUserResumeScores.overall_score}</span>
+                    </motion.div>
+                  ) : null}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg"
+                  >
+                    <span className="text-xs sm:text-sm font-semibold text-zinc-300">Level</span>
+                    <span className="text-lg sm:text-xl font-extrabold text-white ml-2">{level}</span>
+                  </motion.div>
                 </div>
-              </div>
+              )}
               
               <div className="flex gap-2 mt-2">
                 {/* Own profile: show Edit Profile */}
