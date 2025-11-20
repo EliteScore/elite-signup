@@ -17,6 +17,7 @@ import { getStoredAccessToken } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 const RESUME_SCORES_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
+const COMMUNITIES_API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
 
 type Resume = {
   currentRole?: string | null
@@ -60,6 +61,17 @@ type SearchResult = {
   followingCount: number | null
   visibility: "PUBLIC" | "PRIVATE" | null
   resumeScore: number | null
+}
+
+type CommunitySearchResult = {
+  id: number
+  name: string
+  slug?: string
+  visibility?: string
+  description?: string
+  is_pro?: boolean
+  members?: number
+  image?: string | null
 }
 
 const pickFirstValidPicture = (...candidates: Array<string | null | undefined>) => {
@@ -169,6 +181,108 @@ const getSearchUrl = (input: string) => {
   const url = `${API_BASE_URL}v1/users/search/${encoded}`
   console.log("[Search] Constructed URL:", url)
   return url
+}
+
+const COMMUNITY_SEARCH_DEFAULT_LIMIT = 20
+
+const sanitizeVisibilityFilter = (value?: string): string | undefined => {
+  if (!value) return undefined
+  const normalized = value.trim().toLowerCase()
+  if (normalized === "public" || normalized === "private") {
+    return normalized
+  }
+  return undefined
+}
+
+const clampCommunityLimit = (value?: number) => {
+  if (value == null) return COMMUNITY_SEARCH_DEFAULT_LIMIT
+  if (Number.isNaN(value)) return COMMUNITY_SEARCH_DEFAULT_LIMIT
+  return Math.min(50, Math.max(1, value))
+}
+
+const getCommunitySearchUrl = (
+  input: string,
+  options?: {
+    limit?: number
+    name?: string
+    slug?: string
+    visibility?: string
+    is_pro?: boolean
+  },
+) => {
+  const trimmed = input.trim() || "_"
+  const encoded = encodeURIComponent(trimmed)
+  const searchParams = new URLSearchParams()
+  const limit = clampCommunityLimit(options?.limit)
+  searchParams.set("limit", limit.toString())
+
+  if (options?.name) {
+    searchParams.set("name", options.name.trim())
+  }
+
+  if (options?.slug) {
+    searchParams.set("slug", options.slug.trim())
+  }
+
+  const visibility = sanitizeVisibilityFilter(options?.visibility)
+  if (visibility) {
+    searchParams.set("visibility", visibility)
+  }
+
+  if (options?.is_pro !== undefined) {
+    searchParams.set("is_pro", options.is_pro ? "true" : "false")
+  }
+
+  const queryString = searchParams.toString()
+  const url = `${COMMUNITIES_API_BASE_URL}v1/communities/search/${encoded}${queryString ? `?${queryString}` : ""}`
+  console.log("[Search] Community search URL constructed:", url)
+  return url
+}
+
+const parseBooleanFlag = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") return value
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === "true" || normalized === "1") return true
+    if (normalized === "false" || normalized === "0") return false
+  }
+  return undefined
+}
+
+const normalizeCommunityResult = (raw: any): CommunitySearchResult | null => {
+  if (!raw || typeof raw !== "object") return null
+  const rawId = raw.id ?? raw.communityId ?? raw.community_id
+  const id = Number(rawId)
+  if (!Number.isFinite(id)) return null
+
+  const rawName = typeof raw.name === "string" && raw.name.trim()
+    ? raw.name.trim()
+    : raw.slug ?? raw.community_slug ?? `Community ${id}`
+
+  const slugCandidate = raw.slug ?? raw.community_slug ?? raw.slugified
+  const slug = typeof slugCandidate === "string" ? slugCandidate : undefined
+  const visibility = typeof raw.visibility === "string" ? raw.visibility.toUpperCase() : undefined
+  const description = typeof raw.description === "string"
+    ? raw.description
+    : typeof raw.summary === "string"
+      ? raw.summary
+      : undefined
+
+  const membersValue =
+    Number(raw.members ?? raw.members_count ?? raw.member_count ?? raw.membersCount)
+  const members = Number.isFinite(membersValue) ? membersValue : undefined
+
+  const isPro = parseBooleanFlag(raw.is_pro ?? raw.isPro ?? raw.pro)
+
+  return {
+    id,
+    name: rawName,
+    slug,
+    visibility,
+    description,
+    members,
+    is_pro: isPro,
+  }
 }
 
 // Fetch profile picture for a user using the new endpoint
@@ -463,6 +577,7 @@ export default function SearchPage() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [communityResults, setCommunityResults] = useState<CommunitySearchResult[]>([])
   const [ownUserId, setOwnUserId] = useState<number | null>(null)
   const [ownFollowingIds, setOwnFollowingIds] = useState<number[] | null>(null)
   const [showFollowersModal, setShowFollowersModal] = useState(false)
@@ -471,6 +586,12 @@ export default function SearchPage() {
   const [isLoadingModalProfiles, setIsLoadingModalProfiles] = useState(false)
   const [modalTargetUserId, setModalTargetUserId] = useState<number | null>(null)
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false)
+  const [selectedCommunity, setSelectedCommunity] = useState<CommunitySearchResult | null>(null)
+  const [showJoinModal, setShowJoinModal] = useState(false)
+  const [isJoining, setIsJoining] = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
+  const [joinMessage, setJoinMessage] = useState("")
+  const [isMember, setIsMember] = useState<Map<number, boolean>>(new Map())
 
   useEffect(() => {
     if (ownUserId !== null) return
@@ -727,11 +848,69 @@ export default function SearchPage() {
     }
   }
 
+  const fetchCommunitySearchResults = useCallback(async (query: string, headers: Record<string, string>) => {
+    const url = getCommunitySearchUrl(query)
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers,
+      })
+
+      console.log("[Search] Community response status:", response.status, response.statusText)
+
+      if (!response.ok) {
+        console.warn("[Search] Community search failed with status:", response.status)
+        setCommunityResults([])
+        return
+      }
+
+      let payload: any = null
+      try {
+        payload = await response.json()
+      } catch (parseError) {
+        console.warn("[Search] Failed to parse community search response:", parseError)
+      }
+
+      if (!payload) {
+        console.warn("[Search] Empty community payload")
+        setCommunityResults([])
+        return
+      }
+
+      // Check for API success flag if present
+      if (payload.success === false) {
+        console.warn("[Search] Community search API returned success: false", payload.message)
+        setCommunityResults([])
+        return
+      }
+
+      const listSource = Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload)
+          ? payload
+          : []
+      
+      console.log("[Search] Raw community results count:", listSource.length)
+
+      const normalizedResults = listSource
+        .map((item: any) => normalizeCommunityResult(item))
+        .filter((entry: any): entry is CommunitySearchResult => entry !== null)
+
+      console.log("[Search] Normalized community results:", normalizedResults.length)
+      setCommunityResults(normalizedResults)
+    } catch (error) {
+      console.warn("[Search] Community search error:", error)
+      setCommunityResults([])
+    }
+  }, [])
+
   const performSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim()
 
     if (!trimmedQuery) {
       setSearchResults([])
+      setCommunityResults([])
       setSearchError(null)
       setIsSearching(false)
       return
@@ -793,7 +972,9 @@ export default function SearchPage() {
       if (response.status === 204) {
         console.log("[Search] No content (204) - no results found")
         setSearchResults([])
+        setCommunityResults([])
         setSearchError(null)
+        await fetchCommunitySearchResults(trimmedQuery, { ...headers })
         setIsSearching(false)
         return
       }
@@ -840,6 +1021,7 @@ export default function SearchPage() {
       if (!responseText || responseText.trim() === "") {
         console.warn("[Search] Empty response body")
         setSearchResults([])
+        setCommunityResults([])
         setIsSearching(false)
         return
       }
@@ -853,6 +1035,7 @@ export default function SearchPage() {
         console.warn("[Search] Response is not JSON, content-type:", contentType)
         // If it's not JSON but we got a 200, treat as empty results
         setSearchResults([])
+        setCommunityResults([])
         setIsSearching(false)
         return
       }
@@ -931,6 +1114,7 @@ export default function SearchPage() {
         
         console.log("[Search] Final results with pictures and scores:", finalResults.length)
         setSearchResults(finalResults)
+        await fetchCommunitySearchResults(trimmedQuery, { ...headers })
       } else {
         console.log("[Search] No results in payload:", {
           success: payload?.success,
@@ -946,6 +1130,7 @@ export default function SearchPage() {
         : "We couldn't complete your search. Please try again."
       setSearchError(errorMessage)
       setSearchResults([])
+      setCommunityResults([])
     } finally {
       setIsSearching(false)
     }
@@ -964,7 +1149,7 @@ export default function SearchPage() {
   const filteredPeople = searchResults.filter(
     (person) => ownUserId === null || person.userId !== ownUserId,
   )
-  const filteredCommunities: any[] = []
+  const filteredCommunities = communityResults
   const filteredLeaderboards: any[] = []
 
   const showPeople = activeTab === "all" || activeTab === "people"
@@ -1221,6 +1406,81 @@ export default function SearchPage() {
                   </div>
                 </div>
               )}
+              {showCommunities && filteredCommunities.length > 0 && (
+                <div>
+                  {showCommunities && (
+                    <h2 className="text-sm font-semibold text-zinc-400 mb-3 px-1">COMMUNITIES</h2>
+                  )}
+                  <div className="space-y-3">
+                    {filteredCommunities.map((community) => (
+                      <motion.div
+                        key={`community-${community.id}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 hover:bg-zinc-850 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          {community.image && (
+                            <Avatar className="h-12 w-12 border border-zinc-800 flex-shrink-0">
+                              <AvatarImage src={community.image} alt={community.name} />
+                              <AvatarFallback className="bg-zinc-800 text-white font-semibold">
+                                {community.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-semibold text-white text-sm truncate">{community.name}</h3>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {community.visibility && (
+                                  <Badge className="bg-zinc-800/80 text-zinc-400 border-zinc-700/50 text-[10px] px-1.5 py-0">
+                                    {community.visibility.toUpperCase()}
+                                  </Badge>
+                                )}
+                                {community.is_pro !== undefined && (
+                                  <Badge className="bg-purple-900/40 text-purple-300 border-purple-800 text-[10px] px-1.5 py-0">
+                                    {community.is_pro ? "Pro" : "Standard"}
+                                  </Badge>
+              )}
+            </div>
+                            </div>
+                            {community.slug && (
+                              <p className="text-[11px] text-blue-400">/{community.slug}</p>
+                            )}
+                            {community.description && (
+                              <p className="text-[10px] sm:text-[11px] text-zinc-500 line-clamp-2">{community.description}</p>
+                            )}
+                          </div>
+                          <div className="text-right text-[10px] text-zinc-400">
+                            {community.members !== undefined && (
+                              <p>{community.members.toLocaleString()} members</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-3 gap-2">
+                          <div className="text-[10px] text-zinc-500">
+                            {community.description ? "Community details" : "No description available"}
+                          </div>
+                          <EnhancedButton
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedCommunity(community)
+                              setShowJoinModal(true)
+                              setJoinError(null)
+                              setJoinMessage("")
+                            }}
+                            className="bg-transparent border border-zinc-700 text-white hover:bg-zinc-800 h-9 px-3 text-xs rounded-full"
+                          >
+                            {isMember.get(community.id) ? "View community" : "Join community"}
+                          </EnhancedButton>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1377,6 +1637,187 @@ export default function SearchPage() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Join Community Modal */}
+      <Dialog open={showJoinModal} onOpenChange={setShowJoinModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white text-center border-b border-zinc-800 pb-3">
+              {selectedCommunity && isMember.get(selectedCommunity.id) 
+                ? "View Community" 
+                : selectedCommunity?.visibility?.toLowerCase() === "private"
+                  ? "Request to Join"
+                  : "Join Community"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCommunity && (
+            <div className="mt-4 space-y-4">
+              {/* Community Info */}
+              <div className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg">
+                {selectedCommunity.image && (
+                  <Avatar className="h-16 w-16 border border-zinc-700">
+                    <AvatarImage src={selectedCommunity.image} alt={selectedCommunity.name} />
+                    <AvatarFallback className="bg-zinc-800 text-white font-semibold">
+                      {selectedCommunity.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-white text-base truncate">{selectedCommunity.name}</h3>
+                  {selectedCommunity.slug && (
+                    <p className="text-xs text-blue-400">/{selectedCommunity.slug}</p>
+                  )}
+                  {selectedCommunity.description && (
+                    <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{selectedCommunity.description}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    {selectedCommunity.visibility && (
+                      <Badge className="bg-zinc-800/80 text-zinc-400 border-zinc-700/50 text-[10px] px-1.5 py-0">
+                        {selectedCommunity.visibility.toUpperCase()}
+                      </Badge>
+                    )}
+                    {selectedCommunity.members !== undefined && (
+                      <span className="text-xs text-zinc-500">{selectedCommunity.members.toLocaleString()} members</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {isMember.get(selectedCommunity.id) ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-zinc-300 mb-4">You are already a member of this community!</p>
+                  <EnhancedButton
+                    size="sm"
+                    variant="gradient"
+                    onClick={() => {
+                      setShowJoinModal(false)
+                      router.push(`/for-you?communityId=${selectedCommunity.id}`)
+                    }}
+                    className="w-full"
+                  >
+                    View Community
+                  </EnhancedButton>
+                </div>
+              ) : (
+                <>
+                  {selectedCommunity.visibility?.toLowerCase() === "private" && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-300">
+                        Message (required for private communities)
+                      </label>
+                      <textarea
+                        value={joinMessage}
+                        onChange={(e) => setJoinMessage(e.target.value)}
+                        placeholder="Tell the community why you'd like to join..."
+                        className="w-full h-24 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+                  )}
+
+                  {joinError && (
+                    <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3 text-xs text-red-300">
+                      {joinError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <EnhancedButton
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowJoinModal(false)
+                        setJoinError(null)
+                        setJoinMessage("")
+                      }}
+                      className="flex-1"
+                      disabled={isJoining}
+                    >
+                      Cancel
+                    </EnhancedButton>
+                    <EnhancedButton
+                      size="sm"
+                      variant="gradient"
+                      onClick={async () => {
+                        if (!selectedCommunity) return
+                        
+                        if (selectedCommunity.visibility?.toLowerCase() === "private" && !joinMessage.trim()) {
+                          setJoinError("Message is required for private communities")
+                          return
+                        }
+
+                        setIsJoining(true)
+                        setJoinError(null)
+
+                        try {
+                          const token = getStoredAccessToken()
+                          if (!token) {
+                            setJoinError("Authentication required")
+                            setIsJoining(false)
+                            return
+                          }
+
+                          // Always send a body: empty object {} for public communities, or { message: "..." } for private
+                          const requestBody = selectedCommunity.visibility?.toLowerCase() === "private"
+                            ? { message: joinMessage.trim() }
+                            : {}
+
+                          console.log("[Search] Joining community with body:", requestBody)
+
+                          const response = await fetch(`/api/communities/${selectedCommunity.id}/join`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify(requestBody),
+                          })
+
+                          if (!response.ok) {
+                            let errorMessage = "Failed to join community"
+                            const errorText = await response.text()
+                            
+                            if (errorText) {
+                              try {
+                                const errorData = JSON.parse(errorText)
+                                errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+                              } catch {
+                                errorMessage = errorText
+                              }
+                            }
+
+                            setJoinError(errorMessage)
+                            setIsJoining(false)
+                            return
+                          }
+
+                          // Success - update membership status
+                          setIsMember(prev => new Map(prev).set(selectedCommunity.id, true))
+                          setShowJoinModal(false)
+                          setJoinError(null)
+                          setJoinMessage("")
+                          
+                          // Navigate to community page
+                          router.push(`/for-you?communityId=${selectedCommunity.id}`)
+                        } catch (error) {
+                          console.error("[Search] Error joining community:", error)
+                          setJoinError(error instanceof Error ? error.message : "An unexpected error occurred")
+                        } finally {
+                          setIsJoining(false)
+                        }
+                      }}
+                      className="flex-1"
+                      disabled={isJoining || (selectedCommunity.visibility?.toLowerCase() === "private" && !joinMessage.trim())}
+                      isLoading={isJoining}
+                    >
+                      {selectedCommunity.visibility?.toLowerCase() === "private" ? "Send Request" : "Join"}
+                    </EnhancedButton>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </DashboardLayout>

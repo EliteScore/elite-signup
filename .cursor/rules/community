@@ -1,0 +1,175 @@
+# Resource: CommunityOperations
+# Path Prefix: /v1/communities-op
+
+Manages community creation, update, and deletion.
+All endpoints require that userId is provided on the request (in HttpServletRequest attributes).
+All endpoints consume and produce JSON.
+
+**Note:** All endpoints are mounted under `/v1/*` by the Jersey servlet, so the full path includes the `/v1` prefix.
+
+--------------------------------------------------
+
+## POST /v1/communities-op
+
+Summary  
+Create a new community.  
+A user may create at most one community.  
+The creator automatically becomes an active 'leader' of the community.
+
+Auth  
+Required (any authenticated user)
+
+Request Body  
+{
+  "name": "string",
+  "description": "string",
+  "slug": "string",
+  "visibility": "public|private"
+}
+
+Behavior  
+- Validates name and visibility.  
+- Enforces one-community-per-user.  
+- Generates or normalizes slug; ensures uniqueness.  
+- Inserts community row.  
+- Adds creator as leader (active).  
+
+Responses  
+
+201 Created  
+{
+  "id": 42,
+  "name": "Elite Fitness",
+  "slug": "elite-fitness",
+  "visibility": "public",
+  "is_pro": false,
+  "chat_space_id": null,
+  "created_by": 123
+}
+
+400 Bad Request  
+401 Unauthorized  
+409 Conflict  
+500 Internal Server Error  
+
+Example — cURL  
+curl -X POST "$BASE/v1/communities-op" -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -d '{"name":"Elite Fitness","visibility":"private"}'
+
+--------------------------------------------------
+
+## PUT /v1/communities-op/{communityId}
+
+Summary  
+Update a community.  
+Only the owner (creator) may update it.
+
+Auth  
+Required (user must be the owner)
+
+Path Params  
+communityId
+
+Request Body  
+{
+  "name": "string",
+  "slug": "string",
+  "visibility": "public|private"
+}
+
+Behavior  
+- Validates ownership.  
+- Validates fields.  
+- Enforces slug uniqueness.  
+- Updates updated_at.  
+
+Responses  
+
+200 OK  
+{
+  "id": 42,
+  "name": "Elite Fitness Pro",
+  "slug": "elite-fitness-pro",
+  "visibility": "private",
+  "is_pro": false,
+  "chat_space_id": null,
+  "created_by": 123,
+  "created_at": "2025-01-20T12:00:00Z",
+  "updated_at": "2025-02-10T15:12:55Z"
+}
+
+400 Bad Request  
+401 Unauthorized  
+403 Forbidden  
+404 Not Found  
+409 Conflict  
+
+Example — cURL  
+curl -X PUT "$BASE/v1/communities-op/42" -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -d '{"name":"Elite Fitness Pro"}'
+
+--------------------------------------------------
+
+## DELETE /v1/communities-op/{communityId}
+
+Summary  
+Delete a community.  
+Only the owner may delete.  
+Automatically removes all memberships first.
+
+Auth  
+Required (user must be the owner)
+
+Path Params  
+communityId
+
+Behavior  
+- Validates ownership.  
+- Deletes memberships.  
+- Deletes community.  
+- Returns no content on success.  
+
+Responses  
+
+204 No Content  
+401 Unauthorized  
+403 Forbidden  
+404 Not Found  
+409 Conflict  
+500 Internal Server Error  
+
+Example — cURL  
+curl -X DELETE "$BASE/v1/communities-op/42" -H "Authorization: Bearer <token>"
+
+
+## GET /v1/communities/user/{user_id}
+
+Summary  
+List IDs of communities where a specific user is an active member.
+
+Auth  
+None enforced in this method (may rely on global auth / visibility logic).
+
+Path Params  
+- user_id (long) — Target user whose communities are being listed.
+
+Behavior  
+
+- Native query:
+  - Same as /own endpoint, but uses user_id from path instead of current user.
+- Returns:
+  - user_id
+  - community_ids
+  - total.  
+
+Responses  
+
+200 OK  
+{
+  "user_id": 456,
+  "community_ids": [10, 20],
+  "total": 2
+}
+
+Example — cURL  
+
+curl -X GET "$BASE/v1/communities/user/456"
+

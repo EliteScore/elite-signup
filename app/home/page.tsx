@@ -1634,19 +1634,19 @@ export default function HomePage() {
             <Tabs defaultValue="feed" className="w-full">
               <div className="flex items-center justify-between mb-5 sm:mb-6">
                 <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 transition-all duration-300 ease-in-out">
-                  <TabsTrigger
-                    value="feed"
-                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
-                  >
-                    Feed
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="network"
-                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
-                  >
-                    Network
-                  </TabsTrigger>
-                </TabsList>
+                <TabsTrigger
+                  value="feed"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
+                >
+                  Feed
+                </TabsTrigger>
+                <TabsTrigger
+                  value="network"
+                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
+                >
+                  Network
+                </TabsTrigger>
+              </TabsList>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1947,8 +1947,8 @@ export default function HomePage() {
                       </EnhancedCard>
                     ) : null}
                   </AnimatedSection>
-                    )
-                  })
+                      )
+                    })
                 )}
               </TabsContent>
 
