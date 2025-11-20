@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
 
+/**
+ * PUT /v1/communities-op/{communityId}
+ * 
+ * Updates a community. Only the owner can update their community.
+ * 
+ * Authorization Requirements:
+ * - Auth: Required (JWT)
+ * - User must be the owner of the community (403 Forbidden if not owner)
+ * 
+ * Request Body:
+ * {
+ *   "name": "string",              // optional
+ *   "description": "string",       // optional
+ *   "slug": "string",              // optional
+ *   "visibility": "public|private" // optional
+ * }
+ * 
+ * Note: All fields are optional - only include fields you want to update.
+ * 
+ * Responses:
+ * - 200 OK: Community updated successfully (returns updated Community JSON)
+ * - 400 Bad Request: Invalid request body
+ * - 401 Unauthorized: Missing or invalid token
+ * - 403 Forbidden: User is not the owner of this community
+ * - 404 Not Found: Community not found
+ * - 500 Internal Server Error
+ * 
+ * Example — cURL:
+ * curl -X PUT "$BASE/v1/communities-op/42" \
+ *   -H "Content-Type: application/json" \
+ *   -H "Authorization: Bearer <token>" \
+ *   -d '{"name":"Elite Fitness Pro"}'
+ */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ communityId: string }> }
@@ -121,8 +154,10 @@ export async function PUT(
 
     const data = await response.json()
     console.log("[Edit Community API] Success! Response data:", JSON.stringify(data, null, 2))
+    console.log("[Edit Community API] Response status:", response.status)
     console.log("[Edit Community API] ===== Request completed successfully =====")
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend (typically 200 OK)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error("[Edit Community API] ===== EXCEPTION OCCURRED =====")
     console.error("[Edit Community API] Error:", error)

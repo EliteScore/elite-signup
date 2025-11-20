@@ -63,12 +63,20 @@ export async function POST(
     let requestBody: any = null
     try {
       const bodyText = await request.text()
-      if (bodyText) {
-        requestBody = JSON.parse(bodyText)
-        console.log('[Join Community API] Request body:', requestBody)
+      if (bodyText && bodyText.trim()) {
+        try {
+          requestBody = JSON.parse(bodyText)
+          console.log('[Join Community API] Request body:', requestBody)
+        } catch (parseError) {
+          console.error('[Join Community API] ERROR: Invalid JSON in request body:', parseError)
+          return NextResponse.json(
+            { error: 'Invalid JSON in request body' },
+            { status: 400 },
+          )
+        }
       }
-    } catch (parseError) {
-      console.warn('[Join Community API] No request body or failed to parse:', parseError)
+    } catch (readError) {
+      console.warn('[Join Community API] No request body or failed to read:', readError)
     }
 
     const targetUrl = `${API_BASE_URL}v1/communities/${communityId}/join`
@@ -127,7 +135,7 @@ export async function POST(
       )
     }
 
-    // 204 No Content is a successful response for POST
+    // Handle 204 No Content (if backend sends it)
     if (response.status === 204) {
       console.log('[Join Community API] Success! Joined community (204 No Content)')
       return new NextResponse(null, { status: 204 })
@@ -154,8 +162,10 @@ export async function POST(
     }
 
     console.log('[Join Community API] Success! Response data:', JSON.stringify(data, null, 2))
+    console.log('[Join Community API] Response status:', response.status)
     console.log('[Join Community API] ===== Request completed successfully =====')
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status (200 for joined, 202 for pending_request, etc.)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[Join Community API] ===== EXCEPTION OCCURRED =====')
     console.error(

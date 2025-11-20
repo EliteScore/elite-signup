@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
 
+/**
+ * POST /v1/communities-op
+ * 
+ * Creates a new community. Each user can only create one community.
+ * 
+ * Authorization Requirements:
+ * - Auth: Required (JWT)
+ * - User must be authenticated
+ * 
+ * Request Body:
+ * {
+ *   "name": "string",              // required
+ *   "description": "string",       // optional
+ *   "slug": "string",              // optional (auto-generated if missing)
+ *   "visibility": "public|private" // required
+ * }
+ * 
+ * Responses:
+ * - 201 Created: Community created successfully (returns Community JSON)
+ * - 400 Bad Request: Invalid request body
+ * - 401 Unauthorized: Missing or invalid token
+ * - 409 Conflict: User already has a community
+ * - 500 Internal Server Error
+ * 
+ * Example — cURL:
+ * curl -X POST "$BASE/v1/communities-op" \
+ *   -H "Content-Type: application/json" \
+ *   -H "Authorization: Bearer <token>" \
+ *   -d '{"name":"Elite Fitness","visibility":"private"}'
+ */
 export async function POST(request: NextRequest) {
   console.log("[Create Community API] ===== Request received =====")
   console.log("[Create Community API] Timestamp:", new Date().toISOString())
@@ -87,8 +117,10 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
     console.log("[Create Community API] Success! Response data:", JSON.stringify(data, null, 2))
+    console.log("[Create Community API] Response status:", response.status)
     console.log("[Create Community API] ===== Request completed successfully =====")
-    return NextResponse.json(data, { status: 201 })
+    // Preserve the original response status from backend (typically 201 Created)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error("[Create Community API] ===== EXCEPTION OCCURRED =====")
     console.error("[Create Community API] Error:", error)

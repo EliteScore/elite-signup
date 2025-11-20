@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, X, Users, Trophy, Hash } from "lucide-react"
+import { Search, X, Users, Trophy, Hash, Bell, Clock, Globe, Lock, TrendingUp } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EnhancedButton } from "@/components/ui/enhanced-button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 
@@ -208,6 +209,8 @@ const getCommunitySearchUrl = (
     slug?: string
     visibility?: string
     is_pro?: boolean
+    tags?: string[]
+    tagMode?: "any" | "all"
   },
 ) => {
   const trimmed = input.trim() || "_"
@@ -231,6 +234,18 @@ const getCommunitySearchUrl = (
 
   if (options?.is_pro !== undefined) {
     searchParams.set("is_pro", options.is_pro ? "true" : "false")
+  }
+
+  // Add tags support (CSV format)
+  if (options?.tags && options.tags.length > 0) {
+    const tagsCsv = options.tags.map(tag => tag.trim()).filter(tag => tag.length > 0).join(",")
+    if (tagsCsv) {
+      searchParams.set("tags", tagsCsv)
+      // Add mode (any | all), default to "any"
+      const mode = options.tagMode === "all" ? "all" : "any"
+      searchParams.set("mode", mode)
+      console.log("[Search] Adding tags to search:", tagsCsv, "mode:", mode)
+    }
   }
 
   const queryString = searchParams.toString()
@@ -592,6 +607,17 @@ export default function SearchPage() {
   const [joinError, setJoinError] = useState<string | null>(null)
   const [joinMessage, setJoinMessage] = useState("")
   const [isMember, setIsMember] = useState<Map<number, boolean>>(new Map())
+  const [pendingRequests, setPendingRequests] = useState<Set<number>>(new Set())
+  const [communityDetails, setCommunityDetails] = useState<any>(null)
+  const [isLoadingCommunityDetails, setIsLoadingCommunityDetails] = useState(false)
+  const [communityAnnouncements, setCommunityAnnouncements] = useState<any[]>([])
+  const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(false)
+  const [communityMembers, setCommunityMembers] = useState<any[]>([])
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false)
+  const [communityViewTab, setCommunityViewTab] = useState<"overview" | "announcements" | "members">("overview")
+  const [tagSearchQuery, setTagSearchQuery] = useState("")
+  const [searchTags, setSearchTags] = useState<string[]>([])
+  const [tagSearchMode, setTagSearchMode] = useState<"any" | "all">("any")
 
   useEffect(() => {
     if (ownUserId !== null) return
@@ -659,6 +685,163 @@ export default function SearchPage() {
       router.push("/profile")
     } else {
       router.push(`/profile?userId=${userId}`)
+    }
+  }
+
+  // Check if user has a pending request for a community
+  const checkPendingRequest = async (communityId: number) => {
+    try {
+      const token = getStoredAccessToken()
+      if (!token) return false
+
+      // Check if user is a member first
+      const ownResponse = await fetch('/api/communities/own', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (ownResponse.ok) {
+        const ownData = await ownResponse.json()
+        const rawIds = ownData?.community_ids ?? ownData?.data?.community_ids ?? []
+        const normalizedIds = Array.isArray(rawIds)
+          ? Array.from(new Set(rawIds.map((id: number | string) => Number(id)).filter((id) => !Number.isNaN(id))))
+          : []
+        
+        const isMemberOfCommunity = normalizedIds.includes(communityId)
+        
+        if (!isMemberOfCommunity) {
+          // Not a member - try to check if there's a pending request by attempting to fetch members
+          // (which requires membership and will return 403 if not a member and no pending request)
+          // Actually, we can't reliably detect pending requests this way
+          // So we'll rely on the state and backend responses
+          return false
+        }
+      }
+      return false
+    } catch (error) {
+      console.warn('[Search] Error checking pending request:', error)
+      return false
+    }
+  }
+
+  // Fetch full community details
+  const fetchCommunityDetails = async (communityId: number) => {
+    setIsLoadingCommunityDetails(true)
+    try {
+      const token = getStoredAccessToken()
+      const response = await fetch(`/api/communities/${communityId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCommunityDetails(data?.data || data)
+        
+        // Also fetch announcements and members if public or if member
+        const isMemberOfCommunity = isMember.get(communityId)
+        const community = data?.data || data
+        const isPublic = community?.visibility?.toLowerCase() === 'public'
+        
+        if (isPublic || isMemberOfCommunity) {
+          fetchCommunityAnnouncements(communityId)
+          fetchCommunityMembers(communityId)
+        }
+      }
+    } catch (error) {
+      console.error('[Search] Error fetching community details:', error)
+    } finally {
+      setIsLoadingCommunityDetails(false)
+    }
+  }
+
+  // Fetch community announcements
+  const fetchCommunityAnnouncements = async (communityId: number) => {
+    setIsLoadingAnnouncements(true)
+    try {
+      const token = getStoredAccessToken()
+      if (!token) return
+
+      const response = await fetch(`/api/communities/${communityId}/announcements`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const announcements = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+        setCommunityAnnouncements(announcements.slice(0, 5)) // Show only first 5
+      }
+    } catch (error) {
+      console.error('[Search] Error fetching announcements:', error)
+    } finally {
+      setIsLoadingAnnouncements(false)
+    }
+  }
+
+  // Fetch community members
+  const fetchCommunityMembers = async (communityId: number) => {
+    setIsLoadingMembers(true)
+    try {
+      const token = getStoredAccessToken()
+      if (!token) return
+
+      // First get member IDs
+      const idsResponse = await fetch(`/api/communities/${communityId}/members/ids?limit=10&offset=0`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (idsResponse.ok) {
+        const idsData = await idsResponse.json()
+        const userIds = idsData?.user_ids ?? idsData?.data?.user_ids ?? []
+        
+        // Fetch profiles for first few members
+        const memberPromises = userIds.slice(0, 5).map(async (userId: number) => {
+          try {
+            const profileResponse = await fetch(`${API_BASE_URL}v1/users/profile/get_profile/${userId}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            })
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json()
+              const profile = profileData?.data || profileData
+              return {
+                id: userId,
+                name: profile?.firstName && profile?.lastName 
+                  ? `${profile.firstName} ${profile.lastName}` 
+                  : profile?.username || 'Member',
+                image: profile?.profilePictureUrl || profile?.profilePicture || profile?.avatarUrl || null,
+              }
+            }
+          } catch (error) {
+            console.error(`[Search] Error fetching member profile ${userId}:`, error)
+          }
+          return null
+        })
+
+        const members = (await Promise.all(memberPromises)).filter((m): m is any => m !== null)
+        setCommunityMembers(members)
+      }
+    } catch (error) {
+      console.error('[Search] Error fetching members:', error)
+    } finally {
+      setIsLoadingMembers(false)
     }
   }
 
@@ -848,8 +1031,11 @@ export default function SearchPage() {
     }
   }
 
-  const fetchCommunitySearchResults = useCallback(async (query: string, headers: Record<string, string>) => {
-    const url = getCommunitySearchUrl(query)
+  const fetchCommunitySearchResults = useCallback(async (query: string, headers: Record<string, string>, tags?: string[], tagMode?: "any" | "all") => {
+    const url = getCommunitySearchUrl(query, {
+      tags: tags && tags.length > 0 ? tags : undefined,
+      tagMode: tagMode || "any",
+    })
 
     try {
       const response = await fetch(url, {
@@ -1114,7 +1300,7 @@ export default function SearchPage() {
         
         console.log("[Search] Final results with pictures and scores:", finalResults.length)
         setSearchResults(finalResults)
-        await fetchCommunitySearchResults(trimmedQuery, { ...headers })
+        await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags.length > 0 ? searchTags : undefined, tagSearchMode)
       } else {
         console.log("[Search] No results in payload:", {
           success: payload?.success,
@@ -1134,7 +1320,21 @@ export default function SearchPage() {
     } finally {
       setIsSearching(false)
     }
-  }, [])
+  }, [searchTags, tagSearchMode])
+
+  // Handle adding a tag to search
+  const handleAddSearchTag = () => {
+    const trimmed = tagSearchQuery.trim().toLowerCase()
+    if (trimmed && !searchTags.includes(trimmed)) {
+      setSearchTags([...searchTags, trimmed])
+      setTagSearchQuery("")
+    }
+  }
+
+  // Handle removing a tag from search
+  const handleRemoveSearchTag = (tagToRemove: string) => {
+    setSearchTags(searchTags.filter(tag => tag !== tagToRemove))
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1144,7 +1344,7 @@ export default function SearchPage() {
     return () => {
       clearTimeout(timer)
     }
-  }, [searchQuery, performSearch])
+  }, [searchQuery, performSearch, searchTags, tagSearchMode])
 
   const filteredPeople = searchResults.filter(
     (person) => ownUserId === null || person.userId !== ownUserId,
@@ -1186,6 +1386,98 @@ export default function SearchPage() {
                 </button>
               )}
             </div>
+
+            {/* Tag Search Section */}
+            {searchQuery && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 space-y-2"
+              >
+                <div className="flex items-center gap-2">
+                  <Hash className="h-4 w-4 text-zinc-400" />
+                  <Input
+                    type="text"
+                    placeholder="Add tags to filter communities..."
+                    value={tagSearchQuery}
+                    onChange={(e) => setTagSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddSearchTag()
+                      }
+                    }}
+                    className="flex-1 h-8 bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddSearchTag}
+                    disabled={!tagSearchQuery.trim()}
+                    className="h-8 px-3 text-xs bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800"
+                  >
+                    Add
+                  </Button>
+                </div>
+                {searchTags.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-zinc-400">Tags:</span>
+                    {searchTags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        className="bg-blue-900/40 text-blue-300 border-blue-800 text-xs px-2 py-0.5 flex items-center gap-1.5"
+                      >
+                        <Hash className="h-3 w-3" />
+                        {tag}
+                        <button
+                          onClick={() => handleRemoveSearchTag(tag)}
+                          className="ml-1 hover:text-red-400 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchTags([])}
+                      className="h-6 px-2 text-xs text-zinc-400 hover:text-white"
+                    >
+                      Clear all
+                    </Button>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <span className="text-xs text-zinc-400">Mode:</span>
+                      <Button
+                        variant={tagSearchMode === "any" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setTagSearchMode("any")}
+                        className={cn(
+                          "h-6 px-2 text-xs",
+                          tagSearchMode === "any"
+                            ? "bg-blue-600 text-white"
+                            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
+                        )}
+                      >
+                        Any
+                      </Button>
+                      <Button
+                        variant={tagSearchMode === "all" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setTagSearchMode("all")}
+                        className={cn(
+                          "h-6 px-2 text-xs",
+                          tagSearchMode === "all"
+                            ? "bg-blue-600 text-white"
+                            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
+                        )}
+                      >
+                        All
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {/* Filter Tabs */}
             {searchQuery && (
@@ -1418,7 +1710,11 @@ export default function SearchPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 hover:bg-zinc-850 transition-all"
+                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 hover:bg-zinc-850 transition-all cursor-pointer"
+                        onClick={() => {
+                          // Navigate to community profile when clicking anywhere on the card
+                          router.push(`/for-you?communityId=${community.id}`)
+                        }}
                       >
                         <div className="flex items-start justify-between gap-3">
                           {community.image && (
@@ -1465,15 +1761,14 @@ export default function SearchPage() {
                           <EnhancedButton
                             size="sm"
                             variant="outline"
-                            onClick={() => {
-                              setSelectedCommunity(community)
-                              setShowJoinModal(true)
-                              setJoinError(null)
-                              setJoinMessage("")
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              // Navigate directly to community profile
+                              router.push(`/for-you?communityId=${community.id}`)
                             }}
                             className="bg-transparent border border-zinc-700 text-white hover:bg-zinc-800 h-9 px-3 text-xs rounded-full"
                           >
-                            {isMember.get(community.id) ? "View community" : "Join community"}
+                            View Community
                           </EnhancedButton>
                         </div>
                       </motion.div>
@@ -1640,54 +1935,196 @@ export default function SearchPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Join Community Modal */}
-      <Dialog open={showJoinModal} onOpenChange={setShowJoinModal}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+      {/* Join Community Modal - Full Community View */}
+      <Dialog open={showJoinModal} onOpenChange={(open) => {
+        setShowJoinModal(open)
+        if (!open) {
+          setCommunityDetails(null)
+          setCommunityAnnouncements([])
+          setCommunityMembers([])
+          setCommunityViewTab("overview")
+        }
+      }}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-white text-center border-b border-zinc-800 pb-3">
               {selectedCommunity && isMember.get(selectedCommunity.id) 
                 ? "View Community" 
                 : selectedCommunity?.visibility?.toLowerCase() === "private"
                   ? "Request to Join"
-                  : "Join Community"}
+                  : "View Community"}
             </DialogTitle>
           </DialogHeader>
           {selectedCommunity && (
-            <div className="mt-4 space-y-4">
-              {/* Community Info */}
-              <div className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg">
-                {selectedCommunity.image && (
-                  <Avatar className="h-16 w-16 border border-zinc-700">
-                    <AvatarImage src={selectedCommunity.image} alt={selectedCommunity.name} />
-                    <AvatarFallback className="bg-zinc-800 text-white font-semibold">
+            <div className="flex-1 overflow-y-auto mt-4 space-y-4">
+              {/* Community Header */}
+              <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg">
+                <Avatar className="h-20 w-20 border-2 border-zinc-700 flex-shrink-0">
+                  <AvatarImage src={selectedCommunity.image || undefined} alt={selectedCommunity.name} />
+                  <AvatarFallback className="bg-zinc-800 text-white font-semibold text-xl">
                       {selectedCommunity.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white text-base truncate">{selectedCommunity.name}</h3>
-                  {selectedCommunity.slug && (
-                    <p className="text-xs text-blue-400">/{selectedCommunity.slug}</p>
-                  )}
-                  {selectedCommunity.description && (
-                    <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{selectedCommunity.description}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <h3 className="font-bold text-white text-lg">{selectedCommunity.name}</h3>
                     {selectedCommunity.visibility && (
-                      <Badge className="bg-zinc-800/80 text-zinc-400 border-zinc-700/50 text-[10px] px-1.5 py-0">
+                      <Badge className={cn(
+                        "text-[10px] px-2 py-0.5",
+                        selectedCommunity.visibility.toLowerCase() === "public"
+                          ? "bg-blue-900/40 text-blue-300 border-blue-800"
+                          : "bg-zinc-800/80 text-zinc-400 border-zinc-700/50"
+                      )}>
+                        {selectedCommunity.visibility.toLowerCase() === "public" ? (
+                          <Globe className="h-3 w-3 mr-1 inline" />
+                        ) : (
+                          <Lock className="h-3 w-3 mr-1 inline" />
+                        )}
                         {selectedCommunity.visibility.toUpperCase()}
                       </Badge>
                     )}
+                  </div>
+                  {selectedCommunity.slug && (
+                    <p className="text-sm text-blue-400 mb-2">/{selectedCommunity.slug}</p>
+                  )}
+                  {selectedCommunity.description && (
+                    <p className="text-sm text-zinc-300 mb-3">{selectedCommunity.description}</p>
+                  )}
+                  <div className="flex items-center gap-4 flex-wrap">
                     {selectedCommunity.members !== undefined && (
-                      <span className="text-xs text-zinc-500">{selectedCommunity.members.toLocaleString()} members</span>
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-4 w-4 text-zinc-400" />
+                        <span className="text-sm text-zinc-400">{selectedCommunity.members.toLocaleString()} members</span>
+                      </div>
+                    )}
+                    {communityDetails?.stats?.activeToday !== undefined && (
+                      <div className="flex items-center gap-1.5">
+                        <TrendingUp className="h-4 w-4 text-zinc-400" />
+                        <span className="text-sm text-zinc-400">{communityDetails.stats.activeToday} active today</span>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
 
+              {/* Tabs for Community View */}
+              <Tabs value={communityViewTab} onValueChange={(v) => setCommunityViewTab(v as any)} className="w-full">
+                <TabsList className="bg-zinc-800 border border-zinc-700 rounded-lg p-1 w-full grid grid-cols-3">
+                  <TabsTrigger value="overview" className="text-xs data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="announcements" className="text-xs data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                    <Bell className="h-3 w-3 mr-1 inline" />
+                    Announcements
+                  </TabsTrigger>
+                  <TabsTrigger value="members" className="text-xs data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                    <Users className="h-3 w-3 mr-1 inline" />
+                    Members
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-3 mt-4">
+                  {isLoadingCommunityDetails ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {communityDetails && (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-zinc-800/50 rounded-lg">
+                              <p className="text-xs text-zinc-400 mb-1">Total Members</p>
+                              <p className="text-lg font-bold text-white">{communityDetails.membersCount || communityDetails.members || 0}</p>
+                            </div>
+                            <div className="p-3 bg-zinc-800/50 rounded-lg">
+                              <p className="text-xs text-zinc-400 mb-1">Active Today</p>
+                              <p className="text-lg font-bold text-white">{communityDetails.stats?.activeToday || 0}</p>
+                            </div>
+                          </div>
+                          {communityDetails.description && (
+                            <div className="p-3 bg-zinc-800/50 rounded-lg">
+                              <p className="text-xs text-zinc-400 mb-2">About</p>
+                              <p className="text-sm text-zinc-300">{communityDetails.description}</p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="announcements" className="space-y-3 mt-4">
+                  {isLoadingAnnouncements ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    </div>
+                  ) : communityAnnouncements.length > 0 ? (
+                    <div className="space-y-2">
+                      {communityAnnouncements.map((announcement: any) => (
+                        <div key={announcement.id} className="p-3 bg-zinc-800/50 rounded-lg">
+                          <div className="flex items-start gap-2 mb-1">
+                            <Bell className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                            <h4 className="font-semibold text-white text-sm flex-1">{announcement.title}</h4>
+                          </div>
+                          <p className="text-xs text-zinc-400 line-clamp-2 ml-6">{announcement.description || announcement.content}</p>
+                          {announcement.created_at && (
+                            <div className="flex items-center gap-1 mt-2 ml-6">
+                              <Clock className="h-3 w-3 text-zinc-500" />
+                              <span className="text-xs text-zinc-500">{new Date(announcement.created_at).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-zinc-400 text-sm">
+                      {selectedCommunity.visibility?.toLowerCase() === "private" && !isMember.get(selectedCommunity.id)
+                        ? "Join the community to see announcements"
+                        : "No announcements yet"}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="members" className="space-y-3 mt-4">
+                  {isLoadingMembers ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    </div>
+                  ) : communityMembers.length > 0 ? (
+                    <div className="space-y-2">
+                      {communityMembers.map((member: any) => (
+                        <div key={member.id} className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg">
+                          <Avatar className="h-10 w-10 border border-zinc-700">
+                            <AvatarImage src={member.image || undefined} alt={member.name} />
+                            <AvatarFallback className="bg-zinc-800 text-white text-sm">
+                              {member.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-white text-sm truncate">{member.name}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {selectedCommunity.members && selectedCommunity.members > communityMembers.length && (
+                        <p className="text-xs text-zinc-500 text-center">
+                          +{selectedCommunity.members - communityMembers.length} more members
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-zinc-400 text-sm">
+                      {selectedCommunity.visibility?.toLowerCase() === "private" && !isMember.get(selectedCommunity.id)
+                        ? "Join the community to see members"
+                        : "No members to display"}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              {/* Join/View Actions */}
+              <div className="border-t border-zinc-800 pt-4 mt-4">
               {isMember.get(selectedCommunity.id) ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-zinc-300 mb-4">You are already a member of this community!</p>
                   <EnhancedButton
                     size="sm"
                     variant="gradient"
@@ -1699,11 +2136,34 @@ export default function SearchPage() {
                   >
                     View Community
                   </EnhancedButton>
+                ) : pendingRequests.has(selectedCommunity.id) ? (
+                  <div className="text-center py-4">
+                    <div className="flex items-center justify-center mb-4">
+                      <Lock className="h-12 w-12 text-amber-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h3>
+                    <p className="text-sm text-zinc-300 mb-4">
+                      Your request to join <span className="font-semibold">{selectedCommunity.name}</span> is pending approval.
+                    </p>
+                    <p className="text-xs text-zinc-400 mb-4">
+                      You can only send one request. Please wait for the community admin to review your request.
+                    </p>
+                    <EnhancedButton
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowJoinModal(false)
+                        router.push(`/for-you?communityId=${selectedCommunity.id}&pending=true`)
+                      }}
+                      className="w-full border-amber-700 text-amber-300 hover:bg-amber-900/20"
+                  >
+                    View Community
+                  </EnhancedButton>
                 </div>
               ) : (
                 <>
                   {selectedCommunity.visibility?.toLowerCase() === "private" && (
-                    <div className="space-y-2">
+                      <div className="space-y-2 mb-4">
                       <label className="text-sm font-medium text-zinc-300">
                         Message (required for private communities)
                       </label>
@@ -1717,7 +2177,7 @@ export default function SearchPage() {
                   )}
 
                   {joinError && (
-                    <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3 text-xs text-red-300">
+                      <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3 text-xs text-red-300 mb-4">
                       {joinError}
                     </div>
                   )}
@@ -1741,6 +2201,12 @@ export default function SearchPage() {
                       variant="gradient"
                       onClick={async () => {
                         if (!selectedCommunity) return
+                          
+                          // Prevent duplicate requests
+                          if (pendingRequests.has(selectedCommunity.id)) {
+                            setJoinError("You have already sent a request to join this community. Please wait for approval.")
+                            return
+                          }
                         
                         if (selectedCommunity.visibility?.toLowerCase() === "private" && !joinMessage.trim()) {
                           setJoinError("Message is required for private communities")
@@ -1764,6 +2230,7 @@ export default function SearchPage() {
                             : {}
 
                           console.log("[Search] Joining community with body:", requestBody)
+                            console.log("[Search] Calling POST /v1/communities/{communityId}/join")
 
                           const response = await fetch(`/api/communities/${selectedCommunity.id}/join`, {
                             method: "POST",
@@ -1774,6 +2241,8 @@ export default function SearchPage() {
                             body: JSON.stringify(requestBody),
                           })
 
+                            console.log("[Search] Join response status:", response.status)
+
                           if (!response.ok) {
                             let errorMessage = "Failed to join community"
                             const errorText = await response.text()
@@ -1782,6 +2251,17 @@ export default function SearchPage() {
                               try {
                                 const errorData = JSON.parse(errorText)
                                 errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+                                  
+                                  // Check if error indicates request already exists
+                                  if (errorMessage.toLowerCase().includes("already") || 
+                                      errorMessage.toLowerCase().includes("pending") ||
+                                      errorMessage.toLowerCase().includes("request")) {
+                                    // Mark as pending if backend says request already exists
+                                    setPendingRequests(prev => new Set(prev).add(selectedCommunity.id))
+                                    setJoinError("You have already sent a request to join this community.")
+                                    setIsJoining(false)
+                                    return
+                                  }
                               } catch {
                                 errorMessage = errorText
                               }
@@ -1792,7 +2272,23 @@ export default function SearchPage() {
                             return
                           }
 
-                          // Success - update membership status
+                            // Check response status
+                            const responseData = response.status === 204 ? null : await response.json().catch(() => null)
+                            const isPendingRequest = response.status === 202
+
+                            if (isPendingRequest) {
+                              // Pending request - mark as pending and navigate
+                              console.log("[Search] Request is pending (202)")
+                              setPendingRequests(prev => new Set(prev).add(selectedCommunity.id))
+                              setShowJoinModal(false)
+                              setJoinError(null)
+                              setJoinMessage("")
+                              
+                              // Navigate to community page (will show pending banner)
+                              router.push(`/for-you?communityId=${selectedCommunity.id}&pending=true`)
+                            } else if (response.status === 200 || response.status === 204) {
+                              // Successfully joined - update membership status
+                              console.log("[Search] Successfully joined (200/204)")
                           setIsMember(prev => new Map(prev).set(selectedCommunity.id, true))
                           setShowJoinModal(false)
                           setJoinError(null)
@@ -1800,22 +2296,32 @@ export default function SearchPage() {
                           
                           // Navigate to community page
                           router.push(`/for-you?communityId=${selectedCommunity.id}`)
+                            } else {
+                              // Unexpected status
+                              console.warn("[Search] Unexpected response status:", response.status)
+                              setJoinError("Unexpected response from server")
+                              setIsJoining(false)
+                            }
                         } catch (error) {
                           console.error("[Search] Error joining community:", error)
                           setJoinError(error instanceof Error ? error.message : "An unexpected error occurred")
-                        } finally {
                           setIsJoining(false)
                         }
                       }}
                       className="flex-1"
-                      disabled={isJoining || (selectedCommunity.visibility?.toLowerCase() === "private" && !joinMessage.trim())}
+                        disabled={isJoining || pendingRequests.has(selectedCommunity.id) || (selectedCommunity.visibility?.toLowerCase() === "private" && !joinMessage.trim())}
                       isLoading={isJoining}
                     >
-                      {selectedCommunity.visibility?.toLowerCase() === "private" ? "Send Request" : "Join"}
+                        {pendingRequests.has(selectedCommunity.id) 
+                          ? "Request Already Sent" 
+                          : selectedCommunity.visibility?.toLowerCase() === "private" 
+                          ? "Send Request" 
+                          : "Join Community"}
                     </EnhancedButton>
                   </div>
                 </>
               )}
+              </div>
             </div>
           )}
         </DialogContent>

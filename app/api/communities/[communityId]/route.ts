@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const API_BASE_URL = 'https://elitescore-social-4046880acb02.herokuapp.com/'
 
+/**
+ * GET /v1/communities/{communityId}
+ * 
+ * Gets a community by ID.
+ * 
+ * Authorization Requirements:
+ * - Auth: None required in this resource (may be protected globally by backend)
+ * - Token is optional - if provided, it will be forwarded to backend
+ * 
+ * Responses:
+ * - 200 OK: Community JSON object (may be wrapped in ApiResponse<T> or raw object)
+ * - 400 Bad Request: Invalid community ID
+ * - 404 Not Found: Community not found
+ * - 500 Internal Server Error
+ * 
+ * Note: Response format depends on backend implementation. This proxy forwards the response as-is.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ communityId: string }> },
@@ -30,24 +47,21 @@ export async function GET(
       )
     }
 
-    if (!token) {
-      console.error("[Get Community by ID API] ERROR: No authorization token")
-      return NextResponse.json(
-        { error: 'Authorization required' },
-        { status: 401 },
-      )
-    }
-
     const targetUrl = `${API_BASE_URL}v1/communities/${communityId}`
     console.log("[Get Community by ID API] Target URL:", targetUrl)
+
+    // Build headers - include Authorization only if token is provided
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
 
     console.log("[Get Community by ID API] Making fetch request to external API...")
     const response = await fetch(targetUrl, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       cache: 'no-store',
     })
 
@@ -87,8 +101,10 @@ export async function GET(
 
     const data = await response.json()
     console.log("[Get Community by ID API] Success! Response data:", JSON.stringify(data, null, 2))
+    console.log("[Get Community by ID API] Response status:", response.status)
     console.log("[Get Community by ID API] ===== Request completed successfully =====")
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error("[Get Community by ID API] ===== EXCEPTION OCCURRED =====")
     console.error("[Get Community by ID API] Error type:", error instanceof Error ? error.constructor.name : typeof error)

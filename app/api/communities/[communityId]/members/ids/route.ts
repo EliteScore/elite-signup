@@ -5,13 +5,22 @@ const API_BASE_URL = 'https://elitescore-social-4046880acb02.herokuapp.com/'
 /**
  * GET /v1/communities/{communityId}/members/ids
  * 
- * Gets all member IDs for a community.
+ * Gets member IDs for a community.
  * 
  * Query Parameters:
- * - limit (optional, default 1000)
- * - offset (optional, default 0)
+ * - status (optional, CSV string, default: "active") - Filter by member status (e.g., "active", "alumni", "active,alumni")
+ * - limit (optional, default: 1000, max: 10000) - Maximum number of results
+ * - offset (optional, default: 0) - Pagination offset
  * 
- * Authorization: Required (JWT token)
+ * Authorization Requirements:
+ * - Auth: Required (JWT token)
+ * 
+ * Responses:
+ * - 200 OK: { "community_id": number, "user_ids": number[], "total": number, "limit": number, "offset": number } or backend response body
+ * - 401 Unauthorized: No token provided
+ * - 400 Bad Request: Invalid community ID or query parameters
+ * - 404 Not Found: Community not found
+ * - 500 Internal Server Error
  */
 export async function GET(
   request: NextRequest,
@@ -56,10 +65,18 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const limit = searchParams.get('limit') || '1000'
     const offset = searchParams.get('offset') || '0'
+    const status = searchParams.get('status') || 'active'
     
-    console.log('[Get Community Member IDs API] Query params - limit:', limit, 'offset:', offset)
+    console.log('[Get Community Member IDs API] Query params - status:', status, 'limit:', limit, 'offset:', offset)
 
-    const targetUrl = `${API_BASE_URL}v1/communities/${communityId}/members/ids?limit=${limit}&offset=${offset}`
+    // Build query parameters
+    const queryParams = new URLSearchParams({
+      limit,
+      offset,
+      status,
+    })
+
+    const targetUrl = `${API_BASE_URL}v1/communities/${communityId}/members/ids?${queryParams.toString()}`
     console.log('[Get Community Member IDs API] Target URL:', targetUrl)
 
     console.log('[Get Community Member IDs API] Making fetch request to external API...')
@@ -111,9 +128,11 @@ export async function GET(
     console.log('[Get Community Member IDs API] Success! Response data:', JSON.stringify(data, null, 2))
     console.log('[Get Community Member IDs API] Total members:', data?.total || 0)
     console.log('[Get Community Member IDs API] Member IDs count:', data?.user_ids?.length || 0)
+    console.log('[Get Community Member IDs API] Response status:', response.status)
     console.log('[Get Community Member IDs API] ===== Request completed successfully =====')
     
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend (typically 200 OK)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[Get Community Member IDs API] ===== EXCEPTION OCCURRED =====')
     console.error(

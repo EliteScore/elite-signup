@@ -2,6 +2,38 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const API_BASE_URL = 'https://elitescore-social-4046880acb02.herokuapp.com/'
 
+/**
+ * GET /v1/communities/own
+ * 
+ * List IDs of communities where the current user is an active member.
+ * 
+ * Authorization Requirements:
+ * - Auth: Required (JWT; backend resolves userId from the token into request attributes)
+ * - Token must be provided in Authorization header
+ * 
+ * Behavior:
+ * - Reads userId from request attributes (set from the authenticated user)
+ * - Queries community memberships where:
+ *   - user_id matches the authenticated user
+ *   - left_at IS NULL (user hasn't left)
+ *   - status = 'active'
+ * - Orders results by community_id ASC
+ * - Returns: user_id, community_ids (array), total (count)
+ * 
+ * Responses:
+ * - 200 OK: Success
+ *   {
+ *     "user_id": 123,
+ *     "community_ids": [10, 20, 30],
+ *     "total": 3
+ *   }
+ * - 401 Unauthorized: Missing or invalid token
+ * - 500 Internal Server Error: DB / server failure
+ * 
+ * Example — cURL:
+ * curl -X GET "$BASE/v1/communities/own" \
+ *   -H "Authorization: Bearer <token>"
+ */
 export async function GET(request: NextRequest) {
   console.log("[Get Own Communities API] ===== Request received =====")
   console.log("[Get Own Communities API] Timestamp:", new Date().toISOString())
@@ -73,8 +105,10 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
     console.log("[Get Own Communities API] Success! Response data:", JSON.stringify(data, null, 2))
+    console.log("[Get Own Communities API] Response status:", response.status)
     console.log("[Get Own Communities API] ===== Request completed successfully =====")
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend (typically 200 OK)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error("[Get Own Communities API] ===== EXCEPTION OCCURRED =====")
     console.error("[Get Own Communities API] Error type:", error instanceof Error ? error.constructor.name : typeof error)

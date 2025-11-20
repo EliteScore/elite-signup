@@ -10,10 +10,22 @@ const API_BASE_URL = 'https://elitescore-social-4046880acb02.herokuapp.com/'
  * Request: multipart/form-data with a "file" field containing the image
  * 
  * Authorization Requirements (enforced by backend):
- * - User must be a member of the community (RoleGuard.isMember(userId, communityId))
- * - User must be staff of the community (RoleGuard.isStaff(userId, communityId))
+ * - Auth: Required (JWT token)
+ * - Authorization: User must be both a member and staff of the community
+ *   - RoleGuard.isMember(userId, communityId)
+ *   - RoleGuard.isStaff(userId, communityId)
  * 
  * Both conditions must be satisfied. The backend will return 403 Forbidden if not authorized.
+ * 
+ * Responses:
+ * - 200 OK: Backend response body (may be wrapped in ApiResponse<T> or raw object)
+ * - 204 No Content: Profile picture updated successfully (no body)
+ * - 400 Bad Request: Invalid file type/size or missing file
+ * - 401 Unauthorized: No token provided
+ * - 403 Forbidden: User is not member/staff of the community
+ * - 500 Internal Server Error
+ * 
+ * Note: Response format depends on backend implementation. This proxy forwards the response as-is.
  */
 export async function PUT(
   request: NextRequest,
@@ -229,10 +241,22 @@ export async function PUT(
  * Deletes the profile picture for a community.
  * 
  * Authorization Requirements (enforced by backend):
- * - User must be a member of the community (RoleGuard.isMember(userId, communityId))
- * - User must be staff of the community (RoleGuard.isStaff(userId, communityId))
+ * - Auth: Required (JWT token)
+ * - Authorization: User must be both a member and staff of the community
+ *   - RoleGuard.isMember(userId, communityId)
+ *   - RoleGuard.isStaff(userId, communityId)
  * 
  * Both conditions must be satisfied. The backend will return 403 Forbidden if not authorized.
+ * 
+ * Responses:
+ * - 200 OK: { "success": true, "default": true } or backend response body (may be wrapped in ApiResponse<T>)
+ * - 204 No Content: Profile picture deleted successfully (no body)
+ * - 401 Unauthorized: No token provided
+ * - 403 Forbidden: User is not member/staff of the community
+ * - 404 Not Found: Community or profile picture not found
+ * - 500 Internal Server Error
+ * 
+ * Note: Backend may return either 200 with JSON body or 204 No Content. This proxy handles both cases.
  */
 export async function DELETE(
   request: NextRequest,
@@ -371,8 +395,10 @@ export async function DELETE(
     }
 
     console.log('[Delete Community PFP API] Success! Response data:', JSON.stringify(data, null, 2))
+    console.log('[Delete Community PFP API] Response status:', response.status)
     console.log('[Delete Community PFP API] ===== Request completed successfully =====')
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend (200 or other success status)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[Delete Community PFP API] ===== EXCEPTION OCCURRED =====')
     console.error(

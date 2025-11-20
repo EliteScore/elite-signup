@@ -2,6 +2,40 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const API_BASE_URL = 'https://elitescore-social-4046880acb02.herokuapp.com/'
 
+/**
+ * GET /v1/communities/search/{input}
+ * 
+ * Search communities by free-text input, with optional filters for name, slug, visibility, and pro status.
+ * 
+ * Authorization Requirements:
+ * - Auth: Required (JWT; behavior same as the rest of the API — uses the token only for authentication, no per-user filtering in this endpoint)
+ * 
+ * Path Parameters:
+ * - input (string): Free-text term. Matched case-insensitively against name and slug:
+ *   LOWER(name) LIKE %input% OR LOWER(slug) LIKE %input%
+ *   If you want to search only via the filters, you can pass "_" or an empty-ish token and rely on query params.
+ * 
+ * Query Parameters (all optional, combined with logical AND):
+ * - limit (number, optional, default 20, min 1, max 50): Max number of results to return. Values outside [1, 50] are clamped server-side.
+ * - name (string, optional): Additional filter on community name. Case-insensitive LIKE %name%.
+ * - slug (string, optional): Additional filter on slug. Case-insensitive LIKE %slug%.
+ * - visibility (string, optional): Filter by visibility. Must be either "public" or "private". Any other value is ignored.
+ * - is_pro (boolean, optional): Filters on the is_pro column:
+ *   - true → only pro communities
+ *   - false → only non-pro communities
+ *   - Accepts: "true"/"false", "1"/"0" (case-insensitive)
+ *   - This is a filter only; the flag is not part of the CommunityInfo JSON payload.
+ * 
+ * Responses:
+ * - 200 OK: Success (returns ApiResponse<CommunityInfo[]> or array of CommunityInfo)
+ * - 400 Bad Request: Invalid query parameters
+ * - 401 Unauthorized: Missing or invalid token
+ * - 500 Internal Server Error: DB / server failure
+ * 
+ * Example — cURL:
+ * curl -X GET "$BASE/v1/communities/search/fitness?limit=20&visibility=public" \
+ *   -H "Authorization: Bearer <token>"
+ */
 const clampLimit = (value: number) => {
   if (Number.isNaN(value)) return null
   return Math.min(50, Math.max(1, value))
@@ -89,6 +123,29 @@ export async function GET(
     if (isProParam !== null) {
       targetUrl.searchParams.set('is_pro', isProParam ? 'true' : 'false')
       console.log('[Search Communities API] is_pro filter:', isProParam)
+    }
+
+    // Add tags support (CSV format)
+    const tagsParam = searchParams.get('tags')
+    if (tagsParam && tagsParam.trim()) {
+      targetUrl.searchParams.set('tags', tagsParam.trim())
+      console.log('[Search Communities API] Tags filter:', tagsParam)
+      
+      // Add mode (any | all), default to "any"
+      const modeParam = searchParams.get('mode')
+      const mode = modeParam === 'all' ? 'all' : 'any'
+      targetUrl.searchParams.set('mode', mode)
+      console.log('[Search Communities API] Tag mode:', mode)
+    }
+
+    // Add offset support
+    const offsetParam = searchParams.get('offset')
+    if (offsetParam) {
+      const offset = Number(offsetParam)
+      if (!Number.isNaN(offset) && offset >= 0) {
+        targetUrl.searchParams.set('offset', offset.toString())
+        console.log('[Search Communities API] Offset:', offset)
+      }
     }
 
     console.log('[Search Communities API] Input parameter:', safeInput)
@@ -194,7 +251,8 @@ export async function GET(
       console.log('[Search Communities API] Response array count:', data.length)
     }
     
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend (typically 200 OK)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[Search Communities API] ===== EXCEPTION OCCURRED =====')
     console.error(

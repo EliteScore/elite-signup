@@ -3,6 +3,35 @@ import { unstable_cache } from 'next/cache'
 
 const API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
 
+/**
+ * GET /v1/users/social/get_challenges_feed
+ * 
+ * Get challenges feed from people the current user follows.
+ * 
+ * Authorization Requirements:
+ * - Auth: Required (JWT; backend resolves userId from token into request attributes)
+ * 
+ * Query Parameters:
+ * - day (string, optional): Filter by specific day (format: YYYY-MM-DD)
+ * - limit (number, optional, default 50): Maximum number of results to return
+ * 
+ * Responses:
+ * - 200 OK: Success
+ *   {
+ *     "success": true,
+ *     "message": "Verified challenges from people you follow (N)",
+ *     "data": [
+ *       { "challenge_id": 123, "user_id": 55, ... }
+ *     ]
+ *   }
+ * - 401 Unauthorized: Missing or invalid token
+ * - 500 Internal Server Error: DB / server issues
+ * 
+ * Example — cURL:
+ * curl -X GET "$BASE/v1/users/social/get_challenges_feed?day=2025-03-01&limit=20" \
+ *   -H "Authorization: Bearer <token>"
+ */
+
 // Cache duration: 5 minutes (300 seconds)
 const CACHE_REVALIDATE = 300
 
@@ -35,8 +64,13 @@ async function fetchChallengesFeed(token: string, day: string | undefined, limit
         errorText = response.statusText
       }
 
-    throw new Error(errorText || 'Failed to fetch challenges feed')
-  }
+      // Convert error to string if it's an object
+      const errorMessage = typeof errorText === 'object' 
+        ? (errorText?.message || errorText?.error || JSON.stringify(errorText))
+        : (errorText || 'Failed to fetch challenges feed')
+      
+      throw new Error(errorMessage)
+    }
 
   return await response.json()
 }

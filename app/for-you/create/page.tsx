@@ -108,6 +108,7 @@ export default function CreateCommunityPage() {
 
       if (!response.ok) {
         let errorMessage = "Failed to create community"
+        let errorData: any = null
         
         // Read response as text first (can only read once)
         const errorText = await response.text()
@@ -116,7 +117,7 @@ export default function CreateCommunityPage() {
         if (errorText) {
           try {
             // Try to parse as JSON
-            const errorData = JSON.parse(errorText)
+            errorData = JSON.parse(errorText)
             console.log("[Create Community] Error response (parsed):", errorData)
             errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
           } catch {
@@ -126,17 +127,21 @@ export default function CreateCommunityPage() {
           }
         }
 
+        // Handle specific status codes
         if (response.status === 409) {
           errorMessage = "You can only create one community. You already have a community."
         } else if (response.status === 401) {
           errorMessage = "Authentication failed. Please log in again."
         } else if (response.status === 400) {
-          errorMessage = errorMessage || "Invalid data. Please check your inputs."
+          errorMessage = errorData?.message || errorData?.error || errorMessage || "Invalid data. Please check your inputs."
+        } else if (response.status === 500) {
+          errorMessage = errorData?.message || errorData?.error || "Server error. Please try again later."
         }
 
         console.error("[Create Community] Request failed:", {
           status: response.status,
-          errorMessage
+          errorMessage,
+          errorData
         })
 
         setError(errorMessage)
@@ -146,10 +151,19 @@ export default function CreateCommunityPage() {
 
       const data = await response.json()
       console.log("[Create Community] Success! Response data:", data)
+      console.log("[Create Community] Response status:", response.status)
       console.log("[Create Community] ===== Form submission completed successfully =====")
       
-      // Redirect to the community page or for-you page
-      router.push("/for-you")
+      // Extract community ID from response
+      const communityId = data?.id ?? data?.data?.id ?? data?.community_id ?? data?.communityId
+      
+      // Redirect to the community page with the new community ID
+      if (communityId) {
+        router.push(`/for-you?communityId=${communityId}`)
+      } else {
+        // Fallback: just go to for-you page
+        router.push("/for-you")
+      }
     } catch (err) {
       console.error("[Create Community] ===== EXCEPTION OCCURRED =====")
       console.error("[Create Community] Error:", err)

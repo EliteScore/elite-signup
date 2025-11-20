@@ -7,7 +7,15 @@ const API_BASE_URL = 'https://elitescore-social-4046880acb02.herokuapp.com/'
  * 
  * Gets the count of active members in a community.
  * 
- * Authorization: Required (JWT token)
+ * Authorization Requirements:
+ * - Auth: Required (JWT token)
+ * 
+ * Responses:
+ * - 200 OK: { "active_members": number } or backend response body
+ * - 401 Unauthorized: No token provided
+ * - 400 Bad Request: Invalid community ID
+ * - 404 Not Found: Community not found
+ * - 500 Internal Server Error
  */
 export async function GET(
   request: NextRequest,
@@ -98,9 +106,11 @@ export async function GET(
 
     const data = await response.json()
     console.log('[Get Active Members Count API] Success! Response data:', JSON.stringify(data, null, 2))
+    console.log('[Get Active Members Count API] Response status:', response.status)
     console.log('[Get Active Members Count API] ===== Request completed successfully =====')
     
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend (typically 200 OK)
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[Get Active Members Count API] ===== EXCEPTION OCCURRED =====')
     console.error(

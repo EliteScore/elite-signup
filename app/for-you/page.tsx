@@ -37,6 +37,12 @@ import {
   Upload,
   UserX,
   CheckSquare,
+  UserCheck,
+  UserX as UserXIcon,
+  AlertCircle,
+  Tag,
+  X as XIcon,
+  Plus as PlusIcon,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -291,6 +297,9 @@ export default function ForYouPage() {
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(false)
   const [isDeletingAnnouncement, setIsDeletingAnnouncement] = useState(false)
   const [deletingAnnouncementId, setDeletingAnnouncementId] = useState<number | null>(null)
+  const [viewingAnnouncementId, setViewingAnnouncementId] = useState<number | null>(null)
+  const [isLoadingAnnouncement, setIsLoadingAnnouncement] = useState(false)
+  const [viewedAnnouncement, setViewedAnnouncement] = useState<CommunityAnnouncement | null>(null)
   const [isUploadingPfp, setIsUploadingPfp] = useState(false)
   const [pfpUploadError, setPfpUploadError] = useState<string | null>(null)
   const [pfpPreview, setPfpPreview] = useState<string | null>(null)
@@ -310,6 +319,23 @@ export default function ForYouPage() {
   const [isLeavingCommunity, setIsLeavingCommunity] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [showAdminOnlyAlert, setShowAdminOnlyAlert] = useState(false)
+  const [adminOnlyMessage, setAdminOnlyMessage] = useState<string>("")
+  const [pendingRequests, setPendingRequests] = useState<Set<number>>(new Set())
+  const [isCheckingPendingRequest, setIsCheckingPendingRequest] = useState(false)
+  const [showJoinRequestsModal, setShowJoinRequestsModal] = useState(false)
+  const [joinRequests, setJoinRequests] = useState<any[]>([])
+  const [isLoadingJoinRequests, setIsLoadingJoinRequests] = useState(false)
+  const [joinRequestsError, setJoinRequestsError] = useState<string | null>(null)
+  const [isProcessingRequest, setIsProcessingRequest] = useState(false)
+  const [processingRequestId, setProcessingRequestId] = useState<number | null>(null)
+  const [communityTags, setCommunityTags] = useState<string[]>([])
+  const [isLoadingTags, setIsLoadingTags] = useState(false)
+  const [tagsError, setTagsError] = useState<string | null>(null)
+  const [isSavingTags, setIsSavingTags] = useState(false)
+  const [showTagsEditor, setShowTagsEditor] = useState(false)
+  const [newTagInput, setNewTagInput] = useState("")
+  const [tagsToEdit, setTagsToEdit] = useState<string[]>([])
   
   // Fetch current user ID
   useEffect(() => {
@@ -391,7 +417,7 @@ export default function ForYouPage() {
   }, [selectedCommunity, currentUserId, isAuthorized])
 
 
-  // Check if user is staff (by trying to create an announcement - if successful, user is staff)
+  // Check if user is staff by attempting to fetch announcements (staff-only endpoint)
   useEffect(() => {
     if (!isAuthorized || !selectedCommunity || currentUserId === null) {
       setIsUserStaff(false)
@@ -406,15 +432,26 @@ export default function ForYouPage() {
     async function checkStaffStatus() {
       try {
         console.log('[ForYou] Checking if user is staff for community:', selectedCommunity)
-        // Try to fetch announcements endpoint - if user can access it, they might be staff
-        // Actually, a better approach is to check if user can perform staff actions
-        // For now, we'll check by trying to access staff-only endpoints or infer from community data
-        // Since we don't have a direct API, we'll set it based on whether user can create announcements
-        // This will be checked when user tries to create an announcement
-        setIsUserStaff(false) // Default to false, will be updated when user tries staff actions
+        // Try to fetch announcements - if successful, user is staff
+        const response = await fetch(`/api/communities/${selectedCommunity}/announcements`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!isCancelled) {
+          // If we can fetch announcements, user is staff
+          // Note: This endpoint might be accessible to all members, so we'll also check on actual staff actions
+          setIsUserStaff(response.ok)
+          console.log('[ForYou] Staff status check:', response.ok ? 'Staff' : 'Not staff')
+        }
       } catch (error) {
         console.warn('[ForYou] Error checking staff status:', error)
+        if (!isCancelled) {
         setIsUserStaff(false)
+        }
       }
     }
 
@@ -439,11 +476,66 @@ export default function ForYouPage() {
 
       // Check if communityId is in URL params (from search)
       const communityIdParam = searchParams?.get('communityId')
+      const pendingParam = searchParams?.get('pending')
+      
       if (communityIdParam) {
         const communityId = Number(communityIdParam)
         if (!Number.isNaN(communityId)) {
           console.log('[ForYou] ===== Fetching community from search =====')
           console.log('[ForYou] Community ID from URL:', communityId)
+          
+          // Check if pending param is set (from join request)
+          if (pendingParam === 'true') {
+            console.log('[ForYou] Pending request detected from URL param')
+            if (!isCancelled) {
+              setPendingRequests(prev => new Set(prev).add(communityId))
+            }
+          } else {
+            // First check if user has a pending request
+            setIsCheckingPendingRequest(true)
+            try {
+              // Check if user is a member first
+              const ownResponse = await fetch('/api/communities/own', {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+
+              if (ownResponse.ok) {
+                const ownData = await ownResponse.json()
+                const rawIds = ownData?.community_ids ?? ownData?.data?.community_ids ?? []
+                const normalizedIds = Array.isArray(rawIds)
+                  ? Array.from(new Set(rawIds.map((id: number | string) => Number(id)).filter((id) => !Number.isNaN(id))))
+                  : []
+                
+                const isMember = normalizedIds.includes(communityId)
+                
+                if (!isMember) {
+                  // Not a member - check if there's a pending request by trying to fetch members
+                  const membersResponse = await fetch(`/api/communities/${communityId}/members/ids?limit=1&offset=0`, {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                    },
+                  })
+                  
+                  // If 403, user might have a pending request (or just not a member)
+                  // We'll assume pending if they just sent a request
+                  if (membersResponse.status === 403) {
+                    console.log('[ForYou] User is not a member - may have pending request')
+                    // Don't set as pending automatically - only if explicitly indicated
+                  }
+                }
+              }
+            } catch (error) {
+              console.warn('[ForYou] Error checking membership status:', error)
+            } finally {
+              setIsCheckingPendingRequest(false)
+            }
+          }
           
           try {
             const detailResponse = await fetch(`/api/communities/${communityId}`, {
@@ -455,9 +547,30 @@ export default function ForYouPage() {
             })
 
             if (!detailResponse.ok) {
-              const errorText = await detailResponse.text()
-              console.error('[ForYou] Failed to load community from search:', errorText)
-              throw new Error(errorText || `Failed to load community ${communityId}.`)
+              let errorMessage = `Failed to load community ${communityId}`
+              let errorData: any = null
+              try {
+                const errorText = await detailResponse.text()
+                if (errorText) {
+                  try {
+                    errorData = JSON.parse(errorText)
+                    errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+                  } catch {
+                    errorMessage = errorText || errorMessage
+                  }
+                }
+              } catch {
+                // Ignore parse errors
+              }
+              
+              console.error('[ForYou] Failed to load community from search:', detailResponse.status, errorMessage)
+              
+              // Handle 404 Not Found
+              if (detailResponse.status === 404) {
+                errorMessage = `Community ${communityId} not found.`
+              }
+              
+              throw new Error(errorMessage)
             }
 
             const detailData = await detailResponse.json()
@@ -529,8 +642,30 @@ export default function ForYouPage() {
             })
 
             if (!detailResponse.ok) {
-              const errorText = await detailResponse.text()
-              throw new Error(errorText || `Failed to load community ${id}.`)
+              let errorMessage = `Failed to load community ${id}`
+              let errorData: any = null
+              try {
+                const errorText = await detailResponse.text()
+                if (errorText) {
+                  try {
+                    errorData = JSON.parse(errorText)
+                    errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+                  } catch {
+                    errorMessage = errorText || errorMessage
+                  }
+                }
+              } catch {
+                // Ignore parse errors
+              }
+              
+              console.error('[ForYou] Failed to load community:', detailResponse.status, errorMessage)
+              
+              // Handle 404 Not Found
+              if (detailResponse.status === 404) {
+                errorMessage = `Community ${id} not found.`
+              }
+              
+              throw new Error(errorMessage)
             }
 
             const detailData = await detailResponse.json()
@@ -571,6 +706,12 @@ export default function ForYouPage() {
   // Fetch announcements when community changes
   useEffect(() => {
     if (!isAuthorized || !selectedCommunity) {
+      return
+    }
+
+    // Don't fetch if user has a pending request
+    if (pendingRequests.has(selectedCommunity)) {
+      console.log('[ForYou] Skipping announcements fetch - pending request')
       return
     }
 
@@ -649,6 +790,12 @@ export default function ForYouPage() {
       return
     }
 
+    // Don't fetch if user has a pending request
+    if (pendingRequests.has(selectedCommunity)) {
+      console.log('[ForYou] Skipping members fetch - pending request')
+      return
+    }
+
     const token = getStoredAccessToken()
     if (!token) return
 
@@ -671,10 +818,26 @@ export default function ForYouPage() {
         })
 
         if (!activeCountResponse.ok) {
-          console.warn('[ForYou] Failed to fetch active count:', activeCountResponse.status)
+          let errorMessage = 'Failed to fetch active member count'
+          try {
+            const errorText = await activeCountResponse.text()
+            if (errorText) {
+              try {
+                const errorData = JSON.parse(errorText)
+                errorMessage = errorData.message || errorData.error || errorMessage
+              } catch {
+                errorMessage = errorText
+              }
+            }
+          } catch {
+            // Ignore parse errors
+          }
+          console.warn('[ForYou] Failed to fetch active count:', activeCountResponse.status, errorMessage)
+          // Don't fail the entire member fetch if active count fails - just log it
         } else {
           const activeCountData = await activeCountResponse.json()
-          const activeCount = activeCountData?.count ?? activeCountData?.active_count ?? activeCountData?.data?.count ?? 0
+          // Handle different response formats: { active_members: N }, { count: N }, { data: { active_members: N } }
+          const activeCount = activeCountData?.active_members ?? activeCountData?.count ?? activeCountData?.data?.active_members ?? activeCountData?.data?.count ?? 0
           console.log('[ForYou] Active members count:', activeCount)
           
           // Update active count in stats
@@ -706,9 +869,31 @@ export default function ForYouPage() {
         })
 
         if (!memberIdsResponse.ok) {
-          console.warn('[ForYou] Failed to fetch member IDs:', memberIdsResponse.status)
+          let errorMessage = 'Failed to load members'
+          let errorData: any = null
+          try {
+            const errorText = await memberIdsResponse.text()
+            if (errorText) {
+              try {
+                errorData = JSON.parse(errorText)
+                errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+              } catch {
+                errorMessage = errorText
+              }
+            }
+          } catch {
+            // Ignore parse errors
+          }
+          
+          console.error('[ForYou] Failed to fetch member IDs:', memberIdsResponse.status, errorMessage)
+          
+          // Handle 403 Forbidden - user might not be a member
+          if (memberIdsResponse.status === 403) {
+            errorMessage = errorData?.message || 'You must be a member of this community to view members.'
+          }
+          
           if (!isCancelled) {
-            setMembersError('Failed to load members')
+            setMembersError(errorMessage)
             setIsLoadingMembers(false)
           }
           return
@@ -874,9 +1059,10 @@ export default function ForYouPage() {
     return () => {
       isCancelled = true
     }
-  }, [isAuthorized, selectedCommunity])
+  }, [isAuthorized, selectedCommunity, pendingRequests])
   
   const community = communityList.find((c) => c.id === selectedCommunity) || null
+  const hasPendingRequest = selectedCommunity !== null && pendingRequests.has(selectedCommunity)
   const communityStats = community?.stats ?? DEFAULT_COMMUNITY_STATS
   const communityAnnouncements = community?.announcements ?? []
   const communityLeaderboard = community?.leaderboard ?? []
@@ -903,6 +1089,7 @@ export default function ForYouPage() {
   // Community edit form state
   const [editFormData, setEditFormData] = useState({
     name: "",
+    description: "",
     slug: "",
     visibility: "public" as "public" | "private"
   })
@@ -917,17 +1104,68 @@ export default function ForYouPage() {
       .replace(/^-+|-+$/g, "")
   }
 
+  /**
+   * Fetches the latest community data before editing to ensure we have current values.
+   */
+  const fetchCommunityForEdit = async (communityId: number) => {
+    const token = getStoredAccessToken()
+    if (!token) return null
+
+    try {
+      console.log('[ForYou] Fetching community data for editing:', communityId)
+      const response = await fetch(`/api/communities/${communityId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        console.warn('[ForYou] Failed to fetch community for edit:', response.status)
+        return null
+      }
+
+      const data = await response.json()
+      const communityData = data?.data || data
+      return communityData
+    } catch (error) {
+      console.error('[ForYou] Error fetching community for edit:', error)
+      return null
+    }
+  }
+
   // Initialize edit form when opening edit mode
-  const handleStartEdit = () => {
-    if (community) {
+  const handleStartEdit = async () => {
+    if (!community || !community.id) return
+
+    setCommunityEditError(null)
+    setCommunityEditSuccess(false)
+    setIsEditingCommunity(true)
+    setIsSavingCommunity(true) // Show loading while fetching
+
+    try {
+      // Fetch latest community data to ensure we have current values (especially visibility)
+      const latestData = await fetchCommunityForEdit(community.id)
+      const communityToEdit = latestData || community
+
+      setEditFormData({
+        name: communityToEdit.name || community.name,
+        description: communityToEdit.description || community.description || "",
+        slug: communityToEdit.slug || community.name.toLowerCase().replace(/\s+/g, "-"),
+        visibility: (communityToEdit.visibility || "public") as "public" | "private"
+      })
+    } catch (error) {
+      console.error('[ForYou] Error fetching community for edit:', error)
+      // Still allow editing with current community data
       setEditFormData({
         name: community.name,
-        slug: community.name.toLowerCase().replace(/\s+/g, "-"), // Generate slug from name
-        visibility: "public" // Default, you may want to get this from community data
+        description: community.description || "",
+        slug: community.name.toLowerCase().replace(/\s+/g, "-"),
+        visibility: "public" as "public" | "private"
       })
-      setCommunityEditError(null)
-      setCommunityEditSuccess(false)
-      setIsEditingCommunity(true)
+    } finally {
+      setIsSavingCommunity(false)
     }
   }
 
@@ -960,7 +1198,11 @@ export default function ForYouPage() {
         return
       }
 
-      const payload = {
+      const payload: {
+        name: string
+        slug: string
+        visibility: "public" | "private"
+      } = {
         name: editFormData.name.trim(),
         slug: editFormData.slug.trim() || generateSlug(editFormData.name),
         visibility: editFormData.visibility
@@ -975,46 +1217,66 @@ export default function ForYouPage() {
         body: JSON.stringify(payload)
       })
 
-        if (!response.ok) {
-          let errorMessage = "Failed to update community"
-          const errorText = await response.text()
-          
-          if (errorText) {
-            try {
-              const errorData = JSON.parse(errorText)
-              errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
-              
-              // Handle 403 Forbidden - user is not the owner
-              if (response.status === 403) {
-                errorMessage = "You must be the owner of this community to edit it."
-                setIsCommunityOwner(false)
-              }
-            } catch {
-              errorMessage = errorText
-            }
+      if (!response.ok) {
+        let errorMessage = "Failed to update community"
+        let errorData: any = null
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
           }
-
-          setCommunityEditError(errorMessage)
-          setIsSavingCommunity(false)
-          return
+        }
+        
+        // Handle 403 Forbidden - user is not the owner
+        if (response.status === 403) {
+          errorMessage = errorData?.message || "You must be the owner of this community to edit it."
+          console.log('[ForYou] User is NOT the owner (403 on edit community)')
+          setIsCommunityOwner(false)
+        } else if (response.status === 404) {
+          errorMessage = errorData?.message || "Community not found."
+        } else if (response.status === 400) {
+          errorMessage = errorData?.message || errorData?.error || "Invalid data. Please check your inputs."
         }
 
+        console.error('[ForYou] Failed to update community:', response.status, errorMessage)
+        setCommunityEditError(errorMessage)
+        setIsSavingCommunity(false)
+        return
+      }
+
       const data = await response.json()
+      const responseData = data?.data || data
       
-      setCommunityEditSuccess(true)
-      setIsEditingCommunity(false)
+      console.log('[ForYou] Community updated successfully:', responseData)
+      console.log('[ForYou] Response status:', response.status)
       
+      // Update the community in the list with the response data
       setCommunityList((prev) =>
         prev.map((item) =>
           item.id === community.id
             ? {
                 ...item,
-                name: data?.name ?? editFormData.name,
-                description: data?.description ?? item.description,
+                name: responseData?.name ?? editFormData.name,
+                description: responseData?.description ?? responseData?.tagline ?? (editFormData.description || item.description),
+                slug: responseData?.slug ?? item.name.toLowerCase().replace(/\s+/g, "-"),
+                // Update visibility if provided
+                ...(responseData?.visibility && { visibility: responseData.visibility }),
               }
             : item,
         ),
       )
+      
+      setCommunityEditSuccess(true)
+      setIsEditingCommunity(false)
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setCommunityEditSuccess(false)
+      }, 3000)
 
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -1054,35 +1316,61 @@ export default function ForYouPage() {
 
       if (!response.ok) {
         let errorMessage = "Failed to delete community"
+        let errorData: any = null
         const errorText = await response.text()
         
         if (errorText) {
           try {
-            const errorData = JSON.parse(errorText)
+            errorData = JSON.parse(errorText)
             errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
           } catch {
             errorMessage = errorText
           }
         }
+        
+        // Handle 403 Forbidden - user is not the owner
+        if (response.status === 403) {
+          errorMessage = errorData?.message || "You must be the owner of this community to delete it."
+          console.log('[ForYou] User is NOT the owner (403 on delete community)')
+          setIsCommunityOwner(false)
+        } else if (response.status === 404) {
+          errorMessage = errorData?.message || "Community not found."
+        }
 
+        console.error('[ForYou] Failed to delete community:', response.status, errorMessage)
         setDeleteError(errorMessage)
         setIsDeletingCommunity(false)
         return
       }
 
-      // 204 No Content - successful deletion
+      // Handle 204 No Content or 200 OK response
+      console.log('[ForYou] Community deleted successfully, response status:', response.status)
+      
+      // Try to parse JSON if available (some backends return 200 with JSON)
+      if (response.status !== 204) {
+        try {
+          const data = await response.json()
+          console.log('[ForYou] Delete response data:', data)
+        } catch {
+          // No JSON body, that's fine
+        }
+      }
+      
       setShowDeleteConfirm(false)
       
       // Remove the deleted community from the list
-      setCommunityList((prev) => prev.filter((item) => item.id !== community.id))
+      const updatedList = communityList.filter((item) => item.id !== community.id)
+      setCommunityList(updatedList)
       
       // Select the first available community or null
-      const remainingCommunities = communityList.filter((item) => item.id !== community.id)
-      setSelectedCommunity(remainingCommunities[0]?.id ?? null)
+      setSelectedCommunity(updatedList[0]?.id ?? null)
       
-      // If no communities left, redirect or show message
-      if (remainingCommunities.length === 0) {
+      // If no communities left, redirect to create page
+      if (updatedList.length === 0) {
+        console.log('[ForYou] No communities remaining, redirecting to create page')
         router.push('/for-you/create')
+      } else {
+        console.log('[ForYou] Remaining communities:', updatedList.length)
       }
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : "An unexpected error occurred")
@@ -1113,6 +1401,13 @@ export default function ForYouPage() {
 
     if (!announcementForm.description.trim()) {
       setAnnouncementError("Description is required")
+      return
+    }
+
+    // Check if user is staff - if not, show alert and return early
+    if (!isUserStaff) {
+      setAdminOnlyMessage("Only community admins and staff can create announcements.")
+      setShowAdminOnlyAlert(true)
       return
     }
 
@@ -1158,10 +1453,8 @@ export default function ForYouPage() {
           errorMessage = errorData?.message || "You must be both a member and staff of this community to create announcements."
           console.log('[ForYou] User is NOT staff (403 on create announcement)')
           setIsUserStaff(false)
-        } else if (response.ok) {
-          // If successful, user is staff
-          console.log('[ForYou] User IS staff (successful announcement creation)')
-          setIsUserStaff(true)
+          setAdminOnlyMessage("Only community admins and staff can create announcements.")
+          setShowAdminOnlyAlert(true)
         }
 
         setAnnouncementError(errorMessage)
@@ -1170,6 +1463,10 @@ export default function ForYouPage() {
       }
 
       const data = await response.json()
+      
+      // If successful, user is staff
+      console.log('[ForYou] User IS staff (successful announcement creation)')
+      setIsUserStaff(true)
       
       // Add the new announcement to the list
       const newAnnouncement: CommunityAnnouncement = {
@@ -1232,6 +1529,13 @@ export default function ForYouPage() {
       return
     }
 
+    // Check if user is staff - if not, show alert and return early
+    if (!isUserStaff) {
+      setAdminOnlyMessage("Only community admins and staff can edit announcements.")
+      setShowAdminOnlyAlert(true)
+      return
+    }
+
     setIsUpdatingAnnouncement(true)
     setAnnouncementError(null)
 
@@ -1272,6 +1576,9 @@ export default function ForYouPage() {
         // Handle 403 Forbidden - user doesn't have required roles
         if (response.status === 403) {
           errorMessage = errorData?.message || "You must be both a member and staff of this community to update announcements."
+          setIsUserStaff(false)
+          setAdminOnlyMessage("Only community admins and staff can edit announcements.")
+          setShowAdminOnlyAlert(true)
         }
 
         setAnnouncementError(errorMessage)
@@ -1281,6 +1588,10 @@ export default function ForYouPage() {
 
       const data = await response.json()
       
+      // If successful, user is staff
+      console.log('[ForYou] User IS staff (successful announcement update)')
+      setIsUserStaff(true)
+
       // Update the announcement in the list
       setCommunityList((prev) =>
         prev.map((item) =>
@@ -1301,6 +1612,15 @@ export default function ForYouPage() {
         ),
       )
 
+      // Update viewed announcement if it's the same one
+      if (viewedAnnouncement && viewedAnnouncement.id === editingAnnouncementId) {
+        setViewedAnnouncement({
+          ...viewedAnnouncement,
+          title: data?.title ?? announcementForm.title,
+          content: data?.description ?? data?.content ?? announcementForm.description,
+        })
+      }
+
       // Reset form and close dialog
       setAnnouncementForm({ title: '', description: '' })
       setEditingAnnouncementId(null)
@@ -1312,14 +1632,126 @@ export default function ForYouPage() {
     }
   }
 
-  const handleStartEditAnnouncement = (announcement: CommunityAnnouncement) => {
+  /**
+   * Fetches a single announcement by ID from the API.
+   * 
+   * Authorization Requirements (enforced by backend):
+   * - User must be a member of the community (RoleGuard.isMember)
+   */
+  const fetchAnnouncement = async (announcementId: number) => {
+    if (!community || !community.id) {
+      return null
+    }
+
+    setIsLoadingAnnouncement(true)
+    setAnnouncementError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setAnnouncementError("Authentication required. Please log in again.")
+        setIsLoadingAnnouncement(false)
+        return null
+      }
+
+      console.log('[ForYou] Fetching announcement:', announcementId, 'for community:', community.id)
+      const response = await fetch(`/api/communities/${community.id}/announcements/${announcementId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to fetch announcement"
+        let errorData: any = null
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        // Handle 403 Forbidden - user is not a member
+        if (response.status === 403) {
+          errorMessage = errorData?.message || "You must be a member of this community to view announcements."
+        }
+
+        setAnnouncementError(errorMessage)
+        setIsLoadingAnnouncement(false)
+        return null
+      }
+
+      const data = await response.json()
+      const announcementData = data?.data || data
+      
+      const announcement: CommunityAnnouncement = {
+        id: announcementData?.id ?? announcementId,
+        title: announcementData?.title ?? 'Announcement',
+        content: announcementData?.description ?? announcementData?.content ?? '',
+        timestamp: announcementData?.timestamp ?? announcementData?.created_at ?? 'Just now',
+        priority: (announcementData?.priority ?? 'low') as CommunityAnnouncement['priority'],
+        pinned: Boolean(announcementData?.pinned),
+        type: (announcementData?.type ?? 'info') as CommunityAnnouncement['type'],
+      }
+
+      setViewedAnnouncement(announcement)
+      setIsLoadingAnnouncement(false)
+      return announcement
+    } catch (error) {
+      console.error('[ForYou] Error fetching announcement:', error)
+      setAnnouncementError(error instanceof Error ? error.message : "An unexpected error occurred")
+      setIsLoadingAnnouncement(false)
+      return null
+    }
+  }
+
+  /**
+   * Handles viewing a single announcement in detail.
+   */
+  const handleViewAnnouncement = async (announcementId: number) => {
+    setViewingAnnouncementId(announcementId)
+    setAnnouncementError(null)
+    await fetchAnnouncement(announcementId)
+  }
+
+  /**
+   * Closes the announcement view dialog.
+   */
+  const handleCloseAnnouncementView = () => {
+    setViewingAnnouncementId(null)
+    setViewedAnnouncement(null)
+    setAnnouncementError(null)
+  }
+
+  /**
+   * Starts editing an announcement. Fetches the latest data from the API first.
+   */
+  const handleStartEditAnnouncement = async (announcement: CommunityAnnouncement) => {
+    // Check if user is staff - if not, show alert and return early
+    if (!isUserStaff) {
+      setAdminOnlyMessage("Only community admins and staff can edit announcements.")
+      setShowAdminOnlyAlert(true)
+      return
+    }
+
+    // Fetch latest announcement data from API
+    const fetchedAnnouncement = await fetchAnnouncement(announcement.id)
+    const announcementToEdit = fetchedAnnouncement || announcement
+
     setAnnouncementForm({
-      title: announcement.title,
-      description: announcement.content,
+      title: announcementToEdit.title,
+      description: announcementToEdit.content,
     })
-    setEditingAnnouncementId(announcement.id)
+    setEditingAnnouncementId(announcementToEdit.id)
     setAnnouncementError(null)
     setShowCreateAnnouncement(true)
+    setViewingAnnouncementId(null) // Close view dialog if open
   }
 
   const handleCancelAnnouncementEdit = () => {
@@ -1340,6 +1772,13 @@ export default function ForYouPage() {
    */
   const handleDeleteAnnouncement = async (announcementId: number) => {
     if (!community || !community.id) {
+      return
+    }
+
+    // Check if user is staff - if not, show alert and return early
+    if (!isUserStaff) {
+      setAdminOnlyMessage("Only community admins and staff can delete announcements.")
+      setShowAdminOnlyAlert(true)
       return
     }
 
@@ -1381,6 +1820,10 @@ export default function ForYouPage() {
         // Handle 403 Forbidden - user doesn't have required roles
         if (response.status === 403) {
           errorMessage = errorData?.message || "You must be both a member and staff of this community to delete announcements."
+          console.log('[ForYou] User is NOT staff (403 on delete announcement)')
+          setIsUserStaff(false)
+          setAdminOnlyMessage("Only community admins and staff can delete announcements.")
+          setShowAdminOnlyAlert(true)
         }
 
         setAnnouncementError(errorMessage)
@@ -1388,6 +1831,10 @@ export default function ForYouPage() {
         setDeletingAnnouncementId(null)
         return
       }
+
+      // If successful, user is staff
+      console.log('[ForYou] User IS staff (successful announcement deletion)')
+      setIsUserStaff(true)
 
       // 204 No Content - successful deletion
       // Remove the announcement from the list
@@ -1401,6 +1848,12 @@ export default function ForYouPage() {
             : item,
         ),
       )
+
+      // Close view dialog if the deleted announcement was being viewed
+      if (viewingAnnouncementId === announcementId) {
+        setViewingAnnouncementId(null)
+        setViewedAnnouncement(null)
+      }
     } catch (error) {
       setAnnouncementError(error instanceof Error ? error.message : "An unexpected error occurred")
     } finally {
@@ -1724,6 +2177,493 @@ export default function ForYouPage() {
   }
 
   /**
+   * Fetches join requests for the selected community (admin only).
+   */
+  const fetchJoinRequests = async () => {
+    if (!community || !community.id) {
+      setJoinRequestsError("No community selected")
+      return
+    }
+
+    setIsLoadingJoinRequests(true)
+    setJoinRequestsError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setJoinRequestsError("Authentication required. Please log in again.")
+        setIsLoadingJoinRequests(false)
+        return
+      }
+
+      console.log('[ForYou] Fetching join requests for community:', community.id)
+      const response = await fetch(`/api/communities/${community.id}/join-requests?limit=100&offset=0`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to fetch join requests"
+        let errorData: any = null
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        // Handle 403 Forbidden - user is not admin/owner
+        if (response.status === 403) {
+          errorMessage = errorData?.message || "You must be the owner or admin of this community to view join requests."
+          setAdminOnlyMessage("Only community owners and admins can view join requests.")
+          setShowAdminOnlyAlert(true)
+        }
+
+        setJoinRequestsError(errorMessage)
+        setIsLoadingJoinRequests(false)
+        return
+      }
+
+      const data = await response.json()
+      const requests = data?.items || data?.data?.items || []
+      console.log('[ForYou] Fetched', requests.length, 'join requests')
+
+      // Enrich requests with user profile data
+      const enrichedRequests = await Promise.all(
+        requests.map(async (req: any) => {
+          try {
+            const profileResponse = await fetch(`${AUTH_API_BASE_URL}v1/users/profile/get_profile/${req.requester_id}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            })
+
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json()
+              const profile = profileData?.data || profileData
+              
+              // Fetch profile picture
+              let image = FALLBACK_MEMBER_IMAGE
+              try {
+                const pfpResponse = await fetch(`/api/user/profile/pfp/${req.requester_id}/raw`, {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
+                })
+
+                if (pfpResponse.ok) {
+                  const pfpData = await pfpResponse.json()
+                  if (pfpData?.dataUrl && !pfpData?.default) {
+                    image = pfpData.dataUrl
+                  }
+                }
+              } catch {
+                // Use fallback
+              }
+
+              return {
+                ...req,
+                requesterName: profile?.firstName && profile?.lastName 
+                  ? `${profile.firstName} ${profile.lastName}` 
+                  : profile?.username || 'User',
+                requesterImage: image,
+              }
+            }
+          } catch (error) {
+            console.error(`[ForYou] Error fetching profile for requester ${req.requester_id}:`, error)
+          }
+          
+          return {
+            ...req,
+            requesterName: `User ${req.requester_id}`,
+            requesterImage: FALLBACK_MEMBER_IMAGE,
+          }
+        })
+      )
+
+      setJoinRequests(enrichedRequests)
+    } catch (error) {
+      console.error('[ForYou] Error fetching join requests:', error)
+      setJoinRequestsError(error instanceof Error ? error.message : "An unexpected error occurred")
+    } finally {
+      setIsLoadingJoinRequests(false)
+    }
+  }
+
+  /**
+   * Approves a join request (admin only).
+   */
+  const handleApproveRequest = async (requestId: number) => {
+    if (!community || !community.id) {
+      return
+    }
+
+    setIsProcessingRequest(true)
+    setProcessingRequestId(requestId)
+    setJoinRequestsError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setJoinRequestsError("Authentication required. Please log in again.")
+        setIsProcessingRequest(false)
+        setProcessingRequestId(null)
+        return
+      }
+
+      console.log('[ForYou] Approving join request:', requestId, 'for community:', community.id)
+      const response = await fetch(`/api/communities/${community.id}/join-requests/${requestId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to approve join request"
+        let errorData: any = null
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        // Handle 403 Forbidden
+        if (response.status === 403) {
+          errorMessage = errorData?.message || "You must be the owner or admin of this community to approve join requests."
+          setAdminOnlyMessage("Only community owners and admins can approve join requests.")
+          setShowAdminOnlyAlert(true)
+        }
+
+        setJoinRequestsError(errorMessage)
+        setIsProcessingRequest(false)
+        setProcessingRequestId(null)
+        return
+      }
+
+      console.log('[ForYou] Join request approved successfully')
+      
+      // Remove the approved request from the list
+      setJoinRequests((prev) => prev.filter((req) => req.id !== requestId))
+      
+      // Refresh members list
+      // The useEffect will handle this automatically
+    } catch (error) {
+      console.error('[ForYou] Error approving join request:', error)
+      setJoinRequestsError(error instanceof Error ? error.message : "An unexpected error occurred")
+    } finally {
+      setIsProcessingRequest(false)
+      setProcessingRequestId(null)
+    }
+  }
+
+  /**
+   * Rejects a join request (admin only).
+   */
+  const handleRejectRequest = async (requestId: number) => {
+    if (!community || !community.id) {
+      return
+    }
+
+    setIsProcessingRequest(true)
+    setProcessingRequestId(requestId)
+    setJoinRequestsError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setJoinRequestsError("Authentication required. Please log in again.")
+        setIsProcessingRequest(false)
+        setProcessingRequestId(null)
+        return
+      }
+
+      console.log('[ForYou] Rejecting join request:', requestId, 'for community:', community.id)
+      const response = await fetch(`/api/communities/${community.id}/join-requests/${requestId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to reject join request"
+        let errorData: any = null
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        // Handle 403 Forbidden
+        if (response.status === 403) {
+          errorMessage = errorData?.message || "You must be the owner or admin of this community to reject join requests."
+          setAdminOnlyMessage("Only community owners and admins can reject join requests.")
+          setShowAdminOnlyAlert(true)
+        }
+
+        setJoinRequestsError(errorMessage)
+        setIsProcessingRequest(false)
+        setProcessingRequestId(null)
+        return
+      }
+
+      console.log('[ForYou] Join request rejected successfully')
+      
+      // Remove the rejected request from the list
+      setJoinRequests((prev) => prev.filter((req) => req.id !== requestId))
+    } catch (error) {
+      console.error('[ForYou] Error rejecting join request:', error)
+      setJoinRequestsError(error instanceof Error ? error.message : "An unexpected error occurred")
+    } finally {
+      setIsProcessingRequest(false)
+      setProcessingRequestId(null)
+    }
+  }
+
+  /**
+   * Opens the join requests modal and fetches requests.
+   */
+  const handleOpenJoinRequests = async () => {
+    if (!isCommunityOwner) {
+      setAdminOnlyMessage("Only community owners can view join requests.")
+      setShowAdminOnlyAlert(true)
+      return
+    }
+
+    setShowJoinRequestsModal(true)
+    setJoinRequestsError(null)
+    await fetchJoinRequests()
+  }
+
+  /**
+   * Fetches tags for the selected community.
+   */
+  const fetchCommunityTags = async () => {
+    if (!community || !community.id) {
+      return
+    }
+
+    setIsLoadingTags(true)
+    setTagsError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      console.log('[ForYou] Fetching tags for community:', community.id)
+      
+      const response = await fetch(`/api/communities/${community.id}/tags`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to fetch tags"
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            const errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        console.warn('[ForYou] Failed to fetch tags:', errorMessage)
+        setTagsError(errorMessage)
+        setCommunityTags([])
+        setIsLoadingTags(false)
+        return
+      }
+
+      const data = await response.json()
+      const tags = data?.tags || []
+      console.log('[ForYou] Fetched tags:', tags)
+      setCommunityTags(tags)
+      setTagsToEdit([...tags])
+    } catch (error) {
+      console.error('[ForYou] Error fetching tags:', error)
+      setTagsError(error instanceof Error ? error.message : "An unexpected error occurred")
+      setCommunityTags([])
+    } finally {
+      setIsLoadingTags(false)
+    }
+  }
+
+  /**
+   * Saves tags for the community (adds or updates).
+   */
+  const handleSaveTags = async () => {
+    if (!community || !community.id) {
+      return
+    }
+
+    if (!isCommunityOwner) {
+      setAdminOnlyMessage("Only community owners can manage tags.")
+      setShowAdminOnlyAlert(true)
+      return
+    }
+
+    setIsSavingTags(true)
+    setTagsError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setTagsError("Authentication required. Please log in again.")
+        setIsSavingTags(false)
+        return
+      }
+
+      // Normalize tags: trim, lowercase, remove duplicates, filter empty
+      const normalizedTags = Array.from(new Set(
+        tagsToEdit
+          .map(tag => tag.trim().toLowerCase())
+          .filter(tag => tag.length > 0)
+      ))
+
+      console.log('[ForYou] Saving tags:', normalizedTags, 'for community:', community.id)
+      
+      // Use PUT to update tags (replaces all existing tags)
+      const response = await fetch(`/api/communities/${community.id}/tags`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ tags: normalizedTags }),
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to save tags"
+        let errorData: any = null
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        // Handle 403 Forbidden
+        if (response.status === 403) {
+          errorMessage = errorData?.message || "You must be the owner or admin of this community to manage tags."
+          setAdminOnlyMessage("Only community owners and admins can manage tags.")
+          setShowAdminOnlyAlert(true)
+        }
+
+        setTagsError(errorMessage)
+        setIsSavingTags(false)
+        return
+      }
+
+      console.log('[ForYou] Tags saved successfully')
+      
+      // Update local state
+      setCommunityTags(normalizedTags)
+      setShowTagsEditor(false)
+      setNewTagInput("")
+      
+      // Refresh tags from server to ensure consistency
+      await fetchCommunityTags()
+    } catch (error) {
+      console.error('[ForYou] Error saving tags:', error)
+      setTagsError(error instanceof Error ? error.message : "An unexpected error occurred")
+    } finally {
+      setIsSavingTags(false)
+    }
+  }
+
+  /**
+   * Adds a new tag to the edit list.
+   */
+  const handleAddTag = () => {
+    const trimmed = newTagInput.trim().toLowerCase()
+    if (trimmed && !tagsToEdit.includes(trimmed)) {
+      setTagsToEdit([...tagsToEdit, trimmed])
+      setNewTagInput("")
+    }
+  }
+
+  /**
+   * Removes a tag from the edit list.
+   */
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTagsToEdit(tagsToEdit.filter(tag => tag !== tagToRemove))
+  }
+
+  /**
+   * Opens the tags editor.
+   */
+  const handleOpenTagsEditor = () => {
+    if (!isCommunityOwner) {
+      setAdminOnlyMessage("Only community owners can manage tags.")
+      setShowAdminOnlyAlert(true)
+      return
+    }
+
+    setTagsToEdit([...communityTags])
+    setShowTagsEditor(true)
+    setTagsError(null)
+  }
+
+  /**
+   * Cancels editing tags.
+   */
+  const handleCancelTagsEdit = () => {
+    setTagsToEdit([...communityTags])
+    setShowTagsEditor(false)
+    setNewTagInput("")
+    setTagsError(null)
+  }
+
+  // Fetch tags when community changes
+  useEffect(() => {
+    if (!isAuthorized || !selectedCommunity) {
+      setCommunityTags([])
+      return
+    }
+
+    // Use a small delay to ensure community is loaded
+    const timer = setTimeout(() => {
+      if (community?.id) {
+        fetchCommunityTags()
+      }
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [isAuthorized, selectedCommunity, community?.id])
+
+  /**
    * Kicks a member from the selected community.
    * 
    * Authorization Requirements (enforced by backend):
@@ -1734,6 +2674,13 @@ export default function ForYouPage() {
   const handleKickMember = async (memberId: number) => {
     if (!community || !community.id) {
       setKickError("No community selected")
+      return
+    }
+
+    // Check if user is staff - if not, show alert and return early
+    if (!isUserStaff) {
+      setAdminOnlyMessage("Only community admins and staff can kick members.")
+      setShowAdminOnlyAlert(true)
       return
     }
 
@@ -1782,6 +2729,8 @@ export default function ForYouPage() {
           errorMessage = "You must be staff of this community to kick members."
           console.log('[ForYou] User is NOT staff (403 on kick member)')
           setIsUserStaff(false)
+          setAdminOnlyMessage("Only community admins and staff can kick members.")
+          setShowAdminOnlyAlert(true)
         }
 
         setKickError(errorMessage)
@@ -1795,6 +2744,9 @@ export default function ForYouPage() {
       // If successful, user is staff
       console.log('[ForYou] User IS staff (successful kick action)')
       setIsUserStaff(true)
+      
+      // Refresh members list to reflect the change
+      // The useEffect will automatically refetch when selectedCommunity changes
 
       // Remove the kicked member from the list
       setCommunityList((prev) =>
@@ -1874,12 +2826,21 @@ export default function ForYouPage() {
                     <Avatar className="h-14 w-14 sm:h-16 sm:w-16 border-2 sm:border-3 border-blue-700/40 ring-2 sm:ring-3 ring-blue-500/30 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]">
                       <AvatarImage 
                         src={getCommunityPfpUrl(community?.id, community?.image)} 
+                        alt={`${community?.name} profile picture`}
                         onError={(e) => {
-                          // Fallback to the original image if the API endpoint fails
+                          // Fallback chain: API endpoint -> original image -> fallback image
                           const target = e.target as HTMLImageElement
-                          if (target.src !== community?.image && community?.image) {
+                          const currentSrc = target.src
+                          const apiUrl = community?.id ? `/api/communities/${community.id}/pfp/raw` : ''
+                          
+                          // If API endpoint failed, try original image
+                          if (currentSrc.includes('/api/communities/') && community?.image && !community.image.includes('/api/')) {
+                            console.log('[ForYou] PFP API failed, falling back to original image')
                             target.src = community.image
-                          } else if (target.src !== FALLBACK_COMMUNITY_IMAGE) {
+                          } 
+                          // If original image also failed, use fallback
+                          else if (currentSrc !== FALLBACK_COMMUNITY_IMAGE) {
+                            console.log('[ForYou] PFP fallback to default image')
                             target.src = FALLBACK_COMMUNITY_IMAGE
                           }
                         }}
@@ -1997,7 +2958,8 @@ export default function ForYouPage() {
                               rounded="full"
                               className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
                               onClick={handleStartEdit}
-                              title="Edit community"
+                              title="Edit community (Owner only)"
+                              disabled={isSavingCommunity || isDeletingCommunity}
                             >
                               <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </EnhancedButton>
@@ -2005,22 +2967,41 @@ export default function ForYouPage() {
                               variant="ghost"
                               size="sm"
                               rounded="full"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-blue-400 hover:bg-blue-950/20"
+                              onClick={handleOpenJoinRequests}
+                              title="View join requests (Owner only)"
+                              disabled={isSavingCommunity || isDeletingCommunity}
+                            >
+                              <UserCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </EnhancedButton>
+                            <EnhancedButton
+                              variant="ghost"
+                              size="sm"
+                              rounded="full"
                               className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
                               onClick={() => setShowDeleteConfirm(true)}
-                              title="Delete community"
+                              title="Delete community (Owner only)"
+                              disabled={isSavingCommunity || isDeletingCommunity}
                             >
                               <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </EnhancedButton>
                           </>
                         )}
-                        {isCommunityMember && !isCommunityOwner && (
+                        {!isCommunityOwner && (
                           <EnhancedButton
                             variant="ghost"
                             size="sm"
                             rounded="full"
                             className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
-                            onClick={() => setShowLeaveConfirm(true)}
-                            title="Leave community"
+                            onClick={() => {
+                              if (!isCommunityMember) {
+                                setAdminOnlyMessage("You must be a member of this community to leave it.")
+                                setShowAdminOnlyAlert(true)
+                                return
+                              }
+                              setShowLeaveConfirm(true)
+                            }}
+                            title={isCommunityMember ? "Leave community" : "Leave community (Members only)"}
                           >
                             <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </EnhancedButton>
@@ -2074,7 +3055,153 @@ export default function ForYouPage() {
                       </div>
                     </div>
                     <p className="text-zinc-400 text-xs sm:text-sm mt-0.5 line-clamp-1">{community?.description ?? 'No description yet.'}</p>
-                  </div>
+                </div>
+                
+                {/* Tags Section */}
+                <div className="w-full mt-3">
+                  {isLoadingTags ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      <span className="text-xs text-zinc-400">Loading tags...</span>
+                    </div>
+                  ) : showTagsEditor ? (
+                    <AnimatedSection delay={0.1}>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs sm:text-sm font-medium text-zinc-300 flex items-center gap-2">
+                            <Tag className="h-3.5 w-3.5" />
+                            Tags
+                          </Label>
+                          <div className="flex gap-1">
+                            <EnhancedButton
+                              variant="ghost"
+                              size="sm"
+                              rounded="full"
+                              className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-950/20"
+                              onClick={handleSaveTags}
+                              disabled={isSavingTags}
+                              isLoading={isSavingTags}
+                              title="Save tags"
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            </EnhancedButton>
+                            <EnhancedButton
+                              variant="ghost"
+                              size="sm"
+                              rounded="full"
+                              className="h-6 w-6 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                              onClick={handleCancelTagsEdit}
+                              disabled={isSavingTags}
+                              title="Cancel"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </EnhancedButton>
+                          </div>
+                        </div>
+                        {tagsError && (
+                          <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-2 text-xs text-red-300">
+                            {tagsError}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          <AnimatePresence>
+                            {tagsToEdit.map((tag, index) => (
+                              <motion.div
+                                key={tag}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.2, delay: index * 0.05 }}
+                              >
+                                <Badge className="bg-blue-900/40 text-blue-300 border-blue-800 text-xs px-2 py-1 flex items-center gap-1.5">
+                                  <Hash className="h-3 w-3" />
+                                  {tag}
+                                  <button
+                                    onClick={() => handleRemoveTag(tag)}
+                                    className="ml-1 hover:text-red-400 transition-colors"
+                                    disabled={isSavingTags}
+                                  >
+                                    <XIcon className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            type="text"
+                            placeholder="Add a tag..."
+                            value={newTagInput}
+                            onChange={(e) => setNewTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleAddTag()
+                              }
+                            }}
+                            className="bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-8 text-xs"
+                            disabled={isSavingTags}
+                          />
+                          <EnhancedButton
+                            variant="outline"
+                            size="sm"
+                            rounded="full"
+                            className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-8 px-3 text-xs"
+                            onClick={handleAddTag}
+                            disabled={isSavingTags || !newTagInput.trim()}
+                          >
+                            <PlusIcon className="h-3.5 w-3.5" />
+                          </EnhancedButton>
+                        </div>
+                      </div>
+                    </AnimatedSection>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs sm:text-sm font-medium text-zinc-300 flex items-center gap-2">
+                          <Tag className="h-3.5 w-3.5" />
+                          Tags
+                        </Label>
+                        {isCommunityOwner && (
+                          <EnhancedButton
+                            variant="ghost"
+                            size="sm"
+                            rounded="full"
+                            className="h-6 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20"
+                            onClick={handleOpenTagsEditor}
+                            title="Edit tags"
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </EnhancedButton>
+                        )}
+                      </div>
+                      {communityTags.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          <AnimatePresence>
+                            {communityTags.map((tag, index) => (
+                              <motion.div
+                                key={tag}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.2, delay: index * 0.05 }}
+                              >
+                                <Badge className="bg-blue-900/40 text-blue-300 border-blue-800 text-xs px-2 py-1 flex items-center gap-1.5">
+                                  <Hash className="h-3 w-3" />
+                                  {tag}
+                                </Badge>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-500 italic">No tags yet</p>
+                      )}
+                    </div>
+                  )}
+                </div>
                 
                 {/* Stats Row - Compact */}
                 <div className="flex flex-wrap gap-3 sm:gap-4 justify-center items-center w-full">
@@ -2088,7 +3215,7 @@ export default function ForYouPage() {
                     <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent">
                       <AnimatedCounter from={0} to={communityStats.activeToday || 0} duration={2} delay={0.6} />
                     </span>
-                    <span className="text-[10px] sm:text-xs text-zinc-400">Active</span>
+                    <span className="text-[10px] sm:text-xs text-zinc-400">Active Today</span>
                   </div>
                   <div className="flex flex-col items-center">
                     <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent">
@@ -2096,18 +3223,25 @@ export default function ForYouPage() {
                     </span>
                     <span className="text-[10px] sm:text-xs text-zinc-400">Growth</span>
                   </div>
-                  {isCommunityMember && !isCommunityOwner && (
-                    <EnhancedButton
+                  {!isCommunityOwner && (
+                  <EnhancedButton
                       variant="outline"
-                      size="sm"
-                      rounded="full"
+                    size="sm"
+                    rounded="full"
                       className="bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/40 hover:border-red-600 h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4"
-                      onClick={() => setShowLeaveConfirm(true)}
+                      onClick={() => {
+                        if (!isCommunityMember) {
+                          setAdminOnlyMessage("You must be a member of this community to leave it.")
+                          setShowAdminOnlyAlert(true)
+                          return
+                        }
+                        setShowLeaveConfirm(true)
+                      }}
                     >
                       <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1.5" />
                       <span className="hidden sm:inline">Leave Community</span>
                       <span className="sm:hidden">Leave</span>
-                    </EnhancedButton>
+                  </EnhancedButton>
                   )}
                 </div>
 
@@ -2185,6 +3319,23 @@ export default function ForYouPage() {
                       </div>
 
                       <div className="space-y-2">
+                        <Label htmlFor="edit-community-description" className="text-xs sm:text-sm font-medium text-zinc-300">
+                          Description
+                        </Label>
+                        <textarea
+                          id="edit-community-description"
+                          placeholder="Describe what your community is about..."
+                          value={editFormData.description}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                          className="w-full bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-md px-3 py-2 text-xs sm:text-sm min-h-[80px] resize-y"
+                          maxLength={500}
+                        />
+                        <p className="text-[10px] sm:text-xs text-zinc-500">
+                          {editFormData.description.length}/500 characters
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label htmlFor="edit-community-slug" className="text-xs sm:text-sm font-medium text-zinc-300 flex items-center gap-2">
                           <Hash className="h-3.5 w-3.5" />
                           URL Slug
@@ -2239,6 +3390,9 @@ export default function ForYouPage() {
                           {editFormData.visibility === "public" 
                             ? "Anyone can find and join your community"
                             : "Only invited members can join your community"}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-amber-400">
+                          ⚠️ Only the community owner can edit these settings
                         </p>
                       </div>
 
@@ -2480,17 +3634,29 @@ export default function ForYouPage() {
 
               <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
                 <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-4 sm:mb-5">
-                  <TabsTrigger value="announcements" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5">
+                  <TabsTrigger 
+                    value="announcements" 
+                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5"
+                    disabled={hasPendingRequest}
+                  >
                     <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Announcements</span>
                     <span className="sm:hidden">News</span>
                   </TabsTrigger>
-                  <TabsTrigger value="tasks" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5">
+                  <TabsTrigger 
+                    value="tasks" 
+                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5"
+                    disabled={hasPendingRequest}
+                  >
                     <CheckSquare className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Tasks</span>
                     <span className="sm:hidden">Tasks</span>
                   </TabsTrigger>
-                  <TabsTrigger value="members" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5">
+                  <TabsTrigger 
+                    value="members" 
+                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5"
+                    disabled={hasPendingRequest}
+                  >
                     <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                     Members
                   </TabsTrigger>
@@ -2505,30 +3671,43 @@ export default function ForYouPage() {
                     transition={{ duration: 0.3 }}
                   >
                     <TabsContent value="announcements" className="space-y-3">
+                      {hasPendingRequest ? (
+                        <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl">
+                          <EnhancedCardContent className="p-6 text-center">
+                            <Lock className="h-12 w-12 mx-auto mb-4 text-amber-400" />
+                            <h4 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h4>
+                            <p className="text-sm text-amber-200/80">
+                              Your request to join this community is pending approval. 
+                              You'll be able to see announcements once your request is accepted.
+                            </p>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                      ) : (
+                        <>
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
                           Announcements
                         </h3>
-                        <div className="flex items-center gap-2">
-                          <EnhancedButton 
-                            variant="gradient" 
-                            size="sm" 
-                            rounded="full" 
-                            className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 h-7 px-3 text-xs"
-                            onClick={() => {
-                              setEditingAnnouncementId(null)
-                              setAnnouncementForm({ title: '', description: '' })
-                              setAnnouncementError(null)
-                              setShowCreateAnnouncement(true)
-                            }}
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            New
-                          </EnhancedButton>
+                          <div className="flex items-center gap-2">
+                            <EnhancedButton 
+                              variant="gradient" 
+                              size="sm" 
+                              rounded="full" 
+                              className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 h-7 px-3 text-xs"
+                              onClick={() => {
+                                setEditingAnnouncementId(null)
+                                setAnnouncementForm({ title: '', description: '' })
+                                setAnnouncementError(null)
+                                setShowCreateAnnouncement(true)
+                              }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              New
+                            </EnhancedButton>
                         <EnhancedButton variant="ghost" size="sm" rounded="full" className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-7 w-7 p-0">
                           <Filter className="h-3.5 w-3.5" />
                         </EnhancedButton>
-                        </div>
+                          </div>
             </div>
 
                       {isLoadingAnnouncements && (
@@ -2543,47 +3722,59 @@ export default function ForYouPage() {
                           <EnhancedCard 
                             variant="default" 
                             hover="lift" 
-                            className="bg-zinc-900 border border-zinc-800 rounded-xl"
+                            className="bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer"
+                            onClick={() => handleViewAnnouncement(announcement.id)}
                           >
                             <EnhancedCardContent className="p-3 sm:p-3.5">
                               <div className="flex items-start gap-3">
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-white text-xs sm:text-sm mb-1.5 line-clamp-2">
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <h4 className="font-bold text-white text-xs sm:text-sm line-clamp-2">
                                       {announcement.title}
                                     </h4>
+                                    {announcement.pinned && (
+                                      <Pin className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                                    )}
+                                    </div>
                                   <p className="text-zinc-300 text-xs sm:text-sm mb-2 line-clamp-3">{announcement.content}</p>
                                   <div className="flex items-center text-[10px] sm:text-xs text-zinc-500">
                                     <Clock className="h-3 w-3 mr-1" />
                                       {announcement.timestamp}
                                   </div>
                                 </div>
-                                {isUserStaff && (
-                                  <div className="flex flex-col gap-1.5 flex-shrink-0">
-                                    <EnhancedButton
-                                      variant="ghost"
-                                      size="sm"
-                                      rounded="full"
-                                      className="h-7 w-7 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                                      onClick={() => handleStartEditAnnouncement(announcement)}
-                                      title="Edit announcement"
-                                      disabled={isDeletingAnnouncement || isUpdatingAnnouncement}
-                                    >
-                                      <Edit className="h-3.5 w-3.5" />
-                                    </EnhancedButton>
-                                    <EnhancedButton
-                                      variant="ghost"
-                                      size="sm"
-                                      rounded="full"
-                                      className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
-                                      onClick={() => handleDeleteAnnouncement(announcement.id)}
-                                      title="Delete announcement"
-                                      disabled={isDeletingAnnouncement || isUpdatingAnnouncement || deletingAnnouncementId === announcement.id}
-                                      isLoading={deletingAnnouncementId === announcement.id}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </EnhancedButton>
-                                  </div>
-                                )}
+                                <div className="flex flex-col gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <EnhancedButton
+                                        variant="ghost"
+                                        size="sm"
+                                        rounded="full"
+                                        className="h-7 w-7 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                                        onClick={() => handleStartEditAnnouncement(announcement)}
+                                    title={isUserStaff ? "Edit announcement" : "Edit announcement (Admin only)"}
+                                        disabled={isDeletingAnnouncement || isUpdatingAnnouncement}
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </EnhancedButton>
+                                      <EnhancedButton
+                                        variant="ghost"
+                                        size="sm"
+                                        rounded="full"
+                                        className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
+                                        onClick={() => {
+                                          if (confirm(`Are you sure you want to delete "${announcement.title}"?`)) {
+                                            handleDeleteAnnouncement(announcement.id)
+                                          }
+                                        }}
+                                    title={isUserStaff ? "Delete announcement" : "Delete announcement (Admin only)"}
+                                        disabled={isDeletingAnnouncement || isUpdatingAnnouncement || deletingAnnouncementId === announcement.id}
+                                        isLoading={deletingAnnouncementId === announcement.id}
+                                      >
+                                        {deletingAnnouncementId === announcement.id ? (
+                                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                                        ) : (
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        )}
+                                      </EnhancedButton>
+                                </div>
                               </div>
                             </EnhancedCardContent>
                           </EnhancedCard>
@@ -2595,6 +3786,107 @@ export default function ForYouPage() {
                           </EnhancedCardContent>
                         </EnhancedCard>
                        ) : null}
+
+                      {/* View Announcement Dialog */}
+                      {viewingAnnouncementId && (
+                        <AnimatedSection delay={0.1}>
+                          <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
+                            <EnhancedCardHeader className="p-3 sm:p-4 border-b border-zinc-800">
+                              <div className="flex items-center justify-between">
+                                <EnhancedCardTitle className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                  <Bell className="h-4 w-4" />
+                                  Announcement Details
+                                </EnhancedCardTitle>
+                                <div className="flex items-center gap-2">
+                                  {viewedAnnouncement && (
+                                    <>
+                                      <EnhancedButton
+                                        variant="ghost"
+                                        size="sm"
+                                        rounded="full"
+                                        className="h-7 w-7 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                                        onClick={() => handleStartEditAnnouncement(viewedAnnouncement)}
+                                        title={isUserStaff ? "Edit announcement" : "Edit announcement (Admin only)"}
+                                        disabled={isDeletingAnnouncement || isUpdatingAnnouncement}
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </EnhancedButton>
+                                      <EnhancedButton
+                                        variant="ghost"
+                                        size="sm"
+                                        rounded="full"
+                                        className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
+                                        onClick={() => {
+                                          if (confirm(`Are you sure you want to delete "${viewedAnnouncement.title}"?`)) {
+                                            handleDeleteAnnouncement(viewedAnnouncement.id)
+                                          }
+                                        }}
+                                        title={isUserStaff ? "Delete announcement" : "Delete announcement (Admin only)"}
+                                        disabled={isDeletingAnnouncement || isUpdatingAnnouncement || deletingAnnouncementId === viewedAnnouncement.id}
+                                        isLoading={deletingAnnouncementId === viewedAnnouncement.id}
+                                      >
+                                        {deletingAnnouncementId === viewedAnnouncement.id ? (
+                                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                                        ) : (
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        )}
+                                      </EnhancedButton>
+                                    </>
+                                  )}
+                                  <button
+                                    onClick={handleCloseAnnouncementView}
+                                    className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                                    disabled={isLoadingAnnouncement}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </EnhancedCardHeader>
+                            <EnhancedCardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+                              {announcementError && (
+                                <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-red-300">
+                                  {announcementError}
+                                </div>
+                              )}
+
+                              {isLoadingAnnouncement ? (
+                                <div className="flex items-center justify-center py-8">
+                                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                                  <span className="ml-2 text-xs sm:text-sm text-zinc-400">Loading announcement...</span>
+                                </div>
+                              ) : viewedAnnouncement ? (
+                                <>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="text-base sm:text-lg font-bold text-white flex-1">
+                                      {viewedAnnouncement.title}
+                        </h3>
+                                    {viewedAnnouncement.pinned && (
+                                      <Badge className="bg-blue-900/40 text-blue-300 border-blue-800 text-[10px] sm:text-xs">
+                                        <Pin className="h-3 w-3 mr-1" />
+                                        Pinned
+                                      </Badge>
+                                    )}
+                      </div>
+                                  <div className="prose prose-invert max-w-none">
+                                    <p className="text-zinc-300 text-xs sm:text-sm whitespace-pre-wrap">
+                                      {viewedAnnouncement.content}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center text-[10px] sm:text-xs text-zinc-500 pt-2 border-t border-zinc-800">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {viewedAnnouncement.timestamp}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-center py-8 text-zinc-400 text-xs sm:text-sm">
+                                  Announcement not found or could not be loaded.
+                                </div>
+                              )}
+                            </EnhancedCardContent>
+                          </EnhancedCard>
+                        </AnimatedSection>
+                      )}
 
                       {/* Create/Edit Announcement Dialog */}
                       {showCreateAnnouncement && (
@@ -2622,13 +3914,13 @@ export default function ForYouPage() {
                                 >
                                   <X className="h-4 w-4" />
                                 </button>
-                              </div>
+                        </div>
                             </EnhancedCardHeader>
                             <EnhancedCardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                               {announcementError && (
                                 <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-red-300">
                                   {announcementError}
-                                </div>
+                                  </div>
                               )}
 
                               <div className="space-y-2">
@@ -2647,7 +3939,7 @@ export default function ForYouPage() {
                                   maxLength={200}
                                   disabled={isCreatingAnnouncement || isUpdatingAnnouncement}
                                 />
-                              </div>
+                                  </div>
 
                               <div className="space-y-2">
                                 <Label htmlFor="announcement-description" className="text-xs sm:text-sm font-medium text-zinc-300 flex items-center gap-2">
@@ -2667,13 +3959,13 @@ export default function ForYouPage() {
                                 <p className="text-[10px] sm:text-xs text-zinc-500">
                                   {announcementForm.description.length}/1000 characters
                                 </p>
-                              </div>
+                                </div>
 
                               <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                                <EnhancedButton
+                                <EnhancedButton 
                                   type="button"
-                                  variant="outline"
-                                  rounded="full"
+                                  variant="outline" 
+                                  rounded="full" 
                                   className="flex-1 bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-9 sm:h-10 text-xs sm:text-sm"
                                   onClick={handleCancelAnnouncementEdit}
                                   disabled={isCreatingAnnouncement || isUpdatingAnnouncement}
@@ -2703,9 +3995,24 @@ export default function ForYouPage() {
                           </EnhancedCard>
                         </AnimatedSection>
                        )}
+                        </>
+                      )}
                     </TabsContent>
 
                     <TabsContent value="tasks" className="space-y-3">
+                      {hasPendingRequest ? (
+                        <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl">
+                          <EnhancedCardContent className="p-6 text-center">
+                            <Lock className="h-12 w-12 mx-auto mb-4 text-amber-400" />
+                            <h4 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h4>
+                            <p className="text-sm text-amber-200/80">
+                              Your request to join this community is pending approval. 
+                              You'll be able to see tasks once your request is accepted.
+                            </p>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                      ) : (
+                        <>
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent flex items-center gap-1.5">
                           <CheckSquare className="h-4 w-4 text-blue-500" />
@@ -2713,18 +4020,33 @@ export default function ForYouPage() {
                         </h3>
                       </div>
 
-                      <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
+                        <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
                         <EnhancedCardContent className="p-8 text-center">
                           <CheckSquare className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
                           <h4 className="text-lg font-bold text-white mb-2">Coming Soon</h4>
                           <p className="text-sm text-zinc-400">
                             Community tasks and assignments will be available here soon.
                           </p>
-                        </EnhancedCardContent>
-                      </EnhancedCard>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                        </>
+                      )}
                     </TabsContent>
 
                     <TabsContent value="members" className="space-y-3">
+                      {hasPendingRequest ? (
+                        <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl">
+                          <EnhancedCardContent className="p-6 text-center">
+                            <Lock className="h-12 w-12 mx-auto mb-4 text-amber-400" />
+                            <h4 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h4>
+                            <p className="text-sm text-amber-200/80">
+                              Your request to join this community is pending approval. 
+                              You'll be able to see members once your request is accepted.
+                            </p>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                      ) : (
+                        <>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
                         <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
                           Members
@@ -2755,15 +4077,28 @@ export default function ForYouPage() {
                       {membersError && !isLoadingMembers && (
                         <EnhancedCard variant="default" className="bg-zinc-900 border border-red-800/50 rounded-xl">
                           <EnhancedCardContent className="p-4 text-xs sm:text-sm text-red-300">
-                            {membersError}
-                          </EnhancedCardContent>
-                        </EnhancedCard>
-                      )}
-
-                      {kickError && (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-red-800/50 rounded-xl mb-3">
-                          <EnhancedCardContent className="p-3 text-xs sm:text-sm text-red-300">
-                            {kickError}
+                            <div className="flex items-center gap-2">
+                              <X className="h-4 w-4" />
+                              <span>{membersError}</span>
+                            </div>
+                            <EnhancedButton
+                              variant="outline"
+                              size="sm"
+                              rounded="full"
+                              className="mt-3 bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700 h-8 text-xs"
+                              onClick={() => {
+                                setMembersError(null)
+                                // Trigger re-fetch by temporarily changing selectedCommunity
+                                // This will cause the useEffect to re-run
+                                const currentId = selectedCommunity
+                                setSelectedCommunity(null)
+                                setTimeout(() => {
+                                  setSelectedCommunity(currentId)
+                                }, 100)
+                              }}
+                            >
+                              Retry
+                            </EnhancedButton>
                           </EnhancedCardContent>
                         </EnhancedCard>
                       )}
@@ -2828,7 +4163,7 @@ export default function ForYouPage() {
                                   <div className="flex gap-1.5 mt-2">
                                     <EnhancedButton 
                                       variant="gradient" 
-                                      size="sm"
+                                      size="sm" 
                                       rounded="full" 
                                       className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 text-[10px] sm:text-xs px-2 sm:px-3 py-1 h-auto flex-1"
                                       onClick={() => router.push(`/profile?userId=${member.id}`)}
@@ -2836,21 +4171,29 @@ export default function ForYouPage() {
                                       <UserPlus className="h-3 w-3 sm:mr-1" />
                                       <span className="hidden sm:inline">Connect</span>
                                     </EnhancedButton>
-                                    {isUserStaff && member.id !== currentUserId && (
-                                      <EnhancedButton 
+                                    {member.id !== currentUserId && (
+                                    <EnhancedButton 
                                         variant="outline" 
-                                        size="sm"
-                                        rounded="full" 
+                                      size="sm"
+                                      rounded="full" 
                                         className="bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/40 hover:border-red-600 text-[10px] sm:text-xs px-2 sm:px-3 py-1 h-auto"
-                                        onClick={() => handleKickMember(member.id)}
+                                        onClick={() => {
+                                          if (confirm(`Are you sure you want to kick ${member.name} from this community?`)) {
+                                            handleKickMember(member.id)
+                                          }
+                                        }}
                                         disabled={isKickingMember && kickingMemberId === member.id}
                                         isLoading={isKickingMember && kickingMemberId === member.id}
-                                        title="Kick member"
+                                        title={isUserStaff ? "Kick member" : "Kick member (Admin only)"}
                                       >
-                                        <UserX className="h-3 w-3" />
-                                      </EnhancedButton>
+                                        {isKickingMember && kickingMemberId === member.id ? (
+                                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                                        ) : (
+                                          <UserX className="h-3 w-3" />
+                                        )}
+                                    </EnhancedButton>
                                     )}
-                                  </div>
+        </div>
           </div>
             </div>
                             </EnhancedCardContent>
@@ -2863,11 +4206,192 @@ export default function ForYouPage() {
                           </EnhancedCardContent>
                         </EnhancedCard>
                       ) : null}
+                        </>
+                      )}
                     </TabsContent>
                   </motion.div>
                 </AnimatePresence>
               </Tabs>
               </>
+              )}
+
+              {/* Admin Only Alert Dialog */}
+              {showAdminOnlyAlert && (
+                <AnimatedSection delay={0.1}>
+                  <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl mb-4 sm:mb-5">
+                    <EnhancedCardHeader className="p-3 sm:p-4 border-b border-amber-800/30">
+                      <div className="flex items-center justify-between">
+                        <EnhancedCardTitle className="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
+                          <Lock className="h-4 w-4" />
+                          Admin Only
+                        </EnhancedCardTitle>
+                        <button
+                          onClick={() => {
+                            setShowAdminOnlyAlert(false)
+                            setAdminOnlyMessage("")
+                          }}
+                          className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </EnhancedCardHeader>
+                    <EnhancedCardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+                      <div className="space-y-2">
+                        <p className="text-xs sm:text-sm text-zinc-300">
+                          {adminOnlyMessage || "This action is only available to community admins and staff."}
+                        </p>
+                        <p className="text-xs sm:text-sm text-zinc-400">
+                          If you believe you should have access to this feature, please contact the community owner.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        <EnhancedButton
+                          type="button"
+                          variant="gradient"
+                          rounded="full"
+                          className="flex-1 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 shadow-[0_0_16px_0_rgba(245,158,11,0.4)] h-9 sm:h-10 text-xs sm:text-sm font-bold"
+                          onClick={() => {
+                            setShowAdminOnlyAlert(false)
+                            setAdminOnlyMessage("")
+                          }}
+                        >
+                          Got it
+                        </EnhancedButton>
+                      </div>
+                    </EnhancedCardContent>
+                  </EnhancedCard>
+            </AnimatedSection>
+              )}
+
+              {/* Join Requests Modal */}
+              {showJoinRequestsModal && (
+                <AnimatedSection delay={0.1}>
+                  <EnhancedCard variant="default" className="bg-zinc-900 border border-blue-800/50 rounded-xl mb-4 sm:mb-5">
+                    <EnhancedCardHeader className="p-3 sm:p-4 border-b border-blue-800/30">
+                      <div className="flex items-center justify-between">
+                        <EnhancedCardTitle className="text-sm sm:text-base font-bold text-blue-400 flex items-center gap-2">
+                          <UserCheck className="h-4 w-4" />
+                          Join Requests
+                        </EnhancedCardTitle>
+                        <button
+                          onClick={() => {
+                            setShowJoinRequestsModal(false)
+                            setJoinRequestsError(null)
+                            setJoinRequests([])
+                          }}
+                          className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                          disabled={isProcessingRequest}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+          </div>
+                    </EnhancedCardHeader>
+                    <EnhancedCardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-h-[60vh] overflow-y-auto">
+                      {joinRequestsError && (
+                        <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-red-300">
+                          {joinRequestsError}
+                        </div>
+                      )}
+
+                      {isLoadingJoinRequests ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                          <span className="ml-2 text-xs sm:text-sm text-zinc-400">Loading join requests...</span>
+                        </div>
+                      ) : joinRequests.length > 0 ? (
+                        <div className="space-y-3">
+                          {joinRequests.map((request: any) => (
+                            <div key={request.id} className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+                              <div className="flex items-start gap-3 mb-3">
+                                <Avatar className="h-10 w-10 border border-zinc-700 flex-shrink-0">
+                                  <AvatarImage src={request.requesterImage || undefined} alt={request.requesterName} />
+                                  <AvatarFallback className="bg-zinc-800 text-white text-sm">
+                                    {request.requesterName?.charAt(0).toUpperCase() || 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-semibold text-white text-sm truncate">{request.requesterName}</h4>
+                                    <Badge className="bg-amber-900/40 text-amber-300 border-amber-800 text-[9px] px-1.5 py-0">
+                                      {request.status || 'pending'}
+                                    </Badge>
+                                  </div>
+                                  {request.message && (
+                                    <p className="text-xs text-zinc-300 mb-2 whitespace-pre-wrap">{request.message}</p>
+                                  )}
+                                  {request.created_at && (
+                                    <div className="flex items-center gap-1 text-[10px] text-zinc-500">
+                                      <Clock className="h-3 w-3" />
+                                      <span>Requested {new Date(request.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex gap-2 pt-2 border-t border-zinc-700/50">
+                                <EnhancedButton
+                                  variant="gradient"
+                                  size="sm"
+                                  rounded="full"
+                                  className="flex-1 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 h-8 text-xs"
+                                  onClick={() => handleApproveRequest(request.id)}
+                                  disabled={isProcessingRequest || request.status !== 'pending'}
+                                  isLoading={isProcessingRequest && processingRequestId === request.id}
+                                >
+                                  {isProcessingRequest && processingRequestId === request.id ? (
+                                    <>
+                                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent mr-1" />
+                                      Approving...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck className="h-3 w-3 mr-1" />
+                                      Approve
+                                    </>
+                                  )}
+                                </EnhancedButton>
+                                <EnhancedButton
+                                  variant="outline"
+                                  size="sm"
+                                  rounded="full"
+                                  className="flex-1 bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/40 hover:border-red-600 h-8 text-xs"
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to reject ${request.requesterName}'s join request?`)) {
+                                      handleRejectRequest(request.id)
+                                    }
+                                  }}
+                                  disabled={isProcessingRequest || request.status !== 'pending'}
+                                  isLoading={isProcessingRequest && processingRequestId === request.id}
+                                >
+                                  {isProcessingRequest && processingRequestId === request.id ? (
+                                    <>
+                                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-400 border-t-transparent mr-1" />
+                                      Rejecting...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <X className="h-3 w-3 mr-1" />
+                                      Reject
+                                    </>
+                                  )}
+                                </EnhancedButton>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
+                          <h4 className="text-lg font-bold text-zinc-300 mb-2">No Join Requests</h4>
+                          <p className="text-sm text-zinc-400">
+                            There are no pending join requests for this community.
+                          </p>
+                        </div>
+                      )}
+                    </EnhancedCardContent>
+                  </EnhancedCard>
+                </AnimatedSection>
               )}
             </AnimatedSection>
           </div>

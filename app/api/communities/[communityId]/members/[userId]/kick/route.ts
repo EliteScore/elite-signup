@@ -8,9 +8,18 @@ const API_BASE_URL = 'https://elitescore-social-4046880acb02.herokuapp.com/'
  * Kicks a member out of a community.
  * 
  * Authorization Requirements (enforced by backend):
- * - User must be staff of the community (RoleGuard.isStaff(userId, communityId))
+ * - Auth: Required (JWT token)
+ * - Authorization: User must be staff/leader of the community (RoleGuard.isStaff(userId, communityId))
  * 
  * The backend will return 403 Forbidden if not authorized.
+ * 
+ * Responses:
+ * - 200 OK: { "status": "kicked" } or backend response body
+ * - 204 No Content: Member kicked successfully (no body)
+ * - 401 Unauthorized: No token provided
+ * - 403 Forbidden: User is not staff of the community
+ * - 404 Not Found: Community or member not found
+ * - 500 Internal Server Error
  */
 export async function POST(
   request: NextRequest,
@@ -130,7 +139,7 @@ export async function POST(
       )
     }
 
-    // 204 No Content is a successful response for POST
+    // Handle 204 No Content (if backend sends it)
     if (response.status === 204) {
       console.log('[Kick Member API] Success! Member kicked (204 No Content)')
       return new NextResponse(null, { status: 204 })
@@ -157,8 +166,10 @@ export async function POST(
     }
 
     console.log('[Kick Member API] Success! Response data:', JSON.stringify(data, null, 2))
+    console.log('[Kick Member API] Response status:', response.status)
     console.log('[Kick Member API] ===== Request completed successfully =====')
-    return NextResponse.json(data, { status: 200 })
+    // Preserve the original response status from backend
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[Kick Member API] ===== EXCEPTION OCCURRED =====')
     console.error(

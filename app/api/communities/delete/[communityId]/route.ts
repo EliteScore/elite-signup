@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
 
+/**
+ * DELETE /v1/communities-op/{communityId}
+ * 
+ * Deletes a community. Only the owner can delete their community.
+ * This will also delete all memberships associated with the community.
+ * 
+ * Authorization Requirements:
+ * - Auth: Required (JWT)
+ * - User must be the owner of the community (403 Forbidden if not owner)
+ * 
+ * Request Body: None
+ * 
+ * Responses:
+ * - 204 No Content: Community deleted successfully (no response body)
+ * - 401 Unauthorized: Missing or invalid token
+ * - 403 Forbidden: User is not the owner of this community
+ * - 404 Not Found: Community not found
+ * - 500 Internal Server Error
+ * 
+ * Important: This endpoint returns 204 No Content with no JSON body on success.
+ * Frontend should check `res.ok` or `res.status === 204`, not call `res.json()`.
+ * 
+ * Example — cURL:
+ * curl -X DELETE "$BASE/v1/communities-op/42" \
+ *   -H "Authorization: Bearer <token>"
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ communityId: string }> }
@@ -87,9 +113,12 @@ export async function DELETE(
     }
 
     // 204 No Content - successful deletion
-    console.log("[Delete Community API] Success! Community deleted (204 No Content)")
+    // Note: Backend returns 204 with no body, so we preserve that status
+    console.log("[Delete Community API] Success! Community deleted")
+    console.log("[Delete Community API] Response status:", response.status)
     console.log("[Delete Community API] ===== Request completed successfully =====")
-    return new NextResponse(null, { status: 204 })
+    // Preserve the original response status from backend (typically 204 No Content)
+    return new NextResponse(null, { status: response.status })
   } catch (error) {
     console.error("[Delete Community API] ===== EXCEPTION OCCURRED =====")
     console.error("[Delete Community API] Error type:", error instanceof Error ? error.constructor.name : typeof error)

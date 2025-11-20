@@ -67,10 +67,15 @@ export async function GET(request: NextRequest) {
         errorText = `Status ${response.status}: ${response.statusText}`
       }
       
-      console.warn("[PFP Raw API] Error response:", response.status, errorText)
+      // Convert error to string if it's an object
+      const errorMessage = typeof errorText === 'object' 
+        ? (errorText?.message || errorText?.error || JSON.stringify(errorText))
+        : (errorText || 'Failed to get profile picture')
+      
+      console.warn("[PFP Raw API] Error response:", response.status, errorMessage)
       return NextResponse.json(
         { 
-          error: errorText || 'Failed to get profile picture',
+          error: errorMessage,
           status: response.status,
           statusText: response.statusText
         },
