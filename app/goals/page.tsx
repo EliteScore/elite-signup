@@ -158,27 +158,27 @@ export default function GoalsPage() {
 
   // Fetch challenges XP from API (per-challenge XP only)
   const fetchChallengesXP = async () => {
-    const token = getStoredAccessToken()
-    if (!token) {
-      return
-    }
+        const token = getStoredAccessToken()
+        if (!token) {
+          return
+        }
 
     setIsLoadingXP(true)
-    try {
+        try {
       const response = await fetch("/api/challenges/get_challenges_xp", {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
 
-      if (!response.ok) {
+          if (!response.ok) {
         setIsLoadingXP(false)
-        return
-      }
+            return
+          }
 
-      const data = await response.json()
+          const data = await response.json()
       
       // Handle per-challenge XP only
       if (data) {
@@ -200,9 +200,9 @@ export default function GoalsPage() {
       // Silent error handling
     } finally {
       setIsLoadingXP(false)
-    }
-  }
-
+              }
+            }
+            
   // Fetch challenges stats from API
   const fetchChallengesStats = async () => {
     const token = getStoredAccessToken()
@@ -229,111 +229,111 @@ export default function GoalsPage() {
       
       if (data && Array.isArray(data)) {
         setChallengeStats(data)
-      }
-    } catch (error) {
+          }
+        } catch (error) {
       // Silent error handling
-    } finally {
+        } finally {
       setIsLoadingStats(false)
-    }
-  }
+        }
+      }
 
   // Fetch streak boost from API
   const fetchStreakBoost = async () => {
-    const token = getStoredAccessToken()
-    if (!token) {
-      return
-    }
+        const token = getStoredAccessToken()
+        if (!token) {
+          return
+        }
 
     setIsLoadingStreakBoost(true)
-    try {
+        try {
       const response = await fetch("/api/xp/get_streak_boost", {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
 
-      if (!response.ok) {
+          if (!response.ok) {
         setIsLoadingStreakBoost(false)
-        return
-      }
+            return
+          }
 
-      const data = await response.json()
+          const data = await response.json()
       
       if (data && data.streak_day !== undefined && data.boost_percent !== undefined) {
         setStreakBoost({ streak_day: data.streak_day, boost_percent: data.boost_percent })
         setStreak(data.streak_day) // Update streak from API
-      }
-    } catch (error) {
+          }
+        } catch (error) {
       // Silent error handling
-    } finally {
+        } finally {
       setIsLoadingStreakBoost(false)
-    }
-  }
+        }
+      }
 
   // Fetch current level from API
   const fetchCurrentLevel = async () => {
-    const token = getStoredAccessToken()
-    if (!token) {
-      return
-    }
+        const token = getStoredAccessToken()
+        if (!token) {
+          return
+        }
 
     setIsLoadingLevel(true)
-    try {
+        try {
       const response = await fetch("/api/xp/current-level", {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
 
-      if (!response.ok) {
+          if (!response.ok) {
         setIsLoadingLevel(false)
-        return
-      }
+            return
+          }
 
-      const data = await response.json()
-      
+          const data = await response.json()
+          
       if (data && data.level_data) {
         const levelInfo = data.level_data
         // Store full level data (includes level, xp_to_next, etc.)
         setLevelData(levelInfo)
-      }
-    } catch (error) {
+          }
+        } catch (error) {
       // Silent error handling
-    } finally {
+        } finally {
       setIsLoadingLevel(false)
-    }
-  }
+        }
+      }
 
   // Fetch total XP from API
   const fetchTotalXP = async () => {
-    const token = getStoredAccessToken()
-    if (!token) {
-      return
-    }
+        const token = getStoredAccessToken()
+        if (!token) {
+          return
+        }
 
-    setIsLoadingXP(true)
-    try {
+        setIsLoadingXP(true)
+        try {
       const response = await fetch("/api/xp/get_xp", {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
 
-      if (!response.ok) {
-        setIsLoadingXP(false)
-        return
-      }
+          if (!response.ok) {
+            setIsLoadingXP(false)
+            return
+          }
 
-      const data = await response.json()
-      
+          const data = await response.json()
+          
       if (data && data.total_xp !== undefined) {
-        setUserTotalXP(data.total_xp)
+              setUserTotalXP(data.total_xp)
       }
     } catch (error) {
       // Silent error handling
@@ -461,24 +461,24 @@ export default function GoalsPage() {
         try {
           const response = await fetch("/api/challenges/get_monthly", {
             method: "GET",
-            headers: {
-              "Accept": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          })
+              headers: {
+                "Accept": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            })
 
           if (!response.ok) {
             setIsLoadingMonthlyChallenges(false)
             return
           }
 
-          const data = await response.json()
+              const data = await response.json()
           
           if (data && Array.isArray(data)) {
             const mappedChallenges = data.map(mapApiChallengeToComponent)
             setApiMonthlyChallenges(mappedChallenges)
-          }
-        } catch (error) {
+            }
+          } catch (error) {
           // Silent error handling
         } finally {
           setIsLoadingMonthlyChallenges(false)
@@ -496,20 +496,20 @@ export default function GoalsPage() {
         try {
           const response = await fetch("/api/users/resume-scores", {
             method: "GET",
-            headers: {
-              "Accept": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          })
+              headers: {
+                "Accept": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            })
 
-          if (response.ok) {
-            const data = await response.json()
+            if (response.ok) {
+              const data = await response.json()
             setResumeScores(data)
           } else if (response.status === 404) {
             // No resume scores - user needs to upload
             setResumeScores(null)
-          }
-        } catch (error) {
+            }
+          } catch (error) {
           // Silent error handling
         } finally {
           setIsLoadingResumeScores(false)
@@ -2339,11 +2339,11 @@ export default function GoalsPage() {
                 </motion.div>
               ) : (
                 // No resume scores - show button to upload
-                <motion.div
+                      <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
-                >
+                      >
                   <div className="text-center py-8">
                     <motion.div
                       animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
@@ -2354,8 +2354,8 @@ export default function GoalsPage() {
                         <div className="absolute inset-0 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-full blur-xl opacity-50" />
                         <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 flex items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.8)]">
                           <FileText className="h-10 w-10 text-white" />
-                        </div>
-                      </div>
+                                  </div>
+                                  </div>
                     </motion.div>
                     <h2 className="text-2xl sm:text-3xl font-extrabold mb-2 bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">
                       Resume Score Feature
@@ -2363,8 +2363,8 @@ export default function GoalsPage() {
                     <p className="text-sm text-zinc-400 mb-6 px-4">
                       Upload your resume to get AI-powered analysis and personalized recommendations
                     </p>
-                  </div>
-
+                              </div>
+                              
                   <EnhancedCard variant="gradient" className="bg-zinc-900/80 border-blue-700/40 shadow-xl rounded-2xl">
                     <EnhancedCardContent className="p-6">
                       <div className="text-center space-y-4">
@@ -2375,17 +2375,17 @@ export default function GoalsPage() {
                         <p className="text-sm text-zinc-400 mb-6">
                           Get your resume scored and receive detailed feedback
                         </p>
-                        <EnhancedButton
+                                <EnhancedButton
                           variant="gradient"
                           className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 shadow-[0_0_20px_rgba(139,92,246,0.5)]"
                           onClick={() => router.push('/resume')}
                         >
                           Upload Resume
                           <Upload className="ml-2 h-4 w-4" />
-                        </EnhancedButton>
-                      </div>
-                    </EnhancedCardContent>
-                  </EnhancedCard>
+                                </EnhancedButton>
+                            </div>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
 
                   <EnhancedCard variant="default" className="border-zinc-800">
                     <EnhancedCardContent className="p-4">
@@ -2411,12 +2411,12 @@ export default function GoalsPage() {
                               <item.icon className="h-3 w-3 text-green-400" />
                             </div>
                             <span className="text-xs text-zinc-400">{item.text}</span>
-                          </motion.div>
-                        ))}
-                      </div>
+                      </motion.div>
+                    ))}
+                  </div>
                     </EnhancedCardContent>
                   </EnhancedCard>
-                </motion.div>
+          </motion.div>
               )}
             </TabsContent>
           </Tabs>

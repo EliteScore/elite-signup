@@ -40,6 +40,7 @@ import { getStoredAccessToken, getStoredAuthValue } from "@/lib/auth-storage"
 
 const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
 const RESUME_SCORES_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
+const PROFILE_PICTURE_API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
 const BLOCKED_BIO_MESSAGE = "You have blocked this user"
 
 type ResumeData = {
@@ -131,80 +132,150 @@ export default function ProfilePage() {
     return currentUserId !== null
   }, [viewingUserId, currentUserId, numericViewingUserId])
 
-  const getProfilePictureKey = (id?: number | null) =>
-    id ? `profile.picture.${id}` : "profile.picture.default"
-
-  const cacheProfilePicture = (picture: string, userId?: number | null) => {
-    if (typeof window === "undefined") return
-    try {
-      window.localStorage.setItem(getProfilePictureKey(userId), picture)
-    } catch (error) {
-      console.warn("[Profile] Failed to cache profile picture:", error)
-    }
-  }
-
-  const loadCachedProfilePicture = (userId?: number | null) => {
-    if (typeof window === "undefined") return null
-    try {
-      return window.localStorage.getItem(getProfilePictureKey(userId))
-    } catch (error) {
-      console.warn("[Profile] Failed to load cached profile picture:", error)
-      return null
-    }
-  }
-
-  const pickFirstValidPicture = (...candidates: Array<string | null | undefined>) => {
-    for (const candidate of candidates) {
-      if (typeof candidate === "string" && candidate.trim().length > 0) {
-        return candidate
+  // Load cached profile picture immediately (for instant display)
+  useEffect(() => {
+    if (!isAuthorized || !isViewingOwnProfile || !currentUserId) return
+    
+    const cacheKey = `profile.picture.${currentUserId}`
+    const cached = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null
+    
+    if (cached) {
+      try {
+        const cachedData = JSON.parse(cached)
+        // Cache is valid for 1 hour
+        const cacheAge = Date.now() - (cachedData.timestamp || 0)
+        const oneHour = 60 * 60 * 1000
+        
+        if (cacheAge < oneHour && cachedData.dataUrl) {
+          console.log("[Profile Picture] Loading from cache (age:", Math.round(cacheAge / 1000), "s)")
+          setProfilePicture(cachedData.dataUrl)
+          return
+        } else {
+          // Cache expired, remove it
+          localStorage.removeItem(cacheKey)
+        }
+      } catch (e) {
+        // Invalid cache, remove it
+        localStorage.removeItem(cacheKey)
       }
     }
-    return null
-  }
+  }, [isAuthorized, isViewingOwnProfile, currentUserId])
 
-  const resolvePictureFromProfile = (profile: ProfileData): string | null => {
-    const directPicture = pickFirstValidPicture(
-      profile.profilePictureUrl,
-      profile.profilePicture,
-      profile.avatarUrl,
-    )
-
-    if (directPicture) {
-      return directPicture
-    }
-
-    if (profile.resume) {
-      return pickFirstValidPicture(
-        profile.resume.profilePictureUrl,
-        profile.resume.profilePicture,
-        profile.resume.avatarUrl,
-      )
-    }
-
-    return null
-  }
-
-  const updateProfilePictureFromProfile = (profile: ProfileData) => {
-    const pictureFromApi = resolvePictureFromProfile(profile)
-
-    if (pictureFromApi) {
-      // Always cache the picture from API to ensure persistence after build
-      cacheProfilePicture(pictureFromApi, profile.userId)
-      setProfilePicture(pictureFromApi)
-      console.log("[Profile] Set profile picture from API:", pictureFromApi.substring(0, 50) + "...")
+  // Fetch profile picture using new endpoint (only for own profile)
+  useEffect(() => {
+    if (!isAuthorized || !isViewingOwnProfile || !currentUserId) {
+      console.log("[Profile Picture] Skipping fetch - not authorized or not own profile or no userId", {
+        isAuthorized,
+        isViewingOwnProfile,
+        currentUserId,
+      })
       return
     }
 
-    // Fallback to cached picture if API doesn't return one
-    const cached = loadCachedProfilePicture(profile.userId)
-    if (cached) {
-      console.log("[Profile] Using cached profile picture")
-      setProfilePicture(cached)
-    } else {
-      console.log("[Profile] No profile picture available from API or cache")
-      setProfilePicture(null)
+    async function fetchProfilePicture() {
+      console.log("[Profile Picture] ===== Starting profile picture fetch =====")
+      const token = getStoredAccessToken()
+      if (!token) {
+        console.warn("[Profile Picture] No token available")
+        return
+      }
+
+      const cacheKey = `profile.picture.${currentUserId}`
+      
+      // Clear cache if this is a refresh (profileRefreshKey > 0)
+      // This ensures we get fresh image after upload
+      if (profileRefreshKey > 0 && typeof window !== 'undefined') {
+        localStorage.removeItem(cacheKey)
+        console.log("[Profile Picture] Cleared cache due to profile refresh")
+      }
+
+      try {
+        // Skip metadata check - go straight to raw image (it returns 204 if default)
+        console.log("[Profile Picture] Fetching raw image directly from /api/user/profile/pfp/raw")
+        const imageResponse = await fetch("/api/user/profile/pfp/raw", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        console.log("[Profile Picture] Raw image response status:", imageResponse.status, imageResponse.ok)
+
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json()
+          console.log("[Profile Picture] Raw image data received:", {
+            hasDataUrl: !!imageData.dataUrl,
+            isDefault: imageData.default,
+            contentType: imageData.contentType,
+            dataUrlLength: imageData.dataUrl?.length || 0,
+          })
+          if (imageData.dataUrl) {
+            console.log("[Profile Picture] ✓ Successfully set profile picture (data URL length:", imageData.dataUrl.length, ")")
+            setProfilePicture(imageData.dataUrl)
+            
+            // Cache the image for faster subsequent loads
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(cacheKey, JSON.stringify({
+                  dataUrl: imageData.dataUrl,
+                  timestamp: Date.now(),
+                }))
+                console.log("[Profile Picture] Cached profile picture for future loads")
+              } catch (e) {
+                console.warn("[Profile Picture] Failed to cache:", e)
+              }
+            }
+          } else {
+            console.warn("[Profile Picture] No dataUrl in response")
+            setProfilePicture(null)
+            // Clear cache if no image
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(cacheKey)
+            }
+          }
+        } else if (imageResponse.status === 200) {
+          // Check if response indicates default picture
+          const imageData = await imageResponse.json()
+          if (imageData.default) {
+            console.log("[Profile Picture] Response indicates default picture")
+            setProfilePicture(null)
+          } else if (imageData.dataUrl) {
+            console.log("[Profile Picture] ✓ Successfully set profile picture (data URL length:", imageData.dataUrl.length, ")")
+            setProfilePicture(imageData.dataUrl)
+            
+            // Cache the image for faster subsequent loads
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(cacheKey, JSON.stringify({
+                  dataUrl: imageData.dataUrl,
+                  timestamp: Date.now(),
+                }))
+                console.log("[Profile Picture] Cached profile picture for future loads")
+              } catch (e) {
+                console.warn("[Profile Picture] Failed to cache:", e)
+              }
+            }
+          } else {
+            setProfilePicture(null)
+          }
+          // Clear cache if default
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(cacheKey)
+          }
+        } else {
+          console.warn("[Profile Picture] Raw image fetch failed:", imageResponse.status, imageResponse.statusText)
+          // Don't clear cache on error - keep showing cached version
+        }
+      } catch (error) {
+        console.error("[Profile Picture] ✗ Error fetching profile picture:", error)
+        // Don't clear cache on error - keep showing cached version
+      } finally {
+        console.log("[Profile Picture] ===== Profile picture fetch completed =====")
+      }
     }
-  }
+
+    fetchProfilePicture()
+  }, [isAuthorized, isViewingOwnProfile, currentUserId, profileRefreshKey])
 
   // Fetch username from /v1/auth/me (only for own profile)
   useEffect(() => {
@@ -363,19 +434,6 @@ export default function ProfilePage() {
     fetchOwnUserId()
   }, [isAuthorized, currentUserId])
 
-  // Try to load cached picture immediately on mount (before API call)
-  useEffect(() => {
-    if (!isAuthorized || typeof window === "undefined") return
-    
-    // Try to get userId from profileData if already loaded, or try common keys
-    if (profileData?.userId) {
-      const cached = loadCachedProfilePicture(profileData.userId)
-      if (cached && !profilePicture) {
-        console.log("[Profile] Loaded cached picture on mount")
-        setProfilePicture(cached)
-      }
-    }
-  }, [isAuthorized, profileData?.userId])
 
   // Fetch OWN followers / following lists (IDs) for the authenticated user.
   useEffect(() => {
@@ -892,6 +950,89 @@ export default function ProfilePage() {
     fetchResumeScores()
   }, [isAuthorized, isViewingOwnProfile, profileRefreshKey, currentUserId, viewingUserId])
 
+  // Fetch profile picture for viewed user (when viewing someone else's profile)
+  useEffect(() => {
+    if (!isAuthorized || isViewingOwnProfile || !numericViewingUserId) return
+
+    async function fetchViewedUserProfilePicture() {
+      const token = getStoredAccessToken()
+      if (!token) return
+
+      // Check cache first (instant display)
+      const cacheKey = `profile.picture.${numericViewingUserId}`
+      if (typeof window !== "undefined") {
+        try {
+          const cached = localStorage.getItem(cacheKey)
+          if (cached) {
+            const cachedData = JSON.parse(cached)
+            const cacheAge = Date.now() - (cachedData.timestamp || 0)
+            const oneHour = 60 * 60 * 1000
+            
+            if (cacheAge < oneHour && cachedData.dataUrl) {
+              console.log("[Profile] Using cached profile picture for viewed user")
+              setProfilePicture(cachedData.dataUrl)
+              // Still fetch in background to update if changed
+            } else {
+              localStorage.removeItem(cacheKey)
+            }
+          }
+        } catch (e) {
+          // Invalid cache, continue to fetch
+        }
+      }
+
+      // Fetch fresh image (or update if cached version was shown)
+      try {
+        console.log("[Profile] Fetching profile picture for viewed user:", numericViewingUserId)
+        const imageResponse = await fetch(`/api/user/profile/pfp/${numericViewingUserId}/raw`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json()
+          // Check if response indicates default picture
+          if (imageData.default) {
+            console.log("[Profile] Viewed user has default profile picture")
+            setProfilePicture(null)
+          } else if (imageData.dataUrl) {
+            console.log("[Profile] ✓ Successfully set viewed user profile picture")
+            setProfilePicture(imageData.dataUrl)
+            
+            // Cache the image
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(cacheKey, JSON.stringify({
+                  dataUrl: imageData.dataUrl,
+                  timestamp: Date.now(),
+                }))
+              } catch (e) {
+                // Ignore cache write errors
+              }
+            }
+          } else {
+            setProfilePicture(null)
+          }
+        } else {
+          // On error, keep cached version if it exists
+          if (!profilePicture) {
+            setProfilePicture(null)
+          }
+        }
+      } catch (error) {
+        console.warn("[Profile] Error fetching viewed user profile picture:", error)
+        // On error, keep cached version if it exists
+        if (!profilePicture) {
+          setProfilePicture(null)
+        }
+      }
+    }
+
+    fetchViewedUserProfilePicture()
+  }, [isAuthorized, isViewingOwnProfile, numericViewingUserId, profileRefreshKey])
+
   // Fetch resume scores for viewed user (when viewing someone else's profile)
   useEffect(() => {
     if (!isAuthorized || isViewingOwnProfile || !numericViewingUserId) return
@@ -1004,7 +1145,6 @@ export default function ProfilePage() {
 
         if (possibleProfile && possibleProfile.userId) {
           setProfileData(possibleProfile as ProfileData)
-          updateProfilePictureFromProfile(possibleProfile)
           if (!viewingUserId) {
             setCurrentUserId(possibleProfile.userId)
           }

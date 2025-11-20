@@ -171,6 +171,162 @@ const getSearchUrl = (input: string) => {
   return url
 }
 
+// Fetch profile picture for a user using the new endpoint
+async function fetchUserProfilePicture(userId: number): Promise<string | null> {
+  const token = getStoredAccessToken()
+  if (!token) {
+    return null
+  }
+
+  try {
+    // Check cache first
+    const cacheKey = `profile.picture.${userId}`
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const cachedData = JSON.parse(cached)
+          const cacheAge = Date.now() - (cachedData.timestamp || 0)
+          const oneHour = 60 * 60 * 1000
+          
+          if (cacheAge < oneHour && cachedData.dataUrl) {
+            console.log(`[Search] Using cached profile picture for user ${userId}`)
+            return cachedData.dataUrl
+          } else {
+            localStorage.removeItem(cacheKey)
+          }
+        }
+      } catch (e) {
+        // Invalid cache, continue to fetch
+      }
+    }
+
+    // Fetch raw image directly (skip metadata check for speed)
+    console.log(`[Search] Fetching profile picture for user ${userId}`)
+    const imageResponse = await fetch(`/api/user/profile/pfp/${userId}/raw`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (imageResponse.ok) {
+      const imageData = await imageResponse.json()
+      // Check if response indicates default picture
+      if (imageData.default) {
+        // Default picture, no custom image
+        return null
+      } else if (imageData.dataUrl) {
+        // Cache the image
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+              dataUrl: imageData.dataUrl,
+              timestamp: Date.now(),
+            }))
+          } catch (e) {
+            // Ignore cache write errors
+          }
+        }
+        return imageData.dataUrl
+      }
+    }
+    
+    return null
+  } catch (error) {
+    console.warn(`[Search] Error fetching profile picture for user ${userId}:`, error)
+    return null
+  }
+}
+
+// Fetch profile pictures in parallel for all users (much faster)
+async function fetchAllProfilePictures(userIds: number[]): Promise<Map<number, string | null>> {
+  const token = getStoredAccessToken()
+  if (!token || userIds.length === 0) {
+    return new Map()
+  }
+
+  console.log(`[Search] Fetching profile pictures in parallel for ${userIds.length} users`)
+
+  // Check cache for all users first
+  const cacheResults = new Map<number, string | null>()
+  const usersToFetch: number[] = []
+
+  if (typeof window !== "undefined") {
+    userIds.forEach(userId => {
+      const cacheKey = `profile.picture.${userId}`
+      try {
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const cachedData = JSON.parse(cached)
+          const cacheAge = Date.now() - (cachedData.timestamp || 0)
+          const oneHour = 60 * 60 * 1000
+          
+          if (cacheAge < oneHour && cachedData.dataUrl) {
+            cacheResults.set(userId, cachedData.dataUrl)
+            return
+          } else {
+            localStorage.removeItem(cacheKey)
+          }
+        }
+      } catch (e) {
+        // Invalid cache, continue
+      }
+      usersToFetch.push(userId)
+    })
+  } else {
+    usersToFetch.push(...userIds)
+  }
+
+  if (usersToFetch.length === 0) {
+    console.log(`[Search] All profile pictures found in cache`)
+    return cacheResults
+  }
+
+  // Fetch all missing pictures in parallel
+  const fetchPromises = usersToFetch.map(async (userId) => {
+    try {
+      const imageResponse = await fetch(`/api/user/profile/pfp/${userId}/raw`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (imageResponse.ok) {
+        const imageData = await imageResponse.json()
+        if (imageData.dataUrl) {
+          // Cache the image
+          if (typeof window !== "undefined") {
+            try {
+              const cacheKey = `profile.picture.${userId}`
+              localStorage.setItem(cacheKey, JSON.stringify({
+                dataUrl: imageData.dataUrl,
+                timestamp: Date.now(),
+              }))
+            } catch (e) {
+              // Ignore cache write errors
+            }
+          }
+          return { userId, image: imageData.dataUrl }
+        }
+      }
+      return { userId, image: null }
+    } catch (error) {
+      console.warn(`[Search] Error fetching profile picture for user ${userId}:`, error)
+      return { userId, image: null }
+    }
+  })
+
+  const fetchedResults = await Promise.all(fetchPromises)
+  fetchedResults.forEach(({ userId, image }) => {
+    cacheResults.set(userId, image)
+  })
+
+  console.log(`[Search] Fetched ${fetchedResults.filter(r => r.image).length} profile pictures`)
+  return cacheResults
+}
+
 // Enrich base search results with extra profile data (especially pictures) from get_profile
 async function enrichResultsWithProfiles(results: SearchResult[]): Promise<SearchResult[]> {
   const token = getStoredAccessToken()
@@ -185,8 +341,23 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
 
   console.log("[Search] Enriching", results.length, "results with profile data")
 
+  // Fetch all profile pictures in parallel first (fastest approach)
+  const userIds = results.map(r => r.userId)
+  const pictureMap = await fetchAllProfilePictures(userIds)
+
+  // Now enrich with profile data in parallel (but skip if we already have a picture)
   return Promise.all(
     results.map(async (user) => {
+      // If we already have a picture from the parallel fetch, use it
+      const cachedPicture = pictureMap.get(user.userId)
+      if (cachedPicture) {
+        return {
+          ...user,
+          image: cachedPicture,
+        }
+      }
+
+      // Otherwise, try to get picture from profile data (but don't wait for it if slow)
       try {
         const url = `${API_BASE_URL}v1/users/profile/get_profile/${user.userId}`
 
@@ -198,50 +369,26 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
           },
         })
 
-        if (!resp.ok) {
-          console.warn(`[Search] Enrichment fetch failed for user ${user.userId}:`, resp.status, resp.statusText)
-          return user
-        }
-
-        let result
-        try {
-          result = await resp.json()
-        } catch (parseError) {
-          console.warn(`[Search] Failed to parse enrichment response for user ${user.userId}:`, parseError)
-          return user
-        }
-
-        const profile = result?.data || result
-        if (!profile) {
-          console.warn(`[Search] No profile data in enrichment response for user ${user.userId}`)
-          return user
-        }
-
-        const picture = resolvePictureFromApiProfile(profile)
-
-        let finalImage = picture ?? user.image
-
-        // As an extra fallback, try cached profile picture like profile page does
-        if (!finalImage && typeof window !== "undefined") {
-          const key = `profile.picture.${user.userId}`
-          try {
-            const cached = window.localStorage.getItem(key)
-            if (cached && cached.trim().length > 0) {
-              finalImage = cached
+        if (resp.ok) {
+          const result = await resp.json()
+          const profile = result?.data || result
+          if (profile) {
+            const picture = resolvePictureFromApiProfile(profile)
+            if (picture) {
+              return {
+                ...user,
+                image: picture,
+              }
             }
-          } catch (error) {
-            // ignore cache read errors in production
           }
         }
-
-        return {
-          ...user,
-          image: finalImage,
-        }
       } catch (error) {
-        // swallow enrichment errors; base search results will still render
-        console.warn(`[Search] Enrichment error for user ${user.userId}:`, error)
-        return user
+        // Ignore errors, use existing image
+      }
+
+      return {
+        ...user,
+        image: user.image,
       }
     }),
   )
@@ -767,13 +914,23 @@ export default function SearchPage() {
         const dedupedResults = Array.from(userMap.values())
         console.log("[Search] Deduplicated results:", dedupedResults.length)
 
-        const uniqueResults = await enrichResultsWithProfiles(dedupedResults)
-        console.log("[Search] Final enriched results:", uniqueResults.length)
+        // Fetch profile pictures and resume scores in parallel for speed
+        const [enrichedResults, resultsWithScores] = await Promise.all([
+          enrichResultsWithProfiles(dedupedResults),
+          enrichResultsWithResumeScores(dedupedResults),
+        ])
         
-        const resultsWithScores = await enrichResultsWithResumeScores(uniqueResults)
-        console.log("[Search] Results with resume scores:", resultsWithScores.length)
+        // Merge profile pictures into results with scores
+        const finalResults = resultsWithScores.map(result => {
+          const enriched = enrichedResults.find(r => r.userId === result.userId)
+          return {
+            ...result,
+            image: enriched?.image ?? result.image,
+          }
+        })
         
-        setSearchResults(resultsWithScores)
+        console.log("[Search] Final results with pictures and scores:", finalResults.length)
+        setSearchResults(finalResults)
       } else {
         console.log("[Search] No results in payload:", {
           success: payload?.success,

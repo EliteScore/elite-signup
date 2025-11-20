@@ -25,6 +25,7 @@ import {
   X,
   Check,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -46,9 +47,75 @@ import { cn } from "@/lib/utils"
 import AnimatedCounter from "@/components/ui/animated-counter"
 import { AnimatedProgress } from "@/components/ui/animated-progress"
 import { AnimatedSection } from "@/components/ui/animated-section"
+import { getStoredAccessToken } from "@/lib/auth-storage"
 
-// Mock data for achievement posts (auto-generated from user activities)
-const posts = [
+// Client-side cache utility for feed data
+const FEED_CACHE_TTL = 5 * 60 * 1000 // 5 minutes in milliseconds
+const FEED_CACHE_KEYS = {
+  challenges: 'feed_cache_challenges',
+  streaks: 'feed_cache_streaks',
+  cv: 'feed_cache_cv',
+  enriched: 'feed_cache_enriched', // Cache for enriched data (with profiles)
+}
+
+interface CachedFeedData<T = any> {
+  data: T
+  timestamp: number
+  day?: string
+}
+
+function getCachedFeed<T = any[]>(key: string, day?: string): T | null {
+  try {
+    const cached = localStorage.getItem(key)
+    if (!cached) return null
+
+    const parsed: CachedFeedData<T> = JSON.parse(cached)
+    const now = Date.now()
+    const age = now - parsed.timestamp
+
+    // Check if cache is still valid and matches the requested day
+    if (age < FEED_CACHE_TTL && (!day || parsed.day === day)) {
+      return parsed.data
+    } else {
+      localStorage.removeItem(key)
+      return null
+    }
+  } catch (error) {
+    return null
+  }
+}
+
+function setCachedFeed<T = any>(key: string, data: T, day?: string): void {
+  try {
+    const cacheData: CachedFeedData<T> = {
+      data,
+      timestamp: Date.now(),
+      day,
+    }
+    localStorage.setItem(key, JSON.stringify(cacheData))
+  } catch (error) {
+    // If storage is full, try to clear old cache entries
+    try {
+      Object.values(FEED_CACHE_KEYS).forEach(k => {
+        if (k !== key) localStorage.removeItem(k)
+      })
+      localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now(), day }))
+    } catch (e) {
+      // Silent fail
+    }
+  }
+}
+
+function clearFeedCache(): void {
+  try {
+    Object.values(FEED_CACHE_KEYS).forEach(key => localStorage.removeItem(key))
+  } catch (error) {
+    // Silent fail
+  }
+}
+
+// Removed mock posts - using real API feed data only
+const posts: any[] = [
   {
     id: 1,
     user: {
@@ -381,73 +448,16 @@ const upcomingTasks = [
   },
 ]
 
-// Mock data for network suggestions
-const networkSuggestions = [
-  {
-    id: 1,
-    name: "David Kim",
-    title: "Frontend Developer at Netflix",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=faces",
-    mutualConnections: 12,
-    level: 10,
-    xp: 3200,
-  },
-  {
-    id: 2,
-    name: "Jessica Lee",
-    title: "Product Manager at Spotify",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=faces",
-    mutualConnections: 8,
-    level: 11,
-    xp: 3800,
-  },
-  {
-    id: 3,
-    name: "Ryan Martinez",
-    title: "Data Engineer at Airbnb",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=faces",
-    mutualConnections: 5,
-    level: 9,
-    xp: 2600,
-  },
-]
-
-// Mock data for suggestions and progress cards that appear in feed
-const suggestionCards = [
-  {
-    id: "suggestion-1",
-    type: "network_suggestion",
-    title: "Connect with High Achievers",
-    subtitle: "People you may know",
-    suggestions: networkSuggestions.slice(0, 2),
-  },
-  {
-    id: "progress-1",
-    type: "progress_update",
-    title: "Your Progress This Week",
-    subtitle: "Keep up the momentum!",
-    stats: {
-      xpGained: 450,
-      tasksCompleted: 8,
-      streakDays: 12,
-      levelProgress: 75,
-      nextLevel: 6,
-    },
-  },
-  {
-    id: "challenge-1",
-    type: "challenge_suggestion",
-    title: "Weekly Challenge",
-    subtitle: "Earn bonus XP",
-    challenge: {
-      title: "Complete 3 Skill Assessments",
-      description: "Take assessments in your chosen field to earn 200 XP",
-      xpReward: 200,
-      deadline: "3 days left",
-      participants: 1247,
-    },
-  },
-]
+// Type for network suggestions
+type NetworkSuggestion = {
+  userId: number
+  name: string
+  title: string
+  image: string | null
+  mutualConnections?: number
+  level?: number
+  resumeScore?: number | null
+}
 
 // Mock data for user stats
 const userStats = {
@@ -491,8 +501,8 @@ const userData = {
 export default function HomePage() {
   const isAuthorized = useRequireAuth() // Protect this route
   const router = useRouter()
-  const [likedPosts, setLikedPosts] = useState<number[]>(posts.filter((p) => p.liked).map((p) => p.id))
-  const [savedPosts, setSavedPosts] = useState<number[]>(posts.filter((p) => p.saved).map((p) => p.id))
+  const [likedPosts, setLikedPosts] = useState<number[]>([])
+  const [savedPosts, setSavedPosts] = useState<number[]>([])
   const [postText, setPostText] = useState("")
   const [completedTasks, setCompletedTasks] = useState<number[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -502,6 +512,14 @@ export default function HomePage() {
   const [selectedLeaderboard, setSelectedLeaderboard] = useState<number | null>(null)
   const [postMessage, setPostMessage] = useState("")
   const [showFloatingLogo, setShowFloatingLogo] = useState(true)
+  const [networkSuggestions, setNetworkSuggestions] = useState<NetworkSuggestion[]>([])
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  
+  // Feed data states
+  const [challengesFeed, setChallengesFeed] = useState<any[]>([])
+  const [streaksFeed, setStreaksFeed] = useState<any[]>([])
+  const [cvFeed, setCvFeed] = useState<any[]>([])
+  const [isLoadingFeed, setIsLoadingFeed] = useState(false)
 
   // Check if it's the user's first visit
   useEffect(() => {
@@ -525,14 +543,516 @@ export default function HomePage() {
     }
   }, [])
 
-  // Don't render until auth check is complete
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
-      </div>
-    )
-  }
+  // Fetch network suggestions
+  useEffect(() => {
+    if (!isAuthorized) {
+      return
+    }
+
+    async function fetchSuggestions() {
+      setIsLoadingSuggestions(true)
+      try {
+        const token = getStoredAccessToken()
+        if (!token) {
+          setIsLoadingSuggestions(false)
+          return
+        }
+        // Fetch suggested user IDs
+        const suggestionsResponse = await fetch("/api/users/social/get_suggestions?count=10", {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!suggestionsResponse.ok) {
+          setIsLoadingSuggestions(false)
+          return
+        }
+
+        const suggestionsData = await suggestionsResponse.json()
+        const userIds: number[] = suggestionsData?.data || []
+
+        if (userIds.length === 0) {
+          setNetworkSuggestions([])
+          setIsLoadingSuggestions(false)
+          return
+        }
+
+        // Fetch profile data for each user ID in parallel
+        const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
+        const RESUME_SCORES_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
+
+        const profilePromises = userIds.map(async (userId: number) => {
+          try {
+            
+            // 1. Fetch profile
+            let profile = null
+            try {
+              const profileResponse = await fetch(`${API_BASE_URL}v1/users/profile/get_profile/${userId}`, {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+
+              if (profileResponse.ok) {
+                const profileResult = await profileResponse.json()
+                profile = profileResult?.data || profileResult
+              }
+            } catch (e) {
+              // Silent fail
+            }
+
+            if (!profile) {
+              return null
+            }
+
+            // 2. Fetch profile picture
+            let profilePicture: string | null = null
+            try {
+              const pictureResponse = await fetch(`/api/user/profile/pfp/${userId}/raw`, {
+                method: "GET",
+                headers: {
+                  "Accept": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+
+              if (pictureResponse.ok) {
+                const pictureData = await pictureResponse.json()
+                if (pictureData && !pictureData.default && pictureData.dataUrl) {
+                  profilePicture = pictureData.dataUrl
+                }
+              }
+            } catch (error) {
+              // Ignore picture fetch errors
+            }
+
+            // 3. Fetch resume score for level/score display
+            let resumeScore: number | null = null
+            try {
+              const scoreResponse = await fetch(`${RESUME_SCORES_API_BASE_URL}v1/users/resume-scores/${userId}`, {
+                method: "GET",
+                headers: {
+                  "Accept": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+
+              if (scoreResponse.ok) {
+                const scoreResult = await scoreResponse.json()
+                const scoreData = scoreResult?.data || scoreResult
+                resumeScore = scoreData?.overall_score || null
+              }
+            } catch (error) {
+              // Ignore resume score fetch errors
+            }
+
+            // 4. Fetch level (optional, if supported by future API, currently using resume score or fallback)
+            let level: number | undefined = undefined
+            // Note: current-level API only returns current user's level, so we skip fetching level for other users
+            // We can show resume score instead as an indicator
+
+            // Build name from firstName and lastName
+            const firstName = profile?.firstName || ""
+            const lastName = profile?.lastName || ""
+            const name = [firstName, lastName].filter(Boolean).join(" ") || "User"
+
+            // Get title from resume or bio
+            let title = ""
+            if (profile?.resume?.basics?.headline) {
+              title = profile.resume.basics.headline
+            } else if (profile?.bio) {
+              title = profile.bio
+            } else if (profile?.resume?.experience?.[0]) {
+              const exp = profile.resume.experience[0]
+              title = `${exp.title || ""}${exp.company ? ` at ${exp.company}` : ""}`.trim()
+            }
+
+            // Use profile picture from API if available
+            if (!profilePicture) {
+              const pickFirstValidPicture = (...candidates: Array<string | null | undefined>) => {
+                for (const candidate of candidates) {
+                  if (typeof candidate === "string" && candidate.trim().length > 0) {
+                    return candidate
+                  }
+                }
+                return null
+              }
+
+              profilePicture = pickFirstValidPicture(
+                profile?.profilePictureUrl,
+                profile?.profilePicture,
+                profile?.avatarUrl,
+                profile?.resume?.profilePictureUrl,
+                profile?.resume?.profilePicture,
+                profile?.resume?.avatarUrl,
+              )
+            }
+
+            return {
+              userId,
+              name,
+              title,
+              image: profilePicture,
+              level,
+              resumeScore,
+            } as NetworkSuggestion
+          } catch (error) {
+            console.warn(`[Home] Error processing suggestion for user ${userId}:`, error)
+            return null
+          }
+        })
+
+        const suggestions = (await Promise.all(profilePromises)).filter((s): s is NetworkSuggestion => s !== null)
+        setNetworkSuggestions(suggestions)
+      } catch (error) {
+        // Silent fail
+      } finally {
+        setIsLoadingSuggestions(false)
+      }
+    }
+
+    fetchSuggestions()
+  }, [isAuthorized])
+
+  // Fetch feed data (challenges, streaks, CV)
+  useEffect(() => {
+    if (!isAuthorized) return
+
+    async function fetchFeedData(forceRefresh = false) {
+      const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
+      const today = new Date().toISOString().split('T')[0] // yyyy-MM-dd format
+
+      // Check cache first (unless force refresh)
+      let useCachedEnriched = false
+      if (!forceRefresh) {
+        const cachedEnriched = getCachedFeed<{ challenges: any[], streaks: any[], cv: any[] }>(FEED_CACHE_KEYS.enriched, today)
+
+        // If we have enriched cache, use it directly (fastest path)
+        if (cachedEnriched && Array.isArray(cachedEnriched.challenges) && Array.isArray(cachedEnriched.streaks) && Array.isArray(cachedEnriched.cv)) {
+          setChallengesFeed(cachedEnriched.challenges)
+          setStreaksFeed(cachedEnriched.streaks)
+          setCvFeed(cachedEnriched.cv)
+          setIsLoadingFeed(false)
+          useCachedEnriched = true
+        }
+      } else {
+        clearFeedCache()
+      }
+
+      // If we used enriched cache, we're done
+      if (useCachedEnriched) {
+        return
+      }
+
+      setIsLoadingFeed(true)
+      try {
+        const token = getStoredAccessToken()
+        if (!token) {
+          setIsLoadingFeed(false)
+          return
+        }
+        
+        const [challengesResponse, streaksResponse, cvResponse] = await Promise.all([
+          fetch(`/api/users/social/get_challenges_feed?day=${today}&limit=20`, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            // Add cache control for browser caching
+            cache: 'default',
+          }),
+          fetch(`/api/users/social/get_streaks_feed?day=${today}&limit=20`, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: 'default',
+          }),
+          fetch(`/api/users/social/get_cv_feed?limit=20`, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: 'default',
+          }),
+        ])
+
+        // Variables to store enriched data for caching
+        let validChallenges: any[] = []
+        let validStreaks: any[] = []
+        let validCvs: any[] = []
+
+        // Process challenges feed
+        if (challengesResponse.ok) {
+          try {
+            const challengesData = await challengesResponse.json()
+            const challenges = challengesData?.data || []
+            
+            // Enrich challenges with user profile data
+            const enrichedChallenges = await Promise.all(
+              challenges.map(async (challenge: any, idx: number) => {
+                try {
+                  return {
+                    ...challenge,
+                    type: 'challenge_feed',
+                  }
+                } catch (error) {
+                  return null
+                }
+              })
+            )
+            validChallenges = enrichedChallenges.filter((c: any) => c !== null)
+            setChallengesFeed(validChallenges)
+            // Cache raw challenges data
+            setCachedFeed(FEED_CACHE_KEYS.challenges, challenges, today)
+          } catch (error) {
+            // Silent fail
+          }
+        } else {
+          setChallengesFeed([])
+        }
+
+        // Process streaks feed
+        if (streaksResponse.ok) {
+          try {
+            const streaksData = await streaksResponse.json()
+            console.log("[Home] ✅ Streaks feed raw response:", JSON.stringify(streaksData, null, 2))
+            console.log("[Home] ✅ Streaks feed response structure:", {
+              hasSuccess: 'success' in streaksData,
+              hasMessage: 'message' in streaksData,
+              hasData: 'data' in streaksData,
+              dataType: Array.isArray(streaksData?.data) ? 'array' : typeof streaksData?.data,
+              dataLength: Array.isArray(streaksData?.data) ? streaksData.data.length : 'N/A',
+            })
+            const streaks = streaksData?.data || []
+            console.log("[Home] ✅ Streaks feed items count:", streaks.length)
+            if (streaks.length > 0) {
+              console.log("[Home] ✅ Sample streak:", JSON.stringify(streaks[0], null, 2))
+            } else {
+              console.log("[Home] ⚠️ No streaks found in feed")
+              console.log("[Home] ⚠️ This could mean:")
+              console.log("[Home]   - You're not following anyone with active streaks today")
+              console.log("[Home]   - Or the API returned an empty array")
+            }
+            
+            // Enrich streaks with user profile data
+            const enrichedStreaks = await Promise.all(
+              streaks.map(async (streak: any, idx: number) => {
+                try {
+                  console.log(`[Home] Processing streak ${idx + 1}/${streaks.length} for user_id:`, streak.user_id)
+                  if (!streak.user_id) {
+                    console.warn(`[Home] ⚠️ Streak ${idx + 1} missing user_id, skipping`)
+                    return null
+                  }
+                  
+                  // Fetch user profile
+                  console.log(`[Home] Fetching profile for user ${streak.user_id}...`)
+                  const profileResponse = await fetch(`${API_BASE_URL}v1/users/profile/get_profile/${streak.user_id}`, {
+                    method: "GET",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                  })
+
+                  if (!profileResponse.ok) {
+                    console.warn(`[Home] ⚠️ Failed to fetch profile for user ${streak.user_id}:`, profileResponse.status)
+                    return null
+                  }
+
+                  const profileResult = await profileResponse.json()
+                  const profile = profileResult?.data || profileResult
+                  console.log(`[Home] ✅ Profile fetched for user ${streak.user_id}`)
+
+                  // Fetch profile picture
+                  let profilePicture: string | null = null
+                  try {
+                    const pictureResponse = await fetch(`/api/user/profile/pfp/${streak.user_id}/raw`, {
+                      method: "GET",
+                      headers: {
+                        "Accept": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                    })
+
+                    if (pictureResponse.ok) {
+                      const pictureData = await pictureResponse.json()
+                      if (pictureData && !pictureData.default && pictureData.dataUrl) {
+                        profilePicture = pictureData.dataUrl
+                        console.log(`[Home] ✅ Profile picture fetched for user ${streak.user_id}`)
+                      }
+                    }
+                  } catch (error) {
+                    console.warn(`[Home] ⚠️ Error fetching picture for user ${streak.user_id}:`, error)
+                  }
+
+                  const firstName = profile?.firstName || ""
+                  const lastName = profile?.lastName || ""
+                  const name = [firstName, lastName].filter(Boolean).join(" ") || "User"
+
+                  console.log(`[Home] ✅ Enriched streak for user ${streak.user_id} (${name})`)
+                  return {
+                    ...streak,
+                    type: 'streak_feed',
+                    user: {
+                      id: streak.user_id,
+                      name,
+                      image: profilePicture,
+                    },
+                  }
+                } catch (error) {
+                  console.error(`[Home] ❌ Error enriching streak ${idx + 1}:`, error)
+                  return null
+                }
+              })
+            )
+            validStreaks = enrichedStreaks.filter((s: any) => s !== null)
+            console.log("[Home] ✅ Valid enriched streaks:", validStreaks.length)
+            setStreaksFeed(validStreaks)
+            // Cache raw streaks data
+            setCachedFeed(FEED_CACHE_KEYS.streaks, streaks, today)
+            console.log("[Home] ✅ Streaks feed state updated")
+          } catch (error) {
+            console.error("[Home] ❌ Error parsing streaks feed response:", error)
+          }
+        } else {
+          const errorText = await streaksResponse.text().catch(() => "Unknown error")
+          console.error("[Home] ❌ Failed to fetch streaks feed:", streaksResponse.status, errorText)
+          setStreaksFeed([])
+        }
+
+        // Process CV feed
+        if (cvResponse.ok) {
+          try {
+            const cvData = await cvResponse.json()
+            const cvs = cvData?.data || []
+            
+            // Enrich CV scores with user profile data
+            const enrichedCvs = await Promise.all(
+              cvs.map(async (cv: any, idx: number) => {
+                try {
+                  if (!cv.user_id) {
+                    return null
+                  }
+                  
+                  // Fetch user profile
+                  const profileResponse = await fetch(`${API_BASE_URL}v1/users/profile/get_profile/${cv.user_id}`, {
+                    method: "GET",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                  })
+
+                  if (!profileResponse.ok) {
+                    return null
+                  }
+
+                  const profileResult = await profileResponse.json()
+                  const profile = profileResult?.data || profileResult
+
+                  // Fetch profile picture
+                  let profilePicture: string | null = null
+                  try {
+                    const pictureResponse = await fetch(`/api/user/profile/pfp/${cv.user_id}/raw`, {
+                      method: "GET",
+                      headers: {
+                        "Accept": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                    })
+
+                    if (pictureResponse.ok) {
+                      const pictureData = await pictureResponse.json()
+                      if (pictureData && !pictureData.default && pictureData.dataUrl) {
+                        profilePicture = pictureData.dataUrl
+                      }
+                    }
+                  } catch (error) {
+                    // Silent fail
+                  }
+
+                  const firstName = profile?.firstName || ""
+                  const lastName = profile?.lastName || ""
+                  const name = [firstName, lastName].filter(Boolean).join(" ") || "User"
+
+                  // Get title from resume or bio
+                  let title = ""
+                  if (profile?.resume?.basics?.headline) {
+                    title = profile.resume.basics.headline
+                  } else if (profile?.bio) {
+                    title = profile.bio
+                  } else if (profile?.resume?.experience?.[0]) {
+                    const exp = profile.resume.experience[0]
+                    title = `${exp.title || ""}${exp.company ? ` at ${exp.company}` : ""}`.trim()
+                  }
+
+                  return {
+                    ...cv,
+                    type: 'cv_feed',
+                    user: {
+                      id: cv.user_id,
+                      name,
+                      title,
+                      image: profilePicture,
+                    },
+                  }
+                } catch (error) {
+                  return null
+                }
+              })
+            )
+            validCvs = enrichedCvs.filter((c: any) => c !== null)
+            setCvFeed(validCvs)
+            // Cache raw CV data
+            setCachedFeed(FEED_CACHE_KEYS.cv, cvs)
+          } catch (error) {
+            // Silent fail
+          }
+        } else {
+          setCvFeed([])
+        }
+
+        // Cache enriched data for faster subsequent loads (only if we have data)
+        if (validChallenges.length > 0 || validStreaks.length > 0 || validCvs.length > 0) {
+          const enrichedData = {
+            challenges: validChallenges,
+            streaks: validStreaks,
+            cv: validCvs,
+          }
+          setCachedFeed(FEED_CACHE_KEYS.enriched, enrichedData, today)
+        }
+      } catch (error) {
+        // Silent fail
+      } finally {
+        setIsLoadingFeed(false)
+      }
+    }
+
+    // Check if we should force refresh (e.g., user explicitly requested)
+    const urlParams = new URLSearchParams(window.location.search)
+    const forceRefresh = urlParams.get('refresh') === 'true'
+    
+    fetchFeedData(forceRefresh)
+
+    // Listen for manual refresh requests
+    const handleRefresh = () => {
+      fetchFeedData(true)
+    }
+    window.addEventListener('refresh-feed', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refresh-feed', handleRefresh)
+    }
+  }, [isAuthorized])
 
   const toggleLike = (postId: number) => {
     if (likedPosts.includes(postId)) {
@@ -577,7 +1097,6 @@ export default function HomePage() {
     }
     
     // In a real app, this would create a new post and add it to the feed
-    console.log("Creating post:", { type: activePostType, content: postContent })
     
     // Reset form
     setActivePostType(null)
@@ -606,16 +1125,90 @@ export default function HomePage() {
     setShowOnboarding(false)
   }
 
-  // Mix posts with suggestion cards for natural feed integration
+  // Mock data for suggestions and progress cards that appear in feed
+  const suggestionCards = [
+    {
+      id: "suggestion-1",
+      type: "network_suggestion",
+      title: "Connect with High Achievers",
+      subtitle: "People you may know",
+      suggestions: networkSuggestions.slice(0, 2),
+    },
+    {
+      id: "progress-1",
+      type: "progress_update",
+      title: "Your Progress This Week",
+      subtitle: "Keep up the momentum!",
+      stats: {
+        xpGained: 450,
+        tasksCompleted: 8,
+        streakDays: 12,
+        levelProgress: 75,
+        nextLevel: 6,
+      },
+    },
+    {
+      id: "challenge-1",
+      type: "challenge_suggestion",
+      title: "Weekly Challenge",
+      subtitle: "Earn bonus XP",
+      challenge: {
+        title: "Complete 3 Skill Assessments",
+        description: "Take assessments in your chosen field to earn 200 XP",
+        xpReward: 200,
+        deadline: "3 days left",
+        participants: 1247,
+      },
+    },
+  ]
+
+  // Mix API feed data with suggestion cards for natural feed integration
   const createMixedFeed = () => {
-    const mixedFeed = []
-    let postIndex = 0
-    let suggestionIndex = 0
+    const mixedFeed: any[] = []
+    
+    // Combine all feed items (only real API data, no mock posts)
+    const allFeedItems: any[] = []
+    
+    // Add challenges feed items
+    challengesFeed.forEach((challenge, idx) => {
+      allFeedItems.push({
+        type: 'challenge_feed',
+        data: challenge,
+        id: `challenge-feed-${challenge.id || idx}`,
+        timestamp: new Date().toISOString(),
+      })
+    })
+    
+    // Add streaks feed items
+    streaksFeed.forEach((streak, idx) => {
+      allFeedItems.push({
+        type: 'streak_feed',
+        data: streak,
+        id: `streak-feed-${streak.user_id || idx}`,
+        timestamp: new Date().toISOString(),
+      })
+    })
+    
+    // Add CV feed items
+    cvFeed.forEach((cv, idx) => {
+      allFeedItems.push({
+        type: 'cv_feed',
+        data: cv,
+        id: `cv-feed-${cv.user_id || idx}`,
+        timestamp: new Date().toISOString(),
+      })
+    })
+    
+    // Sort by timestamp (newest first)
+    allFeedItems.sort((a, b) => {
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    })
     
     // Insert suggestion cards at strategic positions
-    const suggestionPositions = [1, 3, 5] // After 1st, 3rd, and 5th posts
+    const suggestionPositions = [2, 5, 8] // After 2nd, 5th, and 8th items
+    let suggestionIndex = 0
     
-    for (let i = 0; i < posts.length + suggestionCards.length; i++) {
+    for (let i = 0; i < allFeedItems.length + suggestionCards.length; i++) {
       if (suggestionPositions.includes(i) && suggestionIndex < suggestionCards.length) {
         mixedFeed.push({
           type: 'suggestion',
@@ -623,14 +1216,10 @@ export default function HomePage() {
           id: `suggestion-${suggestionIndex}`,
         })
         suggestionIndex++
-      } else if (postIndex < posts.length && posts[postIndex]) {
-        const post = posts[postIndex]!
-        mixedFeed.push({
-          type: 'post',
-          data: post,
-          id: `post-${post.id}`,
-        })
-        postIndex++
+      }
+      
+      if (i < allFeedItems.length) {
+        mixedFeed.push(allFeedItems[i])
       }
     }
     
@@ -638,6 +1227,20 @@ export default function HomePage() {
   }
 
   const mixedFeed = createMixedFeed()
+
+  // Feed summary tracking (no logs)
+  useEffect(() => {
+    // Feed data updated
+  }, [challengesFeed, streaksFeed, cvFeed, mixedFeed.length])
+
+  // Don't render until auth check is complete
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#2bbcff] border-t-transparent" />
+      </div>
+    )
+  }
 
   // Calculate progress percentage
   const progressPercentage = (userStats.xp / userStats.nextLevelXp) * 100
@@ -1029,177 +1632,201 @@ export default function HomePage() {
 
             {/* Feed Tabs */}
             <Tabs defaultValue="feed" className="w-full">
-              <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-5 sm:mb-6 transition-all duration-300 ease-in-out">
-                <TabsTrigger
-                  value="feed"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
+              <div className="flex items-center justify-between mb-5 sm:mb-6">
+                <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 transition-all duration-300 ease-in-out">
+                  <TabsTrigger
+                    value="feed"
+                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
+                  >
+                    Feed
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="network"
+                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
+                  >
+                    Network
+                  </TabsTrigger>
+                </TabsList>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    clearFeedCache()
+                    window.dispatchEvent(new Event('refresh-feed'))
+                  }}
+                  disabled={isLoadingFeed}
+                  className="text-zinc-400 hover:text-white hover:bg-zinc-800 h-8 w-8 p-0"
+                  title="Refresh feed"
                 >
-                  Feed
-                </TabsTrigger>
-                <TabsTrigger
-                  value="network"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
-                >
-                  Network
-                </TabsTrigger>
-                <TabsTrigger
-                  value="achievements"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all duration-300 ease-in-out text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2"
-                >
-                  Achievements
-                </TabsTrigger>
-              </TabsList>
+                  <RefreshCw className={`h-4 w-4 ${isLoadingFeed ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
 
               <TabsContent value="feed" className="space-y-5">
-                {/* Mixed Feed - Posts and Suggestions */}
-                {mixedFeed.map((item, index) => (
-                  <AnimatedSection key={item.id} delay={0.1 + index * 0.05}>
-                    {item.type === 'post' && item.data && 'user' in item.data ? (
-                      // Achievement Post
-                    <EnhancedCard
-                      variant="default"
-                      hover="lift"
-                      className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out rounded-xl"
-                    >
-                      <EnhancedCardHeader className="p-3.5 sm:p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2.5">
-                            <Avatar className="h-9 w-9 interactive">
-                                <AvatarImage src={item.data.user.image} />
-                                <AvatarFallback className="bg-zinc-800">{item.data.user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-white text-sm">{item.data.user.name}</span>
-                                  {item.data.user.verified && (
-                                    <svg className="h-3.5 w-3.5 text-blue-400 fill-current" viewBox="0 0 24 24">
-                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                                  </svg>
-                                )}
-                                  <Badge className="bg-blue-950 text-blue-300 border-blue-800 text-[10px]">
-                                    Level {item.data.user.level}
-                                  </Badge>
-                              </div>
-                                <div className="text-xs text-zinc-400 mt-0.5">{item.data.user.title}</div>
-                                <div className="text-xs text-zinc-500 mt-0.5">{item.data.timestamp}</div>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-zinc-400 rounded-full hover:bg-zinc-800/50 hover:text-white"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </EnhancedCardHeader>
-                      <EnhancedCardContent className="px-3.5 sm:px-6 pb-3.5">
-                          <p className="text-xs sm:text-base mb-4 text-white leading-relaxed">{item.data.content.text}</p>
-
-                          {/* Achievement Badge with XP */}
-                          {item.data.content.type && (
-                          <div
-                            className={cn(
-                              "p-3 rounded-lg transition-all duration-300 hover:shadow-md border",
-                                item.data.content.type === "resume_score"
-                                  ? "bg-emerald-900/20 border-emerald-800/40 shadow-[0_0_8px_0_rgba(16,185,129,0.2)]"
-                                  : item.data.content.type === "challenge"
-                                    ? "bg-fuchsia-900/20 border-fuchsia-800/40 shadow-[0_0_8px_0_rgba(217,70,239,0.2)]"
-                                  : item.data.content.type === "streak"
-                                    ? "bg-yellow-900/20 border-yellow-800/40 shadow-[0_0_8px_0_rgba(234,179,8,0.2)]"
-                                  : item.data.content.type === "leaderboard"
-                                    ? "bg-orange-900/20 border-orange-800/40 shadow-[0_0_8px_0_rgba(249,115,22,0.2)]"
-                                  : item.data.content.type === "resume_milestone"
-                                    ? "bg-indigo-900/20 border-indigo-800/40 shadow-[0_0_8px_0_rgba(99,102,241,0.2)]"
-                                  : "bg-green-900/20 border-green-800/40 shadow-[0_0_8px_0_rgba(34,197,94,0.2)]",
-                              )}
+                {/* Mixed Feed - Posts, API Feeds, and Suggestions */}
+                {isLoadingFeed && mixedFeed.length === 0 ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                    <span className="ml-2 text-sm text-zinc-400">Loading feed...</span>
+                  </div>
+                ) : mixedFeed.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-zinc-400">No feed items available. Follow more users to see their activity!</p>
+                    <p className="text-xs text-zinc-500 mt-2">Check the Network tab to find people to follow.</p>
+                  </div>
+                ) : (
+                  mixedFeed.map((item, index) => {
+                      return (
+                    <AnimatedSection key={item.id} delay={0.1 + index * 0.05}>
+                      {/* Challenge Feed Item */}
+                      {item.type === 'challenge_feed' && item.data ? (
+                            <EnhancedCard
+                              variant="default"
+                              hover="lift"
+                              className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out rounded-xl"
                             >
-                              <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                  {item.data.content.type === "resume_score" && (
-                                    <BarChart2 className="h-4 w-4 mr-2 text-emerald-400" />
-                              )}
-                                  {item.data.content.type === "challenge" && (
-                                <Award className="h-4 w-4 mr-2 text-fuchsia-400" />
-                              )}
-                                  {item.data.content.type === "streak" && (
-                                    <Zap className="h-4 w-4 mr-2 text-yellow-400" />
-                                  )}
-                                  {item.data.content.type === "leaderboard" && (
-                                    <Trophy className="h-4 w-4 mr-2 text-orange-400" />
-                                  )}
-                                  {item.data.content.type === "resume_milestone" && (
-                                    <BarChart2 className="h-4 w-4 mr-2 text-indigo-400" />
-                              )}
-                              <div>
-                                <p className="font-bold text-xs text-white">
-                                      {item.data.content.achievement}
-                                    </p>
-                                    {item.data.content.streakDays && (
-                                      <p className="text-[10px] text-zinc-400">{item.data.content.streakDays} days streak</p>
-                                    )}
-                                    {/* Additional info for specific types */}
-                                    {item.data.content.type === "resume_score" && (
-                                      <div className="flex gap-2 mt-0.5">
-                                        <span className="text-[10px] text-emerald-300 font-medium">
-                                          Score: {item.data.content.scoreChange}
-                                        </span>
-                                        <span className="text-[10px] text-blue-300">
-                                          {item.data.content.leaderboardChange}
-                                        </span>
-                              </div>
-                                    )}
-                                    {item.data.content.type === "leaderboard" && (
-                                      <div className="flex gap-2 mt-0.5">
-                                        <span className="text-[10px] text-orange-300 font-medium">
-                                          Rank: {item.data.content.rank}
-                                        </span>
-                                        <span className="text-[10px] text-zinc-400">
-                                          {item.data.content.category}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {item.data.content.type === "resume_milestone" && (
-                                      <div className="flex gap-2 mt-0.5">
-                                        <span className="text-[10px] text-indigo-300 font-medium">
-                                          Score: {item.data.content.score}
-                                        </span>
-                                        <span className="text-[10px] text-purple-300">
-                                          {item.data.content.percentile}
-                                        </span>
-                                      </div>
-                                    )}
+                              <EnhancedCardHeader className="p-3.5 sm:p-6">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Award className="h-5 w-5 text-fuchsia-400" />
+                                    <div>
+                                      <div className="font-bold text-white text-sm">Challenge Completed</div>
+                                      <div className="text-xs text-zinc-400 mt-0.5">Verified challenge from someone you follow</div>
+                                    </div>
                                   </div>
                                 </div>
-                                <Badge className="bg-green-900/50 text-green-300 border-green-800 text-[9px]">
-                                  +{item.data.content.xpGained} XP
-                                </Badge>
+                              </EnhancedCardHeader>
+                              <EnhancedCardContent className="px-3.5 sm:px-6 pb-3.5">
+                                <div className="bg-fuchsia-900/20 border border-fuchsia-800/40 rounded-lg p-3">
+                                  <h3 className="font-bold text-white text-sm mb-1">{item.data.title || "Challenge"}</h3>
+                                  {item.data.description && (
+                                    <p className="text-xs text-zinc-300 mb-2">{item.data.description}</p>
+                                  )}
+                                  {item.data.difficulty && (
+                                    <Badge className={cn(
+                                      "text-[10px] mt-2",
+                                      item.data.difficulty === "easy" ? "bg-green-900/50 text-green-300 border-green-800" :
+                                      item.data.difficulty === "medium" ? "bg-yellow-900/50 text-yellow-300 border-yellow-800" :
+                                      "bg-red-900/50 text-red-300 border-red-800"
+                                    )}>
+                                      {item.data.difficulty.charAt(0).toUpperCase() + item.data.difficulty.slice(1)}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </EnhancedCardContent>
+                            </EnhancedCard>
+                      ) : /* Streak Feed Item */
+                      item.type === 'streak_feed' && item.data && item.data.user ? (
+                        <EnhancedCard
+                          variant="default"
+                          hover="lift"
+                          className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out rounded-xl"
+                        >
+                          <EnhancedCardHeader className="p-3.5 sm:p-6">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2.5">
+                                <Avatar 
+                                  className="h-9 w-9 interactive cursor-pointer"
+                                  onClick={() => router.push(`/profile?userId=${item.data.user.id}`)}
+                                >
+                                  <AvatarImage src={item.data.user.image || undefined} />
+                                  <AvatarFallback className="bg-zinc-800">{item.data.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span 
+                                      className="font-bold text-white text-sm cursor-pointer hover:text-blue-400"
+                                      onClick={() => router.push(`/profile?userId=${item.data.user.id}`)}
+                                    >
+                                      {item.data.user.name}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-zinc-400 mt-0.5">Active streak</div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        )}
-
-                      </EnhancedCardContent>
-                      <EnhancedCardFooter className="px-3.5 pb-3.5 sm:px-6 sm:pb-6 pt-0">
-                        <div className="flex items-center">
-                          <EnhancedButton
-                            variant="ghost"
-                            size="sm"
-                            rounded="full"
-                            className={cn(
-                              "transition-all duration-300 px-3 py-1.5",
-                                likedPosts.includes(Number(item.data.id)) ? "text-blue-400 bg-blue-900/20" : "text-zinc-400 hover:text-blue-400 hover:bg-zinc-800/50",
-                            )}
-                              onClick={() => item.data && toggleLike(Number(item.data.id))}
-                          >
-                            <ThumbsUp
-                                className={cn("h-3.5 w-3.5 mr-1.5", likedPosts.includes(Number(item.data.id)) && "fill-current")}
-                            />
-                              <span className="text-xs">{item.data.likes}</span>
-                          </EnhancedButton>
-                        </div>
-                      </EnhancedCardFooter>
-                    </EnhancedCard>
-                    ) : item.type === 'suggestion' && item.data && 'title' in item.data ? (
+                          </EnhancedCardHeader>
+                          <EnhancedCardContent className="px-3.5 sm:px-6 pb-3.5">
+                            <div className="bg-yellow-900/20 border border-yellow-800/40 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Zap className="h-5 w-5 text-yellow-400" />
+                                <span className="font-bold text-white text-lg">{item.data.current_streak}</span>
+                                <span className="text-xs text-zinc-400">days streak</span>
+                              </div>
+                              <p className="text-xs text-zinc-300">Keep up the amazing work! 🔥</p>
+                            </div>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                      ) : /* CV Feed Item */
+                      item.type === 'cv_feed' && item.data && item.data.user ? (
+                        <EnhancedCard
+                          variant="default"
+                          hover="lift"
+                          className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out rounded-xl"
+                        >
+                          <EnhancedCardHeader className="p-3.5 sm:p-6">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2.5">
+                                <Avatar 
+                                  className="h-9 w-9 interactive cursor-pointer"
+                                  onClick={() => router.push(`/profile?userId=${item.data.user.id}`)}
+                                >
+                                  <AvatarImage src={item.data.user.image || undefined} />
+                                  <AvatarFallback className="bg-zinc-800">{item.data.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span 
+                                      className="font-bold text-white text-sm cursor-pointer hover:text-blue-400"
+                                      onClick={() => router.push(`/profile?userId=${item.data.user.id}`)}
+                                    >
+                                      {item.data.user.name}
+                                    </span>
+                                  </div>
+                                  {item.data.user.title && (
+                                    <div className="text-xs text-zinc-400 mt-0.5">{item.data.user.title}</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </EnhancedCardHeader>
+                          <EnhancedCardContent className="px-3.5 sm:px-6 pb-3.5">
+                            <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <BarChart2 className="h-5 w-5 text-emerald-400" />
+                                <span className="font-bold text-white text-lg">{item.data.overall_score?.toFixed(1) || 'N/A'}</span>
+                                <span className="text-xs text-zinc-400">Resume Score</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                {item.data.projects_score !== undefined && (
+                                  <div className="text-xs">
+                                    <span className="text-zinc-400">Projects: </span>
+                                    <span className="text-emerald-300 font-medium">{item.data.projects_score.toFixed(1)}</span>
+                                  </div>
+                                )}
+                                {item.data.experience_score !== undefined && (
+                                  <div className="text-xs">
+                                    <span className="text-zinc-400">Experience: </span>
+                                    <span className="text-emerald-300 font-medium">{item.data.experience_score.toFixed(1)}</span>
+                                  </div>
+                                )}
+                                {item.data.education_score !== undefined && (
+                                  <div className="text-xs">
+                                    <span className="text-zinc-400">Education: </span>
+                                    <span className="text-emerald-300 font-medium">{item.data.education_score.toFixed(1)}</span>
+                                  </div>
+                                )}
+                                {item.data.skills_score !== undefined && (
+                                  <div className="text-xs">
+                                    <span className="text-zinc-400">Skills: </span>
+                                    <span className="text-emerald-300 font-medium">{item.data.skills_score.toFixed(1)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                      ) : item.type === 'suggestion' && item.data && 'title' in item.data ? (
                       // Suggestion Card
                       <EnhancedCard
                         variant="gradient"
@@ -1320,134 +1947,91 @@ export default function HomePage() {
                       </EnhancedCard>
                     ) : null}
                   </AnimatedSection>
-                ))}
+                    )
+                  })
+                )}
               </TabsContent>
 
               <TabsContent value="network" className="space-y-3">
                 <h3 className="text-sm font-extrabold mb-3 bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">People You May Know</h3>
-                {networkSuggestions.map((person, index) => (
-                  <AnimatedSection key={person.id} delay={0.1 + index * 0.08}>
-                    <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
-                      <EnhancedCardContent className="p-3">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="h-9 w-9 interactive">
-                            <AvatarImage src={person.image} />
-                            <AvatarFallback className="bg-zinc-800">{person.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-1.5">
-                            <h4 className="font-bold text-white text-xs">{person.name}</h4>
-                              <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
-                                Level {person.level}
-                              </Badge>
-                            </div>
-                            <p className="text-[10px] text-zinc-400 mt-0.5">{person.title}</p>
-                            <p className="text-[9px] text-zinc-500 mt-0.5">{person.mutualConnections} mutual connections</p>
-                          </div>
-                          <EnhancedButton
-                            size="sm"
-                            rounded="full"
-                            variant="gradient"
-                            animation="shimmer"
-                            className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)] text-xs px-3 py-1"
-                            leftIcon={<Plus className="h-3 w-3" />}
-                          >
-                            Connect
-                          </EnhancedButton>
-                        </div>
-                      </EnhancedCardContent>
-                    </EnhancedCard>
-                  </AnimatedSection>
-                ))}
-                <div className="text-center mt-4">
-                  <EnhancedButton
-                    variant="outline"
-                    rounded="full"
-                    className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:border-blue-500/50 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] text-xs px-5 py-2"
-                  >
-                    View More Suggestions
-                  </EnhancedButton>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="achievements" className="space-y-3">
-                <AnimatedSection delay={0.1} staggerChildren staggerDelay={0.05}>
-                  <h3 className="text-sm font-extrabold mb-3 flex items-center">
-                    <Award className="h-4 w-4 mr-2 text-blue-400" />
-                    <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">Your Recent Achievements</span>
-                  </h3>
-
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
-                    <EnhancedCardContent className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <div className="bg-blue-950 p-2 rounded-md">
-                          <Award className="h-4 w-4 text-blue-400" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="font-bold text-white text-xs">Completed Advanced React Course</h3>
-                            <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px] whitespace-nowrap">
-                              +500 XP
-                            </Badge>
-                          </div>
-                          <p className="text-[10px] text-zinc-400 mt-1">Earned certificate of completion</p>
-                          <div className="text-[9px] text-zinc-500 mt-0.5">2 weeks ago</div>
-                        </div>
-                      </div>
-                    </EnhancedCardContent>
-                  </EnhancedCard>
-
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
-                    <EnhancedCardContent className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <div className="bg-purple-950 p-2 rounded-md">
-                          <Trophy className="h-4 w-4 text-purple-400" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="font-bold text-white text-xs">Promoted to Senior Developer</h3>
-                            <Badge className="bg-purple-900/50 text-purple-300 border-purple-800 text-[10px] whitespace-nowrap">
-                              +750 XP
-                            </Badge>
-                          </div>
-                          <p className="text-[10px] text-zinc-400 mt-1">Career milestone achievement</p>
-                          <div className="text-[9px] text-zinc-500 mt-0.5">1 month ago</div>
-                        </div>
-                      </div>
-                    </EnhancedCardContent>
-                  </EnhancedCard>
-
-                  <EnhancedCard variant="gradient" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
-                    <EnhancedCardContent className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <div className="bg-green-950 p-2 rounded-md">
-                          <FileText className="h-4 w-4 text-green-400" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="font-bold text-white text-xs">Published Technical Article</h3>
-                            <Badge className="bg-green-900/40 text-green-300 border-green-800/40 text-[10px] whitespace-nowrap">
-                              +300 XP
-                            </Badge>
-                          </div>
-                          <p className="text-[10px] text-zinc-400 mt-1">10,000+ views on Medium</p>
-                          <div className="text-[9px] text-zinc-500 mt-0.5">2 months ago</div>
-                        </div>
-                      </div>
-                    </EnhancedCardContent>
-                  </EnhancedCard>
-
-                  <div className="text-center mt-4">
-                    <EnhancedButton
-                      variant="default"
-                      rounded="full"
-                      className="bg-blue-600 hover:bg-blue-700 text-xs px-5 py-2"
-                      onClick={() => router.push("/profile")}
-                    >
-                      View All Achievements
-                    </EnhancedButton>
+                {isLoadingSuggestions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                    <span className="ml-2 text-sm text-zinc-400">Loading suggestions...</span>
                   </div>
-                </AnimatedSection>
+                ) : networkSuggestions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-zinc-400">No suggestions available at the moment.</p>
+                  </div>
+                ) : (
+                  <>
+                    {networkSuggestions.map((person, index) => (
+                      <AnimatedSection key={person.userId} delay={0.1 + index * 0.08}>
+                        <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800 transition-all duration-300 ease-in-out rounded-xl">
+                          <EnhancedCardContent className="p-3">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar 
+                                className="h-9 w-9 interactive cursor-pointer"
+                                onClick={() => router.push(`/profile?userId=${person.userId}`)}
+                              >
+                                <AvatarImage src={person.image || undefined} />
+                                <AvatarFallback className="bg-zinc-800">{person.name.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <h4 
+                                    className="font-bold text-white text-xs cursor-pointer hover:text-blue-400"
+                                    onClick={() => router.push(`/profile?userId=${person.userId}`)}
+                                  >
+                                    {person.name}
+                                  </h4>
+                                  {person.level !== undefined && (
+                                    <Badge className="bg-blue-900/50 text-blue-300 border-blue-800 text-[10px]">
+                                      Level {person.level}
+                                    </Badge>
+                                  )}
+                                  {person.resumeScore !== null && person.resumeScore !== undefined && (
+                                    <Badge className="bg-emerald-900/50 text-emerald-300 border-emerald-800 text-[10px]">
+                                      {person.resumeScore} Score
+                                    </Badge>
+                                  )}
+                                </div>
+                                {person.title && (
+                                  <p className="text-[10px] text-zinc-400 mt-0.5">{person.title}</p>
+                                )}
+                              </div>
+                              <EnhancedButton
+                                size="sm"
+                                rounded="full"
+                                variant="gradient"
+                                animation="shimmer"
+                                className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_8px_0_rgba(80,0,255,0.4)] text-xs px-3 py-1"
+                                leftIcon={<Plus className="h-3 w-3" />}
+                                onClick={() => router.push(`/profile?userId=${person.userId}`)}
+                              >
+                                Connect
+                              </EnhancedButton>
+                            </div>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                      </AnimatedSection>
+                    ))}
+                    <div className="text-center mt-4">
+                      <EnhancedButton
+                        variant="outline"
+                        rounded="full"
+                        className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 hover:border-blue-500/50 hover:shadow-[0_0_8px_0_rgba(80,0,255,0.3)] text-xs px-5 py-2"
+                        onClick={() => {
+                          // Refresh suggestions
+                          const event = new Event('refresh-suggestions')
+                          window.dispatchEvent(event)
+                        }}
+                      >
+                        View More Suggestions
+                      </EnhancedButton>
+                    </div>
+                  </>
+                )}
               </TabsContent>
             </Tabs>
           </div>

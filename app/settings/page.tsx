@@ -86,6 +86,8 @@ export default function SettingsPage() {
   const [personalStatus, setPersonalStatus] = useState<StatusMessage | null>(null)
   const [professionalStatus, setProfessionalStatus] = useState<StatusMessage | null>(null)
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>("")
+  const [selectedProfilePictureFile, setSelectedProfilePictureFile] = useState<File | null>(null)
+  const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false)
   const [userId, setUserId] = useState<number | null>(null)
   const [cvProfile, setCvProfile] = useState<any>(null)
   const [isLoadingProfessionalData, setIsLoadingProfessionalData] = useState(true)
@@ -642,7 +644,7 @@ export default function SettingsPage() {
     }
   }
 
-  const handleProfilePictureUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePictureUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -663,6 +665,10 @@ export default function SettingsPage() {
       return
     }
 
+    // Store the file for upload
+    setSelectedProfilePictureFile(file)
+
+    // Show preview immediately
     const reader = new FileReader()
     reader.onload = () => {
       const result = reader.result as string
@@ -673,7 +679,6 @@ export default function SettingsPage() {
       } catch (error) {
         console.warn("Unable to store picture locally", error)
       }
-      setPersonalStatus(null)
     }
     reader.onerror = () => {
       setPersonalStatus({
@@ -682,14 +687,121 @@ export default function SettingsPage() {
       })
     }
     reader.readAsDataURL(file)
+
+    // Upload the file immediately
+    setIsUploadingProfilePicture(true)
+    setPersonalStatus(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        throw new Error("Authentication required")
+      }
+
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/user/profile/pfp", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Don't set Content-Type - browser will set it with boundary for FormData
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to upload profile picture" }))
+        throw new Error(errorData.error || `Failed to upload profile picture: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      setPersonalStatus({
+        type: "success",
+        message: "Profile picture uploaded successfully!",
+      })
+
+      // Clear profile picture cache so profile page fetches fresh image
+      if (userId && typeof window !== 'undefined') {
+        const cacheKey = `profile.picture.${userId}`
+        localStorage.removeItem(cacheKey)
+        console.log("[Settings] Cleared profile picture cache after upload")
+      }
+
+      // Refresh profile to get the new picture URL
+      await fetchProfile()
+
+      // Clear the selected file after successful upload
+      setSelectedProfilePictureFile(null)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload profile picture"
+      setPersonalStatus({
+        type: "error",
+        message: errorMessage,
+      })
+    } finally {
+      setIsUploadingProfilePicture(false)
+    }
   }
 
-  const handleRemoveProfilePicture = () => {
-    setProfilePicturePreview("")
-    const pictureKey = getProfilePictureKey()
-    localStorage.removeItem(pictureKey)
-    if (personalStatus?.type === "error") {
-      setPersonalStatus(null)
+  const handleRemoveProfilePicture = async () => {
+    const token = getStoredAccessToken()
+    if (!token) {
+      setPersonalStatus({
+        type: "error",
+        message: "Authentication required. Please log in again.",
+      })
+      return
+    }
+
+    setIsUploadingProfilePicture(true)
+    setPersonalStatus(null)
+
+    try {
+      const response = await fetch("/api/user/profile/pfp", {
+        method: "DELETE",
+        headers: {
+          "Accept": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to delete profile picture" }))
+        throw new Error(errorData.error || `Failed to delete profile picture: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      setPersonalStatus({
+        type: "success",
+        message: "Profile picture removed successfully!",
+      })
+
+      // Clear profile picture cache
+      if (userId && typeof window !== 'undefined') {
+        const cacheKey = `profile.picture.${userId}`
+        localStorage.removeItem(cacheKey)
+        console.log("[Settings] Cleared profile picture cache after deletion")
+      }
+
+      // Clear local state
+      setProfilePicturePreview("")
+      setSelectedProfilePictureFile(null)
+      const pictureKey = getProfilePictureKey()
+      localStorage.removeItem(pictureKey)
+
+      // Refresh profile to reflect the change
+      await fetchProfile()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete profile picture"
+      setPersonalStatus({
+        type: "error",
+        message: errorMessage,
+      })
+    } finally {
+      setIsUploadingProfilePicture(false)
     }
   }
 
@@ -1072,7 +1184,11 @@ export default function SettingsPage() {
                                 </Label>
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-2">
                                   <div className="relative h-20 w-20 rounded-full overflow-hidden border border-zinc-700 bg-zinc-900 flex items-center justify-center">
-                                    {profilePicturePreview ? (
+                                    {isUploadingProfilePicture ? (
+                                      <div className="h-full w-full flex items-center justify-center bg-zinc-800/50">
+                                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                                      </div>
+                                    ) : profilePicturePreview ? (
                                       <img
                                         src={profilePicturePreview}
                                         alt="Profile preview"
@@ -1084,27 +1200,35 @@ export default function SettingsPage() {
                                       </span>
                                     )}
                                   </div>
-                                  <div className="flex-1">
-                                    <Input
-                                      id="profilePictureUpload"
-                                      type="file"
-                                      accept="image/*"
-                                      capture="environment"
-                                      onChange={handleProfilePictureUpload}
-                                      className="bg-black/40 border-zinc-700 text-white file:bg-transparent file:border-0 file:text-zinc-400 file:text-xs"
-                                    />
-                                    <p className="text-[10px] text-zinc-500 mt-1">
-                                      Choose an image from your gallery or take a new photo (max 5MB).
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex gap-2">
+                                      <Input
+                                        id="profilePictureUpload"
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        onChange={handleProfilePictureUpload}
+                                        disabled={isUploadingProfilePicture}
+                                        className="flex-1 bg-black/40 border-zinc-700 text-white file:bg-transparent file:border-0 file:text-zinc-400 file:text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                                      />
+                                      {profilePicturePreview && !isUploadingProfilePicture && (
+                                        <EnhancedButton
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          rounded="full"
+                                          className="border-red-600/40 text-red-400 hover:bg-red-900/20 hover:border-red-500/60 flex-shrink-0"
+                                          onClick={handleRemoveProfilePicture}
+                                        >
+                                          Remove
+                                        </EnhancedButton>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500">
+                                      {isUploadingProfilePicture 
+                                        ? "Processing..." 
+                                        : "Choose an image from your gallery or take a new photo (max 5MB)."}
                                     </p>
-                                    {profilePicturePreview && (
-                                      <button
-                                        type="button"
-                                        onClick={handleRemoveProfilePicture}
-                                        className="mt-2 text-[10px] text-red-400 hover:text-red-300 underline-offset-2 hover:underline"
-                                      >
-                                        Remove photo
-                                      </button>
-                                    )}
                                   </div>
                                 </div>
                               </div>

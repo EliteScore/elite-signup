@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { handleLogout } from "@/lib/logout"
+import { getStoredAccessToken } from "@/lib/auth-storage"
 
 interface EnhancedNavProps {
   theme?: "light" | "dark"
@@ -32,6 +33,7 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
   const [notificationCount, setNotificationCount] = useState(3)
   const [messageCount, setMessageCount] = useState(2)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [profilePicture, setProfilePicture] = useState<string | null>(null)
 
   // Check if user is on login or signup page
   const isAuthPage = pathname === "/login" || pathname === "/signup"
@@ -42,6 +44,53 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
     // This would normally check for a valid session
     setIsLoggedIn(pathname !== "/login" && pathname !== "/signup" && pathname !== "/")
   }, [pathname])
+
+  // Fetch profile picture
+  useEffect(() => {
+    if (!isLoggedIn) return
+
+    async function fetchProfilePicture() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        // Check cache first
+        const cacheKey = 'profile_picture_cache'
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const { dataUrl, expires } = JSON.parse(cached)
+          if (expires > Date.now()) {
+            setProfilePicture(dataUrl)
+            return
+          }
+        }
+
+        const response = await fetch("/api/user/profile/pfp/raw", {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data && !data.default && data.dataUrl) {
+            setProfilePicture(data.dataUrl)
+            // Cache for 1 hour
+            localStorage.setItem(cacheKey, JSON.stringify({
+              dataUrl: data.dataUrl,
+              expires: Date.now() + 60 * 60 * 1000,
+            }))
+          }
+        }
+      } catch (error) {
+        // Ignore errors
+      }
+    }
+
+    fetchProfilePicture()
+  }, [isLoggedIn])
 
   if (!mounted) return null
 
@@ -113,6 +162,19 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
                   </Badge>
                 )}
               </Button>
+
+              {/* Profile Picture */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full hover:bg-muted p-0"
+                onClick={() => router.push("/profile")}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profilePicture || undefined} />
+                  <AvatarFallback className="bg-muted">U</AvatarFallback>
+                </Avatar>
+              </Button>
             </>
           )}
 
@@ -121,10 +183,6 @@ export function EnhancedNav({ theme = "dark", onThemeToggle }: EnhancedNavProps)
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="rounded-full h-8 gap-1 pl-1 pr-2 hover:bg-muted">
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                    <AvatarFallback className="bg-muted">U</AvatarFallback>
-                  </Avatar>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>

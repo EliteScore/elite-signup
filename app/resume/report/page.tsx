@@ -479,19 +479,19 @@ export default function ResumeReportPage() {
 
 							{/* Top Archetype Matches */}
 							{explanation.top_archetype_matches && explanation.top_archetype_matches.length > 0 && (
-								<motion.div
-									initial={{ opacity: 0, y: 20 }}
-									animate={{ opacity: 1, y: 0 }}
+							<motion.div
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
 									transition={{ delay: 0.4 }}
-								>
-									<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800 shadow-xl rounded-2xl">
-										<EnhancedCardHeader className="pb-3">
-											<EnhancedCardTitle className="text-lg sm:text-xl flex items-center gap-2">
-												<Users className="h-5 w-5 text-purple-400" />
+							>
+								<EnhancedCard variant="default" className="bg-zinc-900/80 border-zinc-800 shadow-xl rounded-2xl">
+									<EnhancedCardHeader className="pb-3">
+										<EnhancedCardTitle className="text-lg sm:text-xl flex items-center gap-2">
+											<Users className="h-5 w-5 text-purple-400" />
 												Top Career Archetype Matches
-											</EnhancedCardTitle>
-										</EnhancedCardHeader>
-										<EnhancedCardContent className="space-y-3">
+										</EnhancedCardTitle>
+									</EnhancedCardHeader>
+									<EnhancedCardContent className="space-y-3">
 											{explanation.top_archetype_matches.map((match: { name: string; match_pct: number }, index: number) => (
 												<div key={index} className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
 													<div className="flex items-center gap-3">
@@ -502,10 +502,10 @@ export default function ResumeReportPage() {
 														{match.match_pct}% match
 													</Badge>
 												</div>
-											))}
-										</EnhancedCardContent>
-									</EnhancedCard>
-								</motion.div>
+										))}
+									</EnhancedCardContent>
+								</EnhancedCard>
+							</motion.div>
 							)}
 						</TabsContent>
 
