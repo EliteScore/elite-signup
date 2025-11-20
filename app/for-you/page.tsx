@@ -75,198 +75,35 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { HelpCircle, Info, Sparkles } from "lucide-react"
 
-// Mock data for communities
-const communities = [
-  {
-    id: 1,
-    name: "Software Engineers Elite",
-    description: "A community for passionate software developers pushing the boundaries of technology",
-    image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&h=150&fit=crop",
-    members: 12547,
-    joined: true,
-    rank: 1,
-    trending: true,
-    category: "Technology",
-    created_by: undefined as number | undefined,
-    announcements: [
-  {
-    id: 1,
-        title: "Q1 2024 Coding Challenge Results",
-        content: "Congratulations to all participants! Top 10 winners will receive exclusive mentorship sessions.",
-        timestamp: "2 hours ago",
-        priority: "high",
-        pinned: true,
-        type: "achievement"
-  },
-  {
-    id: 2,
-        title: "New AI/ML Study Group Starting",
-        content: "Join our weekly study sessions focusing on advanced machine learning concepts. Starting next Monday.",
-        timestamp: "1 day ago",
-        priority: "medium",
-        pinned: false,
-        type: "event"
-  },
-  {
-    id: 3,
-        title: "Community Guidelines Updated",
-        content: "Please review the updated community guidelines to ensure a positive environment for all members.",
-        timestamp: "3 days ago",
-        priority: "low",
-        pinned: false,
-        type: "info"
-      }
-    ],
-    leaderboard: [
-      { id: 1, name: "Alex Rodriguez", image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=faces", points: 2847, badges: 12, rank: 1, streak: 45, contributions: 156 },
-      { id: 2, name: "Sarah Chen", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces", points: 2634, badges: 10, rank: 2, streak: 32, contributions: 142 },
-      { id: 3, name: "Marcus Johnson", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=faces", points: 2421, badges: 9, rank: 3, streak: 28, contributions: 134 },
-      { id: 4, name: "Elena Vasquez", image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=faces", points: 2198, badges: 8, rank: 4, streak: 24, contributions: 118 },
-      { id: 5, name: "David Kim", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=faces", points: 1987, badges: 7, rank: 5, streak: 21, contributions: 102 },
-    ],
-    membersList: [
-      { id: 1, name: "Alex Rodriguez", image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=faces", title: "Senior Software Engineer", company: "Google", joined: "2 years ago", isOnline: true, achievements: ["Top Contributor", "Mentor"] },
-      { id: 2, name: "Sarah Chen", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=faces", title: "Full Stack Developer", company: "Microsoft", joined: "1 year ago", isOnline: true, achievements: ["Innovation Award"] },
-      { id: 3, name: "Marcus Johnson", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=faces", title: "Tech Lead", company: "Amazon", joined: "3 years ago", isOnline: false, achievements: ["Leadership", "Top Performer"] },
-    ],
-    stats: {
-      totalMembers: 12547,
-      activeToday: 1847,
-      weeklyGrowth: 8.5,
-      monthlyActivity: 94.2
-    }
-  },
-  {
-    id: 2,
-    name: "Product Managers United",
-    description: "Strategic thinking and product excellence for the next generation of product leaders",
-    image: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=150&h=150&fit=crop",
-    members: 8934,
-    joined: true,
-    rank: 2,
-    trending: false,
-    category: "Product",
-    announcements: [
-      {
-        id: 1,
-        title: "Product Strategy Workshop",
-        content: "Join us for an intensive workshop on modern product strategy frameworks. Limited seats available.",
-        timestamp: "4 hours ago",
-        priority: "high",
-        pinned: true,
-        type: "event"
-      }
-    ],
-    leaderboard: [
-      { id: 1, name: "Jessica Taylor", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=faces", points: 1987, badges: 8, rank: 1, streak: 35, contributions: 89 },
-      { id: 2, name: "Michael Brown", image: "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&crop=faces", points: 1743, badges: 6, rank: 2, streak: 28, contributions: 76 },
-    ],
-    membersList: [
-      { id: 1, name: "Jessica Taylor", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=faces", title: "Senior Product Manager", company: "Uber", joined: "1 year ago", isOnline: true, achievements: ["Strategy Expert"] },
-    ],
-    stats: {
-      totalMembers: 8934,
-      activeToday: 1234,
-      weeklyGrowth: 6.2,
-      monthlyActivity: 87.5
-    }
-  }
-]
-
-type CommunityType = (typeof communities)[number]
-type CommunityAnnouncement = CommunityType['announcements'][number]
-type CommunityLeaderboardEntry = CommunityType['leaderboard'][number]
-type CommunityMember = CommunityType['membersList'][number]
-
-const DEFAULT_COMMUNITY_STATS = {
-  totalMembers: 0,
-  activeToday: 0,
-  weeklyGrowth: 0,
-  monthlyActivity: 0,
-}
-
-const FALLBACK_COMMUNITY_IMAGE = communities[0]?.image ?? 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&h=150&fit=crop'
-const FALLBACK_MEMBER_IMAGE = communities[0]?.membersList?.[0]?.image ?? FALLBACK_COMMUNITY_IMAGE
-
-function mapCommunityFromApi(rawData: any): CommunityType {
-  const data = rawData?.data ?? rawData ?? {}
-
-  const stats = {
-    totalMembers:
-      Number(data?.membersCount ?? data?.member_count ?? data?.total_members ?? DEFAULT_COMMUNITY_STATS.totalMembers) ||
-      DEFAULT_COMMUNITY_STATS.totalMembers,
-    activeToday:
-      Number(data?.activeToday ?? data?.active_today ?? DEFAULT_COMMUNITY_STATS.activeToday) ||
-      DEFAULT_COMMUNITY_STATS.activeToday,
-    weeklyGrowth:
-      Number(data?.weeklyGrowth ?? data?.weekly_growth ?? DEFAULT_COMMUNITY_STATS.weeklyGrowth) ||
-      DEFAULT_COMMUNITY_STATS.weeklyGrowth,
-    monthlyActivity:
-      Number(data?.monthlyActivity ?? data?.monthly_activity ?? DEFAULT_COMMUNITY_STATS.monthlyActivity) ||
-      DEFAULT_COMMUNITY_STATS.monthlyActivity,
-  }
-
-  const normalizedAnnouncements: CommunityAnnouncement[] = Array.isArray(data?.announcements)
-    ? data.announcements.map((item: any, index: number) => ({
-        id: item?.id ?? index,
-        title: item?.title ?? 'Announcement',
-        content: item?.content ?? item?.message ?? '',
-        timestamp: item?.timestamp ?? item?.created_at ?? 'Just now',
-        priority: (item?.priority ?? 'low') as CommunityAnnouncement['priority'],
-        pinned: Boolean(item?.pinned),
-        type: item?.type ?? 'info',
-      }))
-    : []
-
-  const normalizedLeaderboard: CommunityLeaderboardEntry[] = Array.isArray(data?.leaderboard)
-    ? data.leaderboard.map((entry: any, index: number) => ({
-        id: entry?.id ?? index,
-        name: entry?.name ?? entry?.display_name ?? 'Member',
-        image: entry?.image ?? entry?.avatar ?? FALLBACK_MEMBER_IMAGE,
-        points: Number(entry?.points ?? entry?.score ?? 0),
-        badges: Number(entry?.badges ?? entry?.badge_count ?? 0),
-        rank: Number(entry?.rank ?? index + 1),
-        streak: Number(entry?.streak ?? 0),
-        contributions: Number(entry?.contributions ?? entry?.posts ?? 0),
-      }))
-    : []
-
-  const normalizedMembers: CommunityMember[] = Array.isArray(data?.membersList ?? data?.members)
-    ? (data?.membersList ?? data?.members).map((member: any, index: number) => ({
-        id: member?.id ?? member?.userId ?? index,
-        name: member?.name ?? member?.fullName ?? 'Member',
-        image: member?.image ?? member?.avatar ?? FALLBACK_MEMBER_IMAGE,
-        title: member?.title ?? member?.role ?? 'Member',
-        company: member?.company ?? member?.organization ?? '',
-        joined: member?.joined ?? member?.joined_at ?? '',
-        isOnline: Boolean(member?.isOnline ?? member?.online ?? false),
-        achievements: Array.isArray(member?.achievements) ? member.achievements : [],
-      }))
-    : []
-
-  const normalizedId = Number(data?.id ?? data?.communityId ?? data?.community_id ?? Date.now())
-
-  return {
-    id: Number.isNaN(normalizedId) ? Date.now() : normalizedId,
-    name: data?.name ?? 'Community',
-    description: data?.description ?? data?.tagline ?? 'A community on Elite',
-    image: data?.image ?? data?.coverImage ?? data?.avatarUrl ?? FALLBACK_COMMUNITY_IMAGE,
-    members: stats.totalMembers,
-    joined: true,
-    rank: Number(data?.rank ?? 0),
-    trending: Boolean(data?.trending ?? data?.isTrending ?? false),
-    category: data?.category ?? 'Community',
-    announcements: normalizedAnnouncements,
-    leaderboard: normalizedLeaderboard,
-    membersList: normalizedMembers,
-    stats,
-    created_by: data?.created_by ? Number(data.created_by) : undefined,
-  }
-}
-
-const API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
-const AUTH_API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
+// Import from modular files
+import { 
+  communities, 
+  CommunityType, 
+  CommunityAnnouncement, 
+  CommunityLeaderboardEntry, 
+  CommunityMember,
+  DEFAULT_COMMUNITY_STATS,
+  FALLBACK_COMMUNITY_IMAGE,
+  FALLBACK_MEMBER_IMAGE
+} from "./types"
+import { 
+  mapCommunityFromApi, 
+  generateSlug,
+  AUTH_API_BASE_URL 
+} from "./utils"
+import { 
+  fetchOwnUserId, 
+  fetchCommunityForEdit as fetchCommunityForEditApi,
+  fetchAnnouncement as fetchAnnouncementApi
+} from "./api"
 
 export default function ForYouPage() {
   const isAuthorized = useRequireAuth() // Protect this route
@@ -339,39 +176,22 @@ export default function ForYouPage() {
   const [leaderboardData, setLeaderboardData] = useState<any[]>([])
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false)
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
+  const [showWelcomeTip, setShowWelcomeTip] = useState(true)
+  const [dismissedTips, setDismissedTips] = useState<Set<string>>(new Set())
   
   // Fetch current user ID
   useEffect(() => {
     if (!isAuthorized || currentUserId !== null) return
 
-    async function fetchOwnUserId() {
-      try {
-        const token = getStoredAccessToken()
-        if (!token) return
-
-        console.log('[ForYou] Fetching current user ID...')
-        const response = await fetch(`${AUTH_API_BASE_URL}v1/users/profile/get_own_profile`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          const profile = result?.data || result
-          if (profile?.userId) {
-            console.log('[ForYou] Current user ID:', profile.userId)
-            setCurrentUserId(profile.userId)
-          }
-        }
-      } catch (error) {
-        console.warn('[ForYou] Failed to fetch own user ID:', error)
+    async function fetchUserId() {
+      const userId = await fetchOwnUserId()
+      if (userId) {
+        console.log('[ForYou] Current user ID:', userId)
+        setCurrentUserId(userId)
       }
     }
 
-    fetchOwnUserId()
+    fetchUserId()
   }, [isAuthorized, currentUserId])
 
   // Check if user is a member of the selected community using GET /v1/communities/user/{user_id}
@@ -1147,14 +967,23 @@ export default function ForYouPage() {
     setIsSavingCommunity(true) // Show loading while fetching
 
     try {
-      // Fetch latest community data to ensure we have current values (especially visibility)
-      const latestData = await fetchCommunityForEdit(community.id)
-      const communityToEdit = latestData || community
+      // Use existing community data if available, only fetch if we need fresh data
+      // This prevents duplicate API calls when community is already loaded
+      let communityToEdit = community
+      
+      // Only fetch if we don't have complete data (missing visibility or other critical fields)
+      if (!community.visibility || !community.slug) {
+        console.log('[ForYou] Fetching fresh community data for edit (missing fields)')
+        const latestData = await fetchCommunityForEditApi(community.id)
+        communityToEdit = latestData || community
+      } else {
+        console.log('[ForYou] Using existing community data for edit')
+      }
 
       setEditFormData({
         name: communityToEdit.name || community.name,
         description: communityToEdit.description || community.description || "",
-        slug: communityToEdit.slug || community.name.toLowerCase().replace(/\s+/g, "-"),
+        slug: communityToEdit.slug || generateSlug(community.name),
         visibility: (communityToEdit.visibility || "public") as "public" | "private"
       })
     } catch (error) {
@@ -1657,40 +1486,13 @@ export default function ForYouPage() {
       }
 
       console.log('[ForYou] Fetching announcement:', announcementId, 'for community:', community.id)
-      const response = await fetch(`/api/communities/${community.id}/announcements/${announcementId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const announcementData = await fetchAnnouncementApi(community.id, announcementId)
 
-      if (!response.ok) {
-        let errorMessage = "Failed to fetch announcement"
-        let errorData: any = null
-        const errorText = await response.text()
-        
-        if (errorText) {
-          try {
-            errorData = JSON.parse(errorText)
-            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
-          } catch {
-            errorMessage = errorText
-          }
-        }
-
-        // Handle 403 Forbidden - user is not a member
-        if (response.status === 403) {
-          errorMessage = errorData?.message || "You must be a member of this community to view announcements."
-        }
-
-        setAnnouncementError(errorMessage)
+      if (!announcementData) {
+        setAnnouncementError("Failed to fetch announcement")
         setIsLoadingAnnouncement(false)
         return null
       }
-
-      const data = await response.json()
-      const announcementData = data?.data || data
       
       const announcement: CommunityAnnouncement = {
         id: announcementData?.id ?? announcementId,
@@ -2937,46 +2739,120 @@ export default function ForYouPage() {
         {/* Background effects */}
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-0 w-full h-full bg-black" />
-          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black to-transparent" />
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-radial from-blue-500/40 via-purple-700/30 to-transparent rounded-full blur-3xl" />
-          <div className="absolute top-1/2 -left-24 w-72 h-72 bg-gradient-radial from-purple-700/40 via-pink-600/30 to-transparent rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black via-black/95 to-transparent" />
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-radial from-blue-500/40 via-purple-700/30 to-transparent rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-1/2 -left-24 w-72 h-72 bg-gradient-radial from-purple-700/40 via-pink-600/30 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
         
         {/* Main Content - Full Width */}
         <div className="relative z-10 w-full">
-          <div className="w-full sm:max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+          <div className="w-full sm:max-w-4xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
             <AnimatedSection delay={0.1}>
               {communityLoadError && (
-                <div className="w-full mb-4">
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs sm:text-sm text-red-200">
+                <div className="w-full mb-5 sm:mb-6">
+                  <div className="rounded-xl border border-red-500/40 bg-red-500/10 backdrop-blur-sm px-4 py-3 text-sm sm:text-base text-red-200 shadow-[0_0_16px_0_rgba(239,68,68,0.2)]">
                     {communityLoadError}
                   </div>
                 </div>
               )}
               {isLoadingCommunities && (
-                <div className="w-full mb-3 flex items-center gap-2 text-xs sm:text-sm text-zinc-400">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                  Loading community...
+                <div className="w-full mb-4 sm:mb-5 flex items-center gap-3 text-sm sm:text-base text-zinc-300">
+                  <span className="h-3 w-3 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_0_rgba(59,130,246,0.5)]" />
+                  <span>Loading community...</span>
                 </div>
               )}
               {!isLoadingCommunities && !community && !communityLoadError && (
-                <div className="w-full mb-3 flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <p className="text-sm text-zinc-400 mb-2">No community selected</p>
-                    <p className="text-xs text-zinc-500">Search for a community or select one from your list</p>
+                <div className="w-full mb-4 sm:mb-5 flex items-center justify-center py-12 sm:py-16">
+                  <div className="text-center space-y-4 max-w-lg mx-auto">
+                    <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-fuchsia-500/20 border-2 border-blue-500/30 flex items-center justify-center mb-4 shadow-[0_0_24px_0_rgba(59,130,246,0.3)]">
+                      <Users className="h-10 w-10 text-blue-400" />
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                      Welcome to Communities!
+                    </h3>
+                    <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
+                      Communities are groups where you can connect with like-minded people, share achievements, and grow together.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+                      <EnhancedButton
+                        variant="gradient"
+                        size="sm"
+                        rounded="full"
+                        animation="shimmer"
+                        className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                        onClick={() => router.push('/for-you/create')}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Your First Community
+                      </EnhancedButton>
+                      <EnhancedButton
+                        variant="outline"
+                        size="sm"
+                        rounded="full"
+                        className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                        onClick={() => router.push('/search')}
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Explore Communities
+                      </EnhancedButton>
+                    </div>
                   </div>
                 </div>
               )}
               {community && (
                 <>
-              {/* HERO SECTION - compact for mobile */}
-              <section className="flex flex-col items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
-                <div className="flex items-center gap-3 sm:gap-4 w-full">
+              {/* Welcome Tip for New Users */}
+              {showWelcomeTip && !dismissedTips.has('welcome') && communityList.length > 0 && (
+                <AnimatedSection delay={0.1}>
+                  <EnhancedCard variant="default" className="bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-fuchsia-500/10 border border-blue-500/30 rounded-xl mb-5 sm:mb-6 shadow-[0_0_24px_0_rgba(59,130,246,0.2)]">
+                    <EnhancedCardContent className="p-4 sm:p-5">
+                      <div className="flex items-start gap-4">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                          <Sparkles className="h-5 w-5 text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm sm:text-base font-bold text-white mb-1.5">Welcome to {community.name}!</h4>
+                          <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-3">
+                            Here's what you can do: <strong className="text-zinc-300">Announcements</strong> keep you updated, 
+                            the <strong className="text-zinc-300">Leaderboard</strong> shows top performers, and <strong className="text-zinc-300">Members</strong> helps you connect with others.
+                          </p>
+                          <EnhancedButton
+                            variant="ghost"
+                            size="sm"
+                            rounded="full"
+                            className="h-7 px-3 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20"
+                            onClick={() => {
+                              setDismissedTips(prev => new Set(prev).add('welcome'))
+                              setShowWelcomeTip(false)
+                            }}
+                          >
+                            Got it, thanks!
+                          </EnhancedButton>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setDismissedTips(prev => new Set(prev).add('welcome'))
+                            setShowWelcomeTip(false)
+                          }}
+                          className="text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </EnhancedCardContent>
+                  </EnhancedCard>
+                </AnimatedSection>
+              )}
+
+              {/* HERO SECTION - Premium Design */}
+              <section className="flex flex-col items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
+                <div className="flex items-center gap-4 sm:gap-5 w-full">
                   <div className="relative group">
-                    <Avatar className="h-14 w-14 sm:h-16 sm:w-16 border-2 sm:border-3 border-blue-700/40 ring-2 sm:ring-3 ring-blue-500/30 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]">
+                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 sm:border-[3px] border-blue-500/50 ring-2 sm:ring-[3px] ring-blue-500/20 shadow-[0_0_24px_0_rgba(59,130,246,0.4),0_0_48px_0_rgba(139,92,246,0.2)] transition-all duration-300 group-hover:shadow-[0_0_32px_0_rgba(59,130,246,0.6),0_0_64px_0_rgba(139,92,246,0.3)] group-hover:scale-105">
                       <AvatarImage 
                         src={getCommunityPfpUrl(community?.id, community?.image)} 
                         alt={`${community?.name} profile picture`}
+                        className="object-cover"
                         onError={(e) => {
                           // Fallback chain: API endpoint -> original image -> fallback image
                           const target = e.target as HTMLImageElement
@@ -2995,19 +2871,19 @@ export default function ForYouPage() {
                           }
                         }}
                       />
-                      <AvatarFallback className="bg-zinc-800 text-lg sm:text-2xl">{community?.name?.charAt(0) ?? 'C'}</AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 via-purple-600 to-fuchsia-600 text-white text-xl sm:text-2xl font-bold shadow-inner">{community?.name?.charAt(0) ?? 'C'}</AvatarFallback>
                     </Avatar>
                     {community?.trending && (
-                      <Badge className="absolute -top-1 -right-1 bg-purple-900/50 text-purple-300 border-purple-800 text-[9px] sm:text-[10px]">Hot</Badge>
+                      <Badge className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white border-2 border-purple-400/50 text-[10px] sm:text-xs px-1.5 py-0.5 shadow-[0_0_12px_0_rgba(168,85,247,0.5)] animate-pulse">Hot</Badge>
                     )}
-                    <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                    <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/70 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-full">
                       <label
                         htmlFor="pfp-upload-input"
-                        className="flex items-center justify-center cursor-pointer p-1 hover:bg-white/20 rounded-full"
+                        className="flex items-center justify-center cursor-pointer p-2 hover:bg-white/20 rounded-full transition-all duration-200 hover:scale-110"
                         title="Change profile picture"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Camera className="h-4 w-4 text-white" />
+                        <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-white drop-shadow-lg" />
                       </label>
                       {community?.image && 
                        community.image !== FALLBACK_COMMUNITY_IMAGE && 
@@ -3018,11 +2894,11 @@ export default function ForYouPage() {
                             e.stopPropagation()
                             setShowDeletePfpConfirm(true)
                           }}
-                          className="flex items-center justify-center cursor-pointer p-1 hover:bg-red-500/30 rounded-full"
+                          className="flex items-center justify-center cursor-pointer p-2 hover:bg-red-500/30 rounded-full transition-all duration-200 hover:scale-110"
                           title="Delete profile picture"
                           disabled={isDeletingPfp}
                         >
-                          <Trash2 className="h-4 w-4 text-white" />
+                          <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-white drop-shadow-lg" />
                         </button>
                       )}
                     </div>
@@ -3038,16 +2914,16 @@ export default function ForYouPage() {
                   <div className="flex-1 min-w-0">
                     {/* Profile Picture Upload Preview and Controls */}
                     {pfpPreview && (
-                      <div className="mb-2 p-2 rounded-lg border border-blue-500/30 bg-blue-500/10">
-                        <div className="flex items-center gap-2 mb-2">
+                      <div className="mb-3 p-3 sm:p-4 rounded-xl border border-blue-500/40 bg-blue-500/10 backdrop-blur-sm shadow-[0_0_16px_0_rgba(59,130,246,0.2)]">
+                        <div className="flex items-center gap-3 mb-3">
                           <img
                             src={pfpPreview}
                             alt="Preview"
-                            className="h-10 w-10 rounded-full object-cover"
+                            className="h-12 w-12 sm:h-14 sm:w-14 rounded-full object-cover border-2 border-blue-500/30 shadow-lg"
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-zinc-300 truncate">{selectedPfpFile?.name}</p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-sm font-medium text-zinc-200 truncate">{selectedPfpFile?.name}</p>
+                            <p className="text-xs text-zinc-400 mt-0.5">
                               {(selectedPfpFile?.size ? selectedPfpFile.size / 1024 : 0).toFixed(1)} KB
                             </p>
                           </div>
@@ -3055,7 +2931,7 @@ export default function ForYouPage() {
                             variant="ghost"
                             size="sm"
                             rounded="full"
-                            className="h-6 w-6 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                            className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all duration-200"
                             onClick={() => {
                               setPfpPreview(null)
                               setSelectedPfpFile(null)
@@ -3064,28 +2940,29 @@ export default function ForYouPage() {
                             }}
                             title="Cancel"
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-4 w-4" />
                           </EnhancedButton>
                         </div>
                         {pfpUploadError && (
-                          <div className="mb-2 text-xs text-red-400">{pfpUploadError}</div>
+                          <div className="mb-3 text-xs sm:text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg px-3 py-2">{pfpUploadError}</div>
                         )}
                         <EnhancedButton
                           variant="gradient"
                           size="sm"
-                          rounded="default"
-                          className="w-full text-xs"
+                          rounded="full"
+                          animation="shimmer"
+                          className="w-full text-sm font-semibold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
                           onClick={handleUploadPfp}
                           disabled={isUploadingPfp}
                         >
                           {isUploadingPfp ? (
                             <>
-                              <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
                               Uploading...
                             </>
                           ) : (
                             <>
-                              <Upload className="h-3 w-3 mr-1" />
+                              <Upload className="h-4 w-4 mr-2" />
                               Upload Picture
                             </>
                           )}
@@ -3093,47 +2970,47 @@ export default function ForYouPage() {
                       </div>
                     )}
                     {pfpUploadError && !pfpPreview && (
-                      <div className="mb-2 text-xs text-red-400">{pfpUploadError}</div>
+                      <div className="mb-3 text-xs sm:text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg px-3 py-2">{pfpUploadError}</div>
                     )}
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-lg sm:text-2xl font-extrabold leading-tight bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent truncate">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className="text-xl sm:text-3xl font-extrabold leading-tight bg-gradient-to-r from-blue-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent truncate drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]">
                         {community?.name}
                       </h1>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         {isCommunityOwner && (
                           <>
                             <EnhancedButton
                               variant="ghost"
                               size="sm"
                               rounded="full"
-                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                              className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-all duration-200 hover:scale-110"
                               onClick={handleStartEdit}
                               title="Edit community (Owner only)"
                               disabled={isSavingCommunity || isDeletingCommunity}
                             >
-                              <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
                             </EnhancedButton>
                             <EnhancedButton
                               variant="ghost"
                               size="sm"
                               rounded="full"
-                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-blue-400 hover:bg-blue-950/20"
+                              className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-zinc-400 hover:text-blue-400 hover:bg-blue-950/30 transition-all duration-200 hover:scale-110"
                               onClick={handleOpenJoinRequests}
                               title="View join requests (Owner only)"
                               disabled={isSavingCommunity || isDeletingCommunity}
                             >
-                              <UserCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
                             </EnhancedButton>
                             <EnhancedButton
                               variant="ghost"
                               size="sm"
                               rounded="full"
-                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
+                              className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/30 transition-all duration-200 hover:scale-110"
                               onClick={() => setShowDeleteConfirm(true)}
                               title="Delete community (Owner only)"
                               disabled={isSavingCommunity || isDeletingCommunity}
                             >
-                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                             </EnhancedButton>
                           </>
                         )}
@@ -3142,7 +3019,7 @@ export default function ForYouPage() {
                             variant="ghost"
                             size="sm"
                             rounded="full"
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
+                            className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/30 transition-all duration-200 hover:scale-110"
                             onClick={() => {
                               if (!isCommunityMember) {
                                 setAdminOnlyMessage("You must be a member of this community to leave it.")
@@ -3153,7 +3030,7 @@ export default function ForYouPage() {
                             }}
                             title={isCommunityMember ? "Leave community" : "Leave community (Members only)"}
                           >
-                            <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <UserX className="h-4 w-4 sm:h-5 sm:w-5" />
                           </EnhancedButton>
                         )}
                       </div>
@@ -3204,22 +3081,22 @@ export default function ForYouPage() {
                         </Select>
                       </div>
                     </div>
-                    <p className="text-zinc-400 text-xs sm:text-sm mt-0.5 line-clamp-1">{community?.description ?? 'No description yet.'}</p>
+                    <p className="text-zinc-300 text-sm sm:text-base mt-1.5 sm:mt-2 line-clamp-2 leading-relaxed">{community?.description ?? 'No description yet.'}</p>
                 </div>
                 
                 {/* Tags Section */}
-                <div className="w-full mt-3">
+                <div className="w-full mt-4 sm:mt-5">
                   {isLoadingTags ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      <span className="text-xs text-zinc-400">Loading tags...</span>
+                    <div className="flex items-center gap-3 py-2">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent shadow-[0_0_8px_0_rgba(59,130,246,0.3)]" />
+                      <span className="text-sm text-zinc-400 font-medium">Loading tags...</span>
                     </div>
                   ) : showTagsEditor ? (
                     <AnimatedSection delay={0.1}>
-                      <div className="space-y-2">
+                      <div className="space-y-3 sm:space-y-4 p-4 sm:p-5 rounded-xl bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 shadow-[0_0_16px_0_rgba(0,0,0,0.2)]">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs sm:text-sm font-medium text-zinc-300 flex items-center gap-2">
-                            <Tag className="h-3.5 w-3.5" />
+                          <Label className="text-sm sm:text-base font-semibold text-zinc-200 flex items-center gap-2.5">
+                            <Tag className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                             Tags
                           </Label>
                           <div className="flex gap-1">
@@ -3249,11 +3126,11 @@ export default function ForYouPage() {
                           </div>
                         </div>
                         {tagsError && (
-                          <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-2 text-xs text-red-300">
+                          <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3 text-sm text-red-300 shadow-[0_0_8px_0_rgba(239,68,68,0.2)]">
                             {tagsError}
                           </div>
                         )}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2.5">
                           <AnimatePresence>
                             {tagsToEdit.map((tag, index) => (
                               <motion.div
@@ -3263,22 +3140,22 @@ export default function ForYouPage() {
                                 exit={{ opacity: 0, scale: 0.8 }}
                                 transition={{ duration: 0.2, delay: index * 0.05 }}
                               >
-                                <Badge className="bg-blue-900/40 text-blue-300 border-blue-800 text-xs px-2 py-1 flex items-center gap-1.5">
-                                  <Hash className="h-3 w-3" />
+                                <Badge className="bg-blue-900/50 text-blue-300 border-blue-800/60 text-sm px-3 py-1.5 flex items-center gap-2 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]">
+                                  <Hash className="h-3.5 w-3.5" />
                                   {tag}
                                   <button
                                     onClick={() => handleRemoveTag(tag)}
-                                    className="ml-1 hover:text-red-400 transition-colors"
+                                    className="ml-1 hover:text-red-400 transition-colors duration-200 hover:scale-110"
                                     disabled={isSavingTags}
                                   >
-                                    <XIcon className="h-3 w-3" />
+                                    <XIcon className="h-3.5 w-3.5" />
                                   </button>
                                 </Badge>
                               </motion.div>
                             ))}
                           </AnimatePresence>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2.5">
                           <Input
                             type="text"
                             placeholder="Add a tag..."
@@ -3290,27 +3167,27 @@ export default function ForYouPage() {
                                 handleAddTag()
                               }
                             }}
-                            className="bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-8 text-xs"
+                            className="bg-zinc-900/80 backdrop-blur-sm border-zinc-800/60 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 h-9 sm:h-10 text-sm rounded-lg transition-all duration-200"
                             disabled={isSavingTags}
                           />
                           <EnhancedButton
                             variant="outline"
                             size="sm"
                             rounded="full"
-                            className="bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-8 px-3 text-xs"
+                            className="bg-zinc-900/80 backdrop-blur-sm border-zinc-700/60 text-white hover:bg-zinc-800/80 h-9 sm:h-10 px-4 text-sm transition-all duration-200 hover:scale-105"
                             onClick={handleAddTag}
                             disabled={isSavingTags || !newTagInput.trim()}
                           >
-                            <PlusIcon className="h-3.5 w-3.5" />
+                            <PlusIcon className="h-4 w-4" />
                           </EnhancedButton>
                         </div>
                       </div>
                     </AnimatedSection>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs sm:text-sm font-medium text-zinc-300 flex items-center gap-2">
-                          <Tag className="h-3.5 w-3.5" />
+                        <Label className="text-sm sm:text-base font-semibold text-zinc-200 flex items-center gap-2.5">
+                          <Tag className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                           Tags
                         </Label>
                         {isCommunityOwner && (
@@ -3318,17 +3195,17 @@ export default function ForYouPage() {
                             variant="ghost"
                             size="sm"
                             rounded="full"
-                            className="h-6 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20"
+                            className="h-8 px-3 text-xs sm:text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 transition-all duration-200 hover:scale-105"
                             onClick={handleOpenTagsEditor}
                             title="Edit tags"
                           >
-                            <Edit className="h-3 w-3 mr-1" />
+                            <Edit className="h-3.5 w-3.5 mr-1.5" />
                             Edit
                           </EnhancedButton>
                         )}
                       </div>
                       {communityTags.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2.5">
                           <AnimatePresence>
                             {communityTags.map((tag, index) => (
                               <motion.div
@@ -3338,8 +3215,8 @@ export default function ForYouPage() {
                                 exit={{ opacity: 0, scale: 0.8 }}
                                 transition={{ duration: 0.2, delay: index * 0.05 }}
                               >
-                                <Badge className="bg-blue-900/40 text-blue-300 border-blue-800 text-xs px-2 py-1 flex items-center gap-1.5">
-                                  <Hash className="h-3 w-3" />
+                                <Badge className="bg-blue-900/50 text-blue-300 border-blue-800/60 text-sm px-3 py-1.5 flex items-center gap-2 shadow-[0_0_8px_0_rgba(59,130,246,0.2)]">
+                                  <Hash className="h-3.5 w-3.5" />
                                   {tag}
                                 </Badge>
                               </motion.div>
@@ -3347,38 +3224,79 @@ export default function ForYouPage() {
                           </AnimatePresence>
                         </div>
                       ) : (
-                        <p className="text-xs text-zinc-500 italic">No tags yet</p>
+                        <p className="text-sm text-zinc-500 italic">No tags yet</p>
                       )}
                     </div>
                   )}
                 </div>
                 
-                {/* Stats Row - Compact */}
-                <div className="flex flex-wrap gap-3 sm:gap-4 justify-center items-center w-full">
-                  <div className="flex flex-col items-center">
-                    <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent">
-                      <AnimatedCounter from={0} to={community?.members || 0} duration={2} delay={0.5} />
-                    </span>
-                    <span className="text-[10px] sm:text-xs text-zinc-400">Members</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent">
-                      <AnimatedCounter from={0} to={communityStats.activeToday || 0} duration={2} delay={0.6} />
-                    </span>
-                    <span className="text-[10px] sm:text-xs text-zinc-400">Active Today</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent">
-                      <AnimatedCounter from={0} to={communityStats.weeklyGrowth || 0} duration={2} delay={0.7} />%
-                    </span>
-                    <span className="text-[10px] sm:text-xs text-zinc-400">Growth</span>
-                  </div>
+                {/* Stats Row - Premium Design */}
+                <div className="flex flex-wrap gap-4 sm:gap-6 justify-center items-center w-full py-4 sm:py-5 px-4 sm:px-6 rounded-xl bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 shadow-[0_0_16px_0_rgba(0,0,0,0.3)]">
+                  <TooltipProvider>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <span className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]">
+                        <AnimatedCounter from={0} to={community?.members || 0} duration={2} delay={0.5} />
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs sm:text-sm text-zinc-400 font-medium">Members</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-zinc-500 hover:text-zinc-400 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200 max-w-xs">
+                            <p className="text-xs">Total number of people in this community</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </TooltipProvider>
+                  <div className="h-8 sm:h-12 w-px bg-gradient-to-b from-transparent via-zinc-700 to-transparent" />
+                  <TooltipProvider>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <span className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]">
+                        <AnimatedCounter from={0} to={communityStats.activeToday || 0} duration={2} delay={0.6} />
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs sm:text-sm text-zinc-400 font-medium">Active Today</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-zinc-500 hover:text-zinc-400 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200 max-w-xs">
+                            <p className="text-xs">Members who were active in the community today</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </TooltipProvider>
+                  <div className="h-8 sm:h-12 w-px bg-gradient-to-b from-transparent via-zinc-700 to-transparent" />
+                  <TooltipProvider>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <span className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]">
+                        <AnimatedCounter from={0} to={communityStats.weeklyGrowth || 0} duration={2} delay={0.7} />%
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs sm:text-sm text-zinc-400 font-medium">Growth</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-zinc-500 hover:text-zinc-400 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200 max-w-xs">
+                            <p className="text-xs">Weekly growth rate of the community</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </TooltipProvider>
+                  {!isCommunityOwner && (
+                    <div className="h-8 sm:h-12 w-px bg-gradient-to-b from-transparent via-zinc-700 to-transparent" />
+                  )}
                   {!isCommunityOwner && (
                   <EnhancedButton
                       variant="outline"
                     size="sm"
                     rounded="full"
-                      className="bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/40 hover:border-red-600 h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4"
+                      className="bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/40 hover:border-red-600 h-9 sm:h-10 text-xs sm:text-sm px-4 sm:px-5 transition-all duration-200 hover:scale-105"
                       onClick={() => {
                         if (!isCommunityMember) {
                           setAdminOnlyMessage("You must be a member of this community to leave it.")
@@ -3388,29 +3306,51 @@ export default function ForYouPage() {
                         setShowLeaveConfirm(true)
                       }}
                     >
-                      <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1.5" />
+                      <UserX className="h-4 w-4 sm:mr-1.5" />
                       <span className="hidden sm:inline">Leave Community</span>
                       <span className="sm:hidden">Leave</span>
                   </EnhancedButton>
                   )}
                 </div>
 
-                {/* Progress Bar - Compact */}
-                <div className="w-full mt-2">
-                  <AnimatedProgress value={communityStats.monthlyActivity || 0} max={100} className="h-2 bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:via-purple-500 [&>div]:to-fuchsia-500 [&>div]:shadow-[0_0_8px_0_rgba(80,0,255,0.5)]" delay={0.9} />
-                  <p className="text-[10px] sm:text-xs text-zinc-500 mt-1 text-center">{communityStats.monthlyActivity}% Activity</p>
+                {/* Progress Bar - Premium Design */}
+                <div className="w-full mt-4 sm:mt-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-medium text-zinc-400">Monthly Activity</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-zinc-500 hover:text-zinc-400 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200 max-w-xs">
+                            <p className="text-xs">Shows how active the community has been this month</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">{communityStats.monthlyActivity}%</span>
+                  </div>
+                  <AnimatedProgress value={communityStats.monthlyActivity || 0} max={100} className="h-2.5 sm:h-3 bg-zinc-800/80 rounded-full overflow-hidden [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:via-purple-500 [&>div]:to-fuchsia-500 [&>div]:shadow-[0_0_12px_0_rgba(80,0,255,0.6)] [&>div]:rounded-full" delay={0.9} />
                 </div>
 
-                {/* Member Avatars - Compact */}
-                <div className="flex gap-1.5 sm:gap-2 justify-center">
-                  {communityMembers.slice(0, 3).map((member) => (
-                    <Avatar key={member.id} className="h-7 w-7 sm:h-8 sm:w-8 border border-blue-700/40">
-                      <AvatarImage src={member.image} />
-                      <AvatarFallback className="bg-zinc-800 text-[10px]">{member.name?.charAt(0) ?? 'M'}</AvatarFallback>
-                    </Avatar>
+                {/* Member Avatars - Premium Design */}
+                <div className="flex gap-2 sm:gap-3 justify-center items-center">
+                  {communityMembers.slice(0, 3).map((member, index) => (
+                    <motion.div
+                      key={member.id}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 1 + index * 0.1 }}
+                    >
+                      <Avatar className="h-9 w-9 sm:h-11 sm:w-11 border-2 border-blue-500/40 ring-2 ring-blue-500/20 shadow-[0_0_12px_0_rgba(59,130,246,0.3)] hover:scale-110 transition-transform duration-200 cursor-pointer">
+                        <AvatarImage src={member.image} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-xs sm:text-sm font-semibold">{member.name?.charAt(0) ?? 'M'}</AvatarFallback>
+                      </Avatar>
+                    </motion.div>
                   ))}
                   {community && community.members > 3 && (
-                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-zinc-800 border border-blue-700/40 flex items-center justify-center text-[9px] sm:text-[10px] text-zinc-400">
+                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 border-zinc-700/50 flex items-center justify-center text-[10px] sm:text-xs text-zinc-400 font-semibold shadow-lg">
                       +{Math.floor(community.members / 1000)}k
                     </div>
                   )}
@@ -3783,34 +3723,85 @@ export default function ForYouPage() {
               )}
 
               <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
-                <TabsList className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 mb-4 sm:mb-5">
-                  <TabsTrigger 
-                    value="announcements" 
-                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5"
-                    disabled={hasPendingRequest}
-                  >
-                    <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Announcements</span>
-                    <span className="sm:hidden">News</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="leaderboard" 
-                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5"
-                    disabled={hasPendingRequest}
-                  >
-                    <Trophy className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Leaderboard</span>
-                    <span className="sm:hidden">Rankings</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="members" 
-                    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5"
-                    disabled={hasPendingRequest}
-                  >
-                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Members
-                  </TabsTrigger>
-                </TabsList>
+                <div className="flex items-center justify-between mb-4 sm:mb-5">
+                  <TabsList className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/60 rounded-xl p-1.5 shadow-[0_0_16px_0_rgba(0,0,0,0.3)]">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger 
+                            value="announcements" 
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_12px_0_rgba(59,130,246,0.4)] rounded-lg transition-all duration-300 text-sm sm:text-base px-4 sm:px-5 py-2 sm:py-2.5 flex items-center gap-2 font-semibold"
+                            disabled={hasPendingRequest}
+                          >
+                            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+                            <span className="hidden sm:inline">Announcements</span>
+                            <span className="sm:hidden">News</span>
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
+                          <p className="text-xs">Community updates and important news</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger 
+                            value="leaderboard" 
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_12px_0_rgba(59,130,246,0.4)] rounded-lg transition-all duration-300 text-sm sm:text-base px-4 sm:px-5 py-2 sm:py-2.5 flex items-center gap-2 font-semibold"
+                            disabled={hasPendingRequest}
+                          >
+                            <Trophy className="h-4 w-4 sm:h-5 sm:w-5" />
+                            <span className="hidden sm:inline">Leaderboard</span>
+                            <span className="sm:hidden">Rankings</span>
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
+                          <p className="text-xs">Top performers ranked by XP and achievements</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger 
+                            value="members" 
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-[0_0_12px_0_rgba(59,130,246,0.4)] rounded-lg transition-all duration-300 text-sm sm:text-base px-4 sm:px-5 py-2 sm:py-2.5 flex items-center gap-2 font-semibold"
+                            disabled={hasPendingRequest}
+                          >
+                            <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                            Members
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
+                          <p className="text-xs">Browse and connect with community members</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TabsList>
+                  {!hasPendingRequest && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => {
+                              const newDismissed = new Set(dismissedTips)
+                              newDismissed.add('welcome')
+                              setDismissedTips(newDismissed)
+                              setShowWelcomeTip(false)
+                            }}
+                            className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+                          >
+                            <HelpCircle className="h-5 w-5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200 max-w-xs">
+                          <p className="text-xs">Need help? Check the tabs above to explore different sections of the community.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
 
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -3820,13 +3811,15 @@ export default function ForYouPage() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <TabsContent value="announcements" className="space-y-3">
+                    <TabsContent value="announcements" className="space-y-4 sm:space-y-5">
                       {hasPendingRequest ? (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl">
-                          <EnhancedCardContent className="p-6 text-center">
-                            <Lock className="h-12 w-12 mx-auto mb-4 text-amber-400" />
-                            <h4 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h4>
-                            <p className="text-sm text-amber-200/80">
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-amber-800/50 rounded-xl shadow-[0_0_24px_0_rgba(245,158,11,0.2)]">
+                          <EnhancedCardContent className="p-8 sm:p-10 text-center">
+                            <div className="h-16 w-16 mx-auto mb-5 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center">
+                              <Lock className="h-8 w-8 text-amber-400" />
+                            </div>
+                            <h4 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-3">Request Pending</h4>
+                            <p className="text-sm sm:text-base text-amber-200/90 max-w-md mx-auto leading-relaxed">
                               Your request to join this community is pending approval. 
                               You'll be able to see announcements once your request is accepted.
                             </p>
@@ -3834,81 +3827,101 @@ export default function ForYouPage() {
                         </EnhancedCard>
                       ) : (
                         <>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
-                          Announcements
-                        </h3>
-                          <div className="flex items-center gap-2">
-                            <EnhancedButton 
-                              variant="gradient" 
-                              size="sm" 
-                              rounded="full" 
-                              className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 h-7 px-3 text-xs"
-                              onClick={() => {
-                                setEditingAnnouncementId(null)
-                                setAnnouncementForm({ title: '', description: '' })
-                                setAnnouncementError(null)
-                                setShowCreateAnnouncement(true)
-                              }}
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              New
-                            </EnhancedButton>
-                        <EnhancedButton variant="ghost" size="sm" rounded="full" className="text-zinc-400 hover:text-white hover:bg-zinc-800/50 h-7 w-7 p-0">
-                          <Filter className="h-3.5 w-3.5" />
+                      <div className="flex items-center justify-between mb-4 sm:mb-5">
+                        <div>
+                          <h3 className="text-lg sm:text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]">
+                            Announcements
+                          </h3>
+                          <p className="text-xs sm:text-sm text-zinc-500 mt-1">Stay updated with community news and updates</p>
+                        </div>
+                          <div className="flex items-center gap-2.5">
+                            {isUserStaff && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <EnhancedButton 
+                                      variant="gradient" 
+                                      size="sm" 
+                                      rounded="full" 
+                                      animation="shimmer"
+                                      className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 h-8 sm:h-9 px-4 sm:px-5 text-xs sm:text-sm font-semibold shadow-[0_0_16px_0_rgba(80,0,255,0.4)] hover:scale-105 transition-transform duration-200"
+                                      onClick={() => {
+                                        setEditingAnnouncementId(null)
+                                        setAnnouncementForm({ title: '', description: '' })
+                                        setAnnouncementError(null)
+                                        setShowCreateAnnouncement(true)
+                                      }}
+                                    >
+                                      <Plus className="h-4 w-4 mr-1.5" />
+                                      New
+                                    </EnhancedButton>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
+                                    <p className="text-xs">Create a new announcement (Admin only)</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                        <EnhancedButton variant="ghost" size="sm" rounded="full" className="text-zinc-400 hover:text-white hover:bg-zinc-800/60 h-8 w-8 sm:h-9 sm:w-9 p-0 transition-all duration-200 hover:scale-110">
+                          <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
                         </EnhancedButton>
                           </div>
             </div>
 
                       {isLoadingAnnouncements && (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                          <span className="ml-2 text-xs sm:text-sm text-zinc-400">Loading announcements...</span>
+                        <div className="flex items-center justify-center py-12 sm:py-16">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-500 border-t-transparent shadow-[0_0_16px_0_rgba(59,130,246,0.4)]" />
+                            <span className="text-sm sm:text-base text-zinc-400 font-medium">Loading announcements...</span>
+                          </div>
                         </div>
                       )}
 
                        {!isLoadingAnnouncements && communityAnnouncements.length ? communityAnnouncements.map((announcement, index) => (
-                        <AnimatedSection key={announcement.id} delay={0.1 + index * 0.1}>
+                        <AnimatedSection key={announcement.id} delay={0.1 + index * 0.05}>
                           <EnhancedCard 
                             variant="default" 
                             hover="lift" 
-                            className="bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer"
+                            className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/60 rounded-xl cursor-pointer transition-all duration-300 hover:border-blue-500/40 hover:shadow-[0_0_24px_0_rgba(59,130,246,0.2)]"
                             onClick={() => handleViewAnnouncement(announcement.id)}
                           >
-                            <EnhancedCardContent className="p-3 sm:p-3.5">
-                              <div className="flex items-start gap-3">
+                            <EnhancedCardContent className="p-4 sm:p-5">
+                              <div className="flex items-start gap-4">
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <h4 className="font-bold text-white text-xs sm:text-sm line-clamp-2">
+                                  <div className="flex items-center gap-2.5 mb-2.5">
+                                    <h4 className="font-extrabold text-white text-sm sm:text-base line-clamp-2 leading-snug">
                                       {announcement.title}
                                     </h4>
                                     {announcement.pinned && (
-                                      <Pin className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                                      <Badge className="bg-blue-900/40 text-blue-300 border-blue-800/50 text-[10px] px-2 py-0.5 flex items-center gap-1 shadow-[0_0_8px_0_rgba(59,130,246,0.3)]">
+                                        <Pin className="h-3 w-3" />
+                                        Pinned
+                                      </Badge>
                                     )}
                                     </div>
-                                  <p className="text-zinc-300 text-xs sm:text-sm mb-2 line-clamp-3">{announcement.content}</p>
-                                  <div className="flex items-center text-[10px] sm:text-xs text-zinc-500">
-                                    <Clock className="h-3 w-3 mr-1" />
+                                  <p className="text-zinc-300 text-sm sm:text-base mb-3 line-clamp-3 leading-relaxed">{announcement.content}</p>
+                                  <div className="flex items-center text-xs sm:text-sm text-zinc-500 gap-1.5">
+                                    <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                       {announcement.timestamp}
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-col gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                       <EnhancedButton
                                         variant="ghost"
                                         size="sm"
                                         rounded="full"
-                                        className="h-7 w-7 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                                        className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-all duration-200 hover:scale-110"
                                         onClick={() => handleStartEditAnnouncement(announcement)}
                                     title={isUserStaff ? "Edit announcement" : "Edit announcement (Admin only)"}
                                         disabled={isDeletingAnnouncement || isUpdatingAnnouncement}
                                       >
-                                        <Edit className="h-3.5 w-3.5" />
+                                        <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
                                       </EnhancedButton>
                                       <EnhancedButton
                                         variant="ghost"
                                         size="sm"
                                         rounded="full"
-                                        className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
+                                        className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/30 transition-all duration-200 hover:scale-110"
                                         onClick={() => {
                                           if (confirm(`Are you sure you want to delete "${announcement.title}"?`)) {
                                             handleDeleteAnnouncement(announcement.id)
@@ -3919,9 +3932,9 @@ export default function ForYouPage() {
                                         isLoading={deletingAnnouncementId === announcement.id}
                                       >
                                         {deletingAnnouncementId === announcement.id ? (
-                                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                                          <span className="h-4 w-4 sm:h-5 sm:w-5 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
                                         ) : (
-                                          <Trash2 className="h-3.5 w-3.5" />
+                                          <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                                         )}
                                       </EnhancedButton>
                                 </div>
@@ -3930,9 +3943,30 @@ export default function ForYouPage() {
                           </EnhancedCard>
                         </AnimatedSection>
                        )) : !isLoadingAnnouncements ? (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
-                          <EnhancedCardContent className="p-4 text-xs sm:text-sm text-zinc-400">
-                            No announcements yet.
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/60 rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.2)]">
+                          <EnhancedCardContent className="p-8 sm:p-10 text-center">
+                            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 flex items-center justify-center">
+                              <Bell className="h-8 w-8 text-blue-400" />
+                            </div>
+                            <h4 className="text-lg sm:text-xl font-bold text-zinc-300 mb-2">No announcements yet</h4>
+                            <p className="text-sm sm:text-base text-zinc-500 mb-4">Community admins will post updates here</p>
+                            {isUserStaff && (
+                              <EnhancedButton
+                                variant="gradient"
+                                size="sm"
+                                rounded="full"
+                                className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                                onClick={() => {
+                                  setEditingAnnouncementId(null)
+                                  setAnnouncementForm({ title: '', description: '' })
+                                  setAnnouncementError(null)
+                                  setShowCreateAnnouncement(true)
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create First Announcement
+                              </EnhancedButton>
+                            )}
                           </EnhancedCardContent>
                         </EnhancedCard>
                        ) : null}
@@ -4149,13 +4183,15 @@ export default function ForYouPage() {
                        )}
                     </TabsContent>
 
-                    <TabsContent value="leaderboard" className="space-y-3">
+                    <TabsContent value="leaderboard" className="space-y-4 sm:space-y-5">
                       {hasPendingRequest ? (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl">
-                          <EnhancedCardContent className="p-6 text-center">
-                            <Lock className="h-12 w-12 mx-auto mb-4 text-amber-400" />
-                            <h4 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h4>
-                            <p className="text-sm text-amber-200/80">
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-amber-800/50 rounded-xl shadow-[0_0_24px_0_rgba(245,158,11,0.2)]">
+                          <EnhancedCardContent className="p-8 sm:p-10 text-center">
+                            <div className="h-16 w-16 mx-auto mb-5 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center">
+                              <Lock className="h-8 w-8 text-amber-400" />
+                            </div>
+                            <h4 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-3">Request Pending</h4>
+                            <p className="text-sm sm:text-base text-amber-200/90 max-w-md mx-auto leading-relaxed">
                               Your request to join this community is pending approval. 
                               You'll be able to see the leaderboard once your request is accepted.
                             </p>
@@ -4163,29 +4199,34 @@ export default function ForYouPage() {
                         </EnhancedCard>
                       ) : (
                         <>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent flex items-center gap-1.5">
-                          <Trophy className="h-4 w-4 text-yellow-500" />
-                          <span>Leaderboard</span>
-                        </h3>
+                      <div className="flex items-center justify-between mb-4 sm:mb-5">
+                        <div>
+                          <h3 className="text-lg sm:text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent flex items-center gap-2 drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]">
+                            <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]" />
+                            <span>Leaderboard</span>
+                          </h3>
+                          <p className="text-xs sm:text-sm text-zinc-500 mt-1 ml-7">See who's leading the community</p>
+                        </div>
                       </div>
 
                       {isLoadingLeaderboard ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                          <span className="ml-2 text-xs sm:text-sm text-zinc-400">Loading leaderboard...</span>
+                        <div className="flex items-center justify-center py-12 sm:py-16">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-500 border-t-transparent shadow-[0_0_16px_0_rgba(59,130,246,0.4)]" />
+                            <span className="text-sm sm:text-base text-zinc-400 font-medium">Loading leaderboard...</span>
+                          </div>
                         </div>
                       ) : leaderboardError ? (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-red-800/50 rounded-xl">
-                          <EnhancedCardContent className="p-4 text-xs sm:text-sm text-red-300">
-                            <div className="flex items-center gap-2">
-                              <X className="h-4 w-4" />
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-red-800/50 rounded-xl shadow-[0_0_16px_0_rgba(239,68,68,0.2)]">
+                          <EnhancedCardContent className="p-5 sm:p-6 text-sm sm:text-base text-red-300">
+                            <div className="flex items-center gap-3">
+                              <X className="h-5 w-5 flex-shrink-0" />
                               <span>{leaderboardError}</span>
                             </div>
                           </EnhancedCardContent>
                         </EnhancedCard>
                       ) : leaderboardData.length > 0 ? (
-                        <div className="space-y-2">
+                        <div className="space-y-3 sm:space-y-4">
                           {leaderboardData.map((entry, index) => {
                             const isTopThree = entry.rank <= 3
                             const medalColors = [
@@ -4202,16 +4243,16 @@ export default function ForYouPage() {
                                   variant="default" 
                                   hover="lift" 
                                   className={cn(
-                                    "bg-zinc-900 border rounded-xl cursor-pointer",
+                                    "bg-zinc-900/80 backdrop-blur-sm border rounded-xl cursor-pointer transition-all duration-300",
                                     isTopThree 
-                                      ? `border-2 ${medalColor?.border} bg-gradient-to-br ${medalColor?.bg}/10` 
+                                      ? `border-2 ${medalColor?.border} bg-gradient-to-br ${medalColor?.bg}/10 shadow-[0_0_24px_0_rgba(234,179,8,0.3)] hover:shadow-[0_0_32px_0_rgba(234,179,8,0.4)]` 
                                       : isCurrentUser
-                                        ? "border-2 border-blue-500/50 bg-blue-500/5"
-                                        : "border-zinc-800"
+                                        ? "border-2 border-blue-500/50 bg-blue-500/5 shadow-[0_0_16px_0_rgba(59,130,246,0.2)] hover:shadow-[0_0_24px_0_rgba(59,130,246,0.3)]"
+                                        : "border-zinc-800/60 hover:border-zinc-700/80 hover:shadow-[0_0_16px_0_rgba(0,0,0,0.3)]"
                                   )}
                                   onClick={() => router.push(`/profile?userId=${entry.userId}`)}
                                 >
-                                  <EnhancedCardContent className="p-3 sm:p-4">
+                                  <EnhancedCardContent className="p-4 sm:p-5">
                                     <div className="flex items-center gap-3">
                                       {/* Rank Badge */}
                                       <div className={cn(
@@ -4313,13 +4354,25 @@ export default function ForYouPage() {
                           })}
                         </div>
                       ) : (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
-                          <EnhancedCardContent className="p-8 text-center">
-                            <Trophy className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
-                            <h4 className="text-lg font-bold text-white mb-2">No Leaderboard Data</h4>
-                            <p className="text-sm text-zinc-400">
-                              Leaderboard rankings will appear here once members start earning XP and completing tasks.
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/60 rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.2)]">
+                          <EnhancedCardContent className="p-8 sm:p-10 text-center">
+                            <div className="h-16 w-16 mx-auto mb-5 rounded-full bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 flex items-center justify-center">
+                              <Trophy className="h-8 w-8 text-yellow-400" />
+                            </div>
+                            <h4 className="text-lg sm:text-xl font-bold text-white mb-3">No Leaderboard Data Yet</h4>
+                            <p className="text-sm sm:text-base text-zinc-400 max-w-md mx-auto leading-relaxed mb-4">
+                              Leaderboard rankings will appear here once members start earning XP and completing tasks. 
+                              Complete challenges and activities to climb the ranks!
                             </p>
+                            <EnhancedButton
+                              variant="outline"
+                              size="sm"
+                              rounded="full"
+                              className="border-blue-500/50 text-blue-400 hover:bg-blue-950/20"
+                              onClick={() => router.push('/home')}
+                            >
+                              Start Earning XP
+                            </EnhancedButton>
                           </EnhancedCardContent>
                         </EnhancedCard>
                       )}
@@ -4327,13 +4380,15 @@ export default function ForYouPage() {
                       )}
                     </TabsContent>
 
-                    <TabsContent value="members" className="space-y-3">
+                    <TabsContent value="members" className="space-y-4 sm:space-y-5">
                       {hasPendingRequest ? (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl">
-                          <EnhancedCardContent className="p-6 text-center">
-                            <Lock className="h-12 w-12 mx-auto mb-4 text-amber-400" />
-                            <h4 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h4>
-                            <p className="text-sm text-amber-200/80">
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-amber-800/50 rounded-xl shadow-[0_0_24px_0_rgba(245,158,11,0.2)]">
+                          <EnhancedCardContent className="p-8 sm:p-10 text-center">
+                            <div className="h-16 w-16 mx-auto mb-5 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center">
+                              <Lock className="h-8 w-8 text-amber-400" />
+                            </div>
+                            <h4 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-3">Request Pending</h4>
+                            <p className="text-sm sm:text-base text-amber-200/90 max-w-md mx-auto leading-relaxed">
                               Your request to join this community is pending approval. 
                               You'll be able to see members once your request is accepted.
                             </p>
@@ -4341,45 +4396,59 @@ export default function ForYouPage() {
                         </EnhancedCard>
                       ) : (
                         <>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
-                        <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent">
-                          Members
-                        </h3>
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-5">
+                        <div>
+                          <h3 className="text-lg sm:text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-[0_0_8px_rgba(139,92,246,0.3)]">
+                            Members
+                          </h3>
+                          <p className="text-xs sm:text-sm text-zinc-500 mt-1">Connect with community members</p>
+                        </div>
+                        <div className="flex gap-2.5">
                           <div className="relative flex-1 sm:flex-initial">
-                            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
                             <Input
-                              placeholder="Search..."
+                              placeholder="Search members..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="pl-8 pr-2 py-1.5 h-8 bg-zinc-800/80 border-blue-700/40 text-white text-xs focus:border-blue-500 w-full sm:w-48"
+                              className="pl-10 pr-3 py-2 h-9 sm:h-10 bg-zinc-900/80 backdrop-blur-sm border-zinc-800/60 text-white text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 w-full sm:w-56 rounded-lg transition-all duration-200"
                             />
                           </div>
-                          <EnhancedButton variant="outline" size="sm" rounded="full" className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 h-8 w-8 p-0">
-                            <Filter className="h-3.5 w-3.5" />
-                          </EnhancedButton>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <EnhancedButton variant="outline" size="sm" rounded="full" className="bg-zinc-900/80 backdrop-blur-sm border-zinc-800/60 text-white hover:bg-zinc-800/80 h-9 w-9 sm:h-10 sm:w-10 p-0 transition-all duration-200 hover:scale-110">
+                                  <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
+                                </EnhancedButton>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
+                                <p className="text-xs">Filter members (Coming soon)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </div>
 
                       {isLoadingMembers && (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                          <span className="ml-2 text-xs sm:text-sm text-zinc-400">Loading members...</span>
+                        <div className="flex items-center justify-center py-12 sm:py-16">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-500 border-t-transparent shadow-[0_0_16px_0_rgba(59,130,246,0.4)]" />
+                            <span className="text-sm sm:text-base text-zinc-400 font-medium">Loading members...</span>
+                          </div>
                         </div>
                       )}
 
                       {membersError && !isLoadingMembers && (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-red-800/50 rounded-xl">
-                          <EnhancedCardContent className="p-4 text-xs sm:text-sm text-red-300">
-                            <div className="flex items-center gap-2">
-                              <X className="h-4 w-4" />
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-red-800/50 rounded-xl shadow-[0_0_16px_0_rgba(239,68,68,0.2)]">
+                          <EnhancedCardContent className="p-5 sm:p-6 text-sm sm:text-base text-red-300">
+                            <div className="flex items-center gap-3 mb-4">
+                              <X className="h-5 w-5 flex-shrink-0" />
                               <span>{membersError}</span>
                             </div>
                             <EnhancedButton
                               variant="outline"
                               size="sm"
                               rounded="full"
-                              className="mt-3 bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700 h-8 text-xs"
+                              className="bg-zinc-800/80 border-zinc-700/60 text-white hover:bg-zinc-700/80 h-9 sm:h-10 text-sm transition-all duration-200 hover:scale-105"
                               onClick={() => {
                                 setMembersError(null)
                                 // Trigger re-fetch by temporarily changing selectedCommunity
@@ -4398,8 +4467,8 @@ export default function ForYouPage() {
                       )}
 
                       {kickError && (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-red-800/50 rounded-xl mb-3">
-                          <EnhancedCardContent className="p-3 text-xs sm:text-sm text-red-300">
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-red-800/50 rounded-xl mb-4 shadow-[0_0_16px_0_rgba(239,68,68,0.2)]">
+                          <EnhancedCardContent className="p-4 sm:p-5 text-sm sm:text-base text-red-300">
                             {kickError}
                           </EnhancedCardContent>
                         </EnhancedCard>
@@ -4416,17 +4485,17 @@ export default function ForYouPage() {
                           )
                         })
                         .map((member, index) => (
-                        <AnimatedSection key={member.id} delay={0.1 + index * 0.1}>
-                          <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800 rounded-xl">
-                            <EnhancedCardContent className="p-3 sm:p-3.5">
-                              <div className="flex items-start gap-2.5">
+                        <AnimatedSection key={member.id} delay={0.05 + index * 0.05}>
+                          <EnhancedCard variant="default" hover="lift" className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/60 rounded-xl transition-all duration-300 hover:border-blue-500/40 hover:shadow-[0_0_24px_0_rgba(59,130,246,0.2)]">
+                            <EnhancedCardContent className="p-4 sm:p-5">
+                              <div className="flex items-start gap-4">
                                 <div className="relative flex-shrink-0">
-                                  <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border border-blue-500/30">
-                                    <AvatarImage src={member.image} />
-                                     <AvatarFallback className="bg-zinc-800 text-xs">{member.name?.charAt(0) ?? 'M'}</AvatarFallback>
+                                  <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border-2 border-blue-500/40 ring-2 ring-blue-500/20 shadow-[0_0_12px_0_rgba(59,130,246,0.3)]">
+                                    <AvatarImage src={member.image} className="object-cover" />
+                                     <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm sm:text-base font-semibold">{member.name?.charAt(0) ?? 'M'}</AvatarFallback>
                                   </Avatar>
                                   {member.isOnline && (
-                                    <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 border-2 border-black rounded-full" />
+                                    <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-green-500 border-2 border-black rounded-full shadow-[0_0_8px_0_rgba(34,197,94,0.6)] animate-pulse" />
                     )}
                   </div>
                                 <div className="flex-1 min-w-0">
@@ -4494,9 +4563,13 @@ export default function ForYouPage() {
                           </EnhancedCard>
                         </AnimatedSection>
                       )) : !isLoadingMembers && !membersError ? (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
-                          <EnhancedCardContent className="p-4 text-xs sm:text-sm text-zinc-400">
-                            No members to display yet.
+                        <EnhancedCard variant="default" className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/60 rounded-xl shadow-[0_0_16px_0_rgba(0,0,0,0.2)]">
+                          <EnhancedCardContent className="p-8 sm:p-10 text-center">
+                            <div className="h-16 w-16 mx-auto mb-5 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 flex items-center justify-center">
+                              <Users className="h-8 w-8 text-blue-400" />
+                            </div>
+                            <h4 className="text-lg sm:text-xl font-bold text-zinc-300 mb-2">No members to display yet</h4>
+                            <p className="text-sm sm:text-base text-zinc-500">Members will appear here once they join the community</p>
                           </EnhancedCardContent>
                         </EnhancedCard>
                       ) : null}

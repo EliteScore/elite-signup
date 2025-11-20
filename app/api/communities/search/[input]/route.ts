@@ -152,14 +152,70 @@ export async function GET(
     console.log('[Search Communities API] Encoded input:', encodedInput)
     console.log('[Search Communities API] Final target URL:', targetUrl.toString())
 
-    const response = await fetch(targetUrl.toString(), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    })
+    const fetchStartTime = Date.now()
+    console.log('[Search Communities API] ===== Starting external API fetch =====')
+    console.log('[Search Communities API] Target URL:', targetUrl.toString())
+    console.log('[Search Communities API] Request timestamp:', new Date().toISOString())
+    
+    // Create abort controller for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => {
+      console.warn('[Search Communities API] Request timeout after 30 seconds, aborting...')
+      controller.abort()
+    }, 30000) // 30 second timeout
+    
+    let response: Response
+    try {
+      response = await fetch(targetUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+      const fetchDuration = Date.now() - fetchStartTime
+      console.log('[Search Communities API] External API fetch completed in', fetchDuration, 'ms')
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      const fetchDuration = Date.now() - fetchStartTime
+      console.error('[Search Communities API] ===== FETCH EXCEPTION =====')
+      console.error('[Search Communities API] Fetch duration before error:', fetchDuration, 'ms')
+      console.error('[Search Communities API] Error type:', fetchError instanceof Error ? fetchError.constructor.name : typeof fetchError)
+      console.error('[Search Communities API] Error message:', fetchError instanceof Error ? fetchError.message : String(fetchError))
+      console.error('[Search Communities API] Error stack:', fetchError instanceof Error ? fetchError.stack : 'No stack trace')
+      
+      if (fetchError instanceof Error) {
+        if (fetchError.name === 'AbortError' || fetchError.message.includes('aborted')) {
+          console.error('[Search Communities API] Request was aborted (timeout or cancellation)')
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Request timeout',
+              message: 'The search request took too long and was cancelled. Please try again.',
+              details: 'Request exceeded 30 second timeout',
+            },
+            { status: 408 },
+          )
+        }
+        if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError')) {
+          console.error('[Search Communities API] Network error - cannot reach backend')
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Network error',
+              message: 'Cannot connect to search service. Please check your connection.',
+              details: fetchError.message,
+            },
+            { status: 503 },
+          )
+        }
+      }
+      
+      throw fetchError
+    }
 
     console.log('[Search Communities API] External API response status:', response.status, response.statusText)
     console.log('[Search Communities API] Response ok:', response.ok)
@@ -169,20 +225,39 @@ export async function GET(
       let errorData: any = null
       let errorText: string | null = null
       
+      console.error('[Search Communities API] ===== ERROR RESPONSE RECEIVED =====')
+      console.error('[Search Communities API] Status:', response.status, response.statusText)
+      
       try {
         const contentType = response.headers.get('content-type')
-        console.log('[Search Communities API] Error response content-type:', contentType)
+        console.error('[Search Communities API] Error response content-type:', contentType)
         
         if (contentType?.includes('application/json')) {
           errorData = await response.json()
-          console.log('[Search Communities API] Error response (JSON):', JSON.stringify(errorData, null, 2))
+          console.error('[Search Communities API] Error response (JSON):', JSON.stringify(errorData, null, 2))
         } else {
           errorText = await response.text()
-          console.log('[Search Communities API] Error response (text):', errorText)
+          console.error('[Search Communities API] Error response (text):', errorText)
         }
       } catch (readError) {
         console.error('[Search Communities API] ERROR: Failed to read error response:', readError)
+        console.error('[Search Communities API] Read error type:', readError instanceof Error ? readError.constructor.name : typeof readError)
+        console.error('[Search Communities API] Read error message:', readError instanceof Error ? readError.message : String(readError))
         errorText = response.statusText
+      }
+
+      // Check for DB error specifically
+      const errorMessage = errorData?.error || errorData?.message || errorData?.details || errorText || response.statusText
+      if (errorMessage && (errorMessage.includes('DB error') || errorMessage.includes('statement has been closed') || errorMessage.includes('statement'))) {
+        console.error('[Search Communities API] ===== DATABASE ERROR DETECTED =====')
+        console.error('[Search Communities API] DB Error message:', errorMessage)
+        console.error('[Search Communities API] Full error data:', JSON.stringify(errorData, null, 2))
+        console.error('[Search Communities API] This indicates a backend database connection/statement issue')
+        console.error('[Search Communities API] Possible causes:')
+        console.error('[Search Communities API]   - Database connection pool exhausted')
+        console.error('[Search Communities API]   - Statement closed before execution')
+        console.error('[Search Communities API]   - Connection timeout')
+        console.error('[Search Communities API]   - Backend database connection issue')
       }
 
       // If we got a JSON error response with success: false, preserve that structure
@@ -196,6 +271,11 @@ export async function GET(
             message: errorData.message || errorData.error || 'Failed to search communities',
             error: errorData.error || 'Failed to search communities',
             details: errorData.details || errorData.message || errorText || response.statusText,
+            debug: {
+              status: response.status,
+              statusText: response.statusText,
+              timestamp: new Date().toISOString(),
+            },
           },
           { status: response.status },
         )
@@ -210,6 +290,11 @@ export async function GET(
           error: 'Failed to search communities',
           message: errorText || response.statusText,
           details: errorText || response.statusText,
+          debug: {
+            status: response.status,
+            statusText: response.statusText,
+            timestamp: new Date().toISOString(),
+          },
         },
         { status: response.status },
       )
@@ -255,6 +340,7 @@ export async function GET(
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
     console.error('[Search Communities API] ===== EXCEPTION OCCURRED =====')
+    console.error('[Search Communities API] Timestamp:', new Date().toISOString())
     console.error(
       '[Search Communities API] Error type:',
       error instanceof Error ? error.constructor.name : typeof error,
@@ -267,11 +353,30 @@ export async function GET(
       '[Search Communities API] Error stack:',
       error instanceof Error ? error.stack : 'No stack trace',
     )
+    
+    // Check for specific error types
+    if (error instanceof Error) {
+      if (error.name === 'AbortError' || error.message.includes('aborted')) {
+        console.error('[Search Communities API] Request was aborted')
+      } else if (error.message.includes('timeout')) {
+        console.error('[Search Communities API] Request timeout detected')
+      } else if (error.message.includes('fetch') || error.message.includes('network')) {
+        console.error('[Search Communities API] Network/fetch error detected')
+      } else if (error.message.includes('DB') || error.message.includes('database') || error.message.includes('statement')) {
+        console.error('[Search Communities API] Database-related error detected')
+      }
+    }
 
     return NextResponse.json(
       {
+        success: false,
         error: 'Internal server error',
+        message: 'An unexpected error occurred while searching communities',
         details: error instanceof Error ? error.message : String(error),
+        debug: {
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          timestamp: new Date().toISOString(),
+        },
       },
       { status: 500 },
     )

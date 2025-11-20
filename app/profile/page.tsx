@@ -2343,101 +2343,152 @@ export default function ProfilePage() {
                 </div>
               )}
               
-              {/* Quick Stats: Resume Score + Level - For own profile */}
+              {/* Resume Score - For own profile */}
               {isViewingOwnProfile && (
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                <div className="mt-3 flex justify-center">
                   {isLoadingResumeScores ? (
-                    <div className="px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-xs text-zinc-400 flex items-center gap-2">
-                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
-                      <span>Loading score...</span>
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-3.5 py-2 rounded-lg bg-zinc-900/80 border border-zinc-700/50 backdrop-blur-sm flex items-center gap-2"
+                    >
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                      <span className="text-[10px] text-zinc-400 font-medium">Loading...</span>
+                    </motion.div>
                   ) : hasNoResumeScores ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-900/90 to-purple-900/90 border border-blue-700/50 backdrop-blur-sm shadow-lg"
+                      className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-900/90 to-purple-900/90 border border-blue-700/50 backdrop-blur-sm"
                     >
                       <EnhancedButton
                         size="sm"
                         rounded="full"
                         variant="gradient"
                         animation="shimmer"
-                        className="px-4 py-1.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
+                        className="px-3.5 py-1 text-xs font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]"
                         onClick={() => router.push("/resume")}
                       >
-                        <FileText className="h-3 w-3 mr-2" />
-                        Upload your resume now!
+                        <FileText className="h-3 w-3 mr-1.5" />
+                        Upload resume
                       </EnhancedButton>
                     </motion.div>
                   ) : resumeScores ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5"
+                      className="px-3.5 py-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800/60 backdrop-blur-sm shadow-md flex items-center gap-3"
                     >
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
-                      <span className="text-lg sm:text-xl font-extrabold text-white">{resumeScores.overall_score}</span>
-                      {resumeDelta > 0 && (
-                        <span className="text-xs sm:text-sm font-bold text-emerald-400">+{resumeDelta}</span>
-                      )}
+                      {/* Icon Container - Rounded square with gradient border */}
+                      <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-transparent border border-blue-500/50 flex items-center justify-center">
+                        <Trophy className="h-4.5 w-4.5 text-blue-400" />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Resume Score</span>
+                          {resumeDelta > 0 && (
+                            <Badge className="bg-emerald-900/50 text-emerald-300 border-emerald-800 text-[9px] px-1.5 py-0 rounded-full h-3.5">
+                              +{resumeDelta}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent leading-tight">
+                            {resumeScores.overall_score}
+                          </span>
+                          <span className="text-[11px] text-zinc-500 font-medium">/ 100</span>
+                        </div>
+                      </div>
                     </motion.div>
                   ) : (
-                    <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5">
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
-                      <span className="text-lg sm:text-xl font-extrabold text-white">{resumeScore}</span>
-                      {resumeDelta > 0 && (
-                        <span className="text-xs sm:text-sm font-bold text-emerald-400">+{resumeDelta}</span>
-                      )}
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-3.5 py-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800/60 backdrop-blur-sm shadow-md flex items-center gap-3"
+                    >
+                      {/* Icon Container - Rounded square with gradient border */}
+                      <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-transparent border border-blue-500/50 flex items-center justify-center">
+                        <Trophy className="h-4.5 w-4.5 text-blue-400" />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Resume Score</span>
+                          {resumeDelta > 0 && (
+                            <Badge className="bg-emerald-900/50 text-emerald-300 border-emerald-800 text-[9px] px-1.5 py-0 rounded-full h-3.5">
+                              +{resumeDelta}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent leading-tight">
+                            {resumeScore}
+                          </span>
+                          <span className="text-[11px] text-zinc-500 font-medium">/ 100</span>
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg"
-                  >
-                    <span className="text-xs sm:text-sm font-semibold text-zinc-300">Level</span>
-                    <span className="text-lg sm:text-xl font-extrabold text-white ml-2">{level}</span>
-                  </motion.div>
                 </div>
               )}
 
-              {/* Quick Stats: Resume Score + Level - For viewed user profile */}
+              {/* Resume Score - For viewed user profile */}
               {!isViewingOwnProfile && numericViewingUserId && (
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                <div className="mt-3 flex justify-center">
                   {isLoadingViewedUserResumeScores ? (
-                    <div className="px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-xs text-zinc-400 flex items-center gap-2">
-                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
-                      <span>Loading score...</span>
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-3.5 py-2 rounded-lg bg-zinc-900/80 border border-zinc-700/50 backdrop-blur-sm flex items-center gap-2"
+                    >
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                      <span className="text-[10px] text-zinc-400 font-medium">Loading...</span>
+                    </motion.div>
                   ) : hasNoViewedUserResumeScores ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5"
+                      className="px-3.5 py-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800/60 backdrop-blur-sm shadow-md flex items-center gap-3"
                     >
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
-                      <span className="text-lg sm:text-xl font-extrabold text-zinc-500">N/A</span>
+                      {/* Icon Container - Rounded square with gradient border */}
+                      <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-transparent border border-blue-500/50 flex items-center justify-center">
+                        <Trophy className="h-4.5 w-4.5 text-blue-400" />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Resume Score</span>
+                        <div className="flex items-baseline gap-1.5 mt-0.5">
+                          <span className="text-xl font-extrabold text-zinc-500 leading-tight">N/A</span>
+                        </div>
+                      </div>
                     </motion.div>
                   ) : viewedUserResumeScores ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg flex items-center gap-2.5"
+                      className="px-3.5 py-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800/60 backdrop-blur-sm shadow-md flex items-center gap-3"
                     >
-                      <span className="text-xs sm:text-sm font-semibold text-zinc-300">Resume Score</span>
-                      <span className="text-lg sm:text-xl font-extrabold text-white">{viewedUserResumeScores.overall_score}</span>
+                      {/* Icon Container - Rounded square with gradient border */}
+                      <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-transparent border border-blue-500/50 flex items-center justify-center">
+                        <Trophy className="h-4.5 w-4.5 text-blue-400" />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Resume Score</span>
+                        <div className="flex items-baseline gap-1.5 mt-0.5">
+                          <span className="text-xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent leading-tight">
+                            {viewedUserResumeScores.overall_score}
+                          </span>
+                          <span className="text-[11px] text-zinc-500 font-medium">/ 100</span>
+                        </div>
+                      </div>
                     </motion.div>
                   ) : null}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-zinc-900/90 to-zinc-800/90 border border-zinc-700/50 backdrop-blur-sm shadow-lg"
-                  >
-                    <span className="text-xs sm:text-sm font-semibold text-zinc-300">Level</span>
-                    <span className="text-lg sm:text-xl font-extrabold text-white ml-2">{level}</span>
-                  </motion.div>
                 </div>
               )}
               

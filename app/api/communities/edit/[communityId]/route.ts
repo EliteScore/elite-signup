@@ -89,14 +89,39 @@ export async function PUT(
     console.log("[Edit Community API] Request payload:", JSON.stringify(body, null, 2))
     
     console.log("[Edit Community API] Making fetch request to external API...")
-    const response = await fetch(targetUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(body)
-    })
+    
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    
+    let response: Response
+    try {
+      response = await fetch(targetUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error("[Edit Community API] Request timed out after 30 seconds")
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Request timeout',
+            message: 'The request took too long to complete. Please try again.',
+          },
+          { status: 504 }
+        )
+      }
+      throw fetchError
+    }
 
     console.log("[Edit Community API] External API response received")
     console.log("[Edit Community API] Response status:", response.status, response.statusText)
@@ -104,21 +129,40 @@ export async function PUT(
     console.log("[Edit Community API] Response headers:", Object.fromEntries(response.headers.entries()))
 
     if (!response.ok) {
-      let errorText: any
-      try {
-        const contentType = response.headers.get('content-type')
-        console.log("[Edit Community API] Response content-type:", contentType)
-        
-        if (contentType?.includes('application/json')) {
-          errorText = await response.json()
-          console.log("[Edit Community API] Error response (JSON):", JSON.stringify(errorText, null, 2))
-        } else {
-          errorText = await response.text()
-          console.log("[Edit Community API] Error response (text):", errorText)
+      let errorText: any = null
+      const contentType = response.headers.get('content-type')
+      const contentLength = response.headers.get('content-length')
+      
+      console.log("[Edit Community API] Response content-type:", contentType)
+      console.log("[Edit Community API] Response content-length:", contentLength)
+      console.log("[Edit Community API] Response status:", response.status, response.statusText)
+      
+      // Try to read error response, but handle empty responses gracefully
+      if (contentLength && parseInt(contentLength) > 0) {
+        try {
+          if (contentType?.includes('application/json')) {
+            errorText = await response.json()
+            console.log("[Edit Community API] Error response (JSON):", JSON.stringify(errorText, null, 2))
+          } else {
+            const text = await response.text()
+            if (text && text.trim()) {
+              errorText = text
+              console.log("[Edit Community API] Error response (text):", errorText)
+              // Try to parse as JSON if it looks like JSON
+              try {
+                errorText = JSON.parse(text)
+              } catch {
+                // Keep as text if not JSON
+              }
+            }
+          }
+        } catch (readError) {
+          console.error("[Edit Community API] ERROR: Failed to read error response:", readError)
+          errorText = response.statusText || 'Unknown error'
         }
-      } catch (readError) {
-        console.error("[Edit Community API] ERROR: Failed to read error response:", readError)
-        errorText = response.statusText
+      } else {
+        console.warn("[Edit Community API] Empty error response body (content-length: 0)")
+        errorText = response.statusText || `Server returned ${response.status} with no error message`
       }
 
       console.error("[Edit Community API] Request failed with status:", response.status)
@@ -141,12 +185,23 @@ export async function PUT(
         )
       }
 
+      // Provide more helpful error messages based on status code
+      let userMessage = 'Failed to update community'
+      if (response.status === 500) {
+        userMessage = 'Server error occurred while updating community. The backend service may be experiencing issues.'
+      } else if (response.status === 400) {
+        userMessage = 'Invalid request. Please check the community data and try again.'
+      } else if (response.status === 404) {
+        userMessage = 'Community not found. It may have been deleted.'
+      }
+      
       return NextResponse.json(
         { 
           success: false,
           error: 'Failed to update community',
-          message: errorText?.message || errorText?.error || errorText || response.statusText,
-          details: errorText || response.statusText
+          message: errorText?.message || errorText?.error || (typeof errorText === 'string' ? errorText : userMessage) || userMessage,
+          details: errorText || response.statusText || userMessage,
+          statusCode: response.status
         },
         { status: response.status }
       )

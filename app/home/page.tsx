@@ -503,14 +503,9 @@ export default function HomePage() {
   const router = useRouter()
   const [likedPosts, setLikedPosts] = useState<number[]>([])
   const [savedPosts, setSavedPosts] = useState<number[]>([])
-  const [postText, setPostText] = useState("")
   const [completedTasks, setCompletedTasks] = useState<number[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(1)
-  const [activePostType, setActivePostType] = useState<string | null>(null)
-  const [selectedChallenge, setSelectedChallenge] = useState<number | null>(null)
-  const [selectedLeaderboard, setSelectedLeaderboard] = useState<number | null>(null)
-  const [postMessage, setPostMessage] = useState("")
   const [showFloatingLogo, setShowFloatingLogo] = useState(true)
   const [networkSuggestions, setNetworkSuggestions] = useState<NetworkSuggestion[]>([])
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
@@ -725,7 +720,12 @@ export default function HomePage() {
 
     async function fetchFeedData(forceRefresh = false) {
       const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
-      const today = new Date().toISOString().split('T')[0] // yyyy-MM-dd format
+      const SOCIAL_API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
+      
+      // Use specific dates: today (Nov 20), yesterday (Nov 19), day before yesterday (Nov 18)
+      const today = "2025-11-20"
+      const yesterday = "2025-11-19"
+      const dayBeforeYesterday = "2025-11-18"
 
       // Check cache first (unless force refresh)
       let useCachedEnriched = false
@@ -758,21 +758,34 @@ export default function HomePage() {
         }
         
         console.log("[Home] 🚀 Starting feed fetch - challenges, streaks, cv")
-        console.log("[Home] Today's date:", today)
+        console.log("[Home] Fetching challenges for:", { today, yesterday, dayBeforeYesterday })
         console.log("[Home] Token present:", !!token)
         
-        const challengesUrl = `/api/users/social/get_challenges_feed?day=${today}&limit=20`
-        console.log("[Home] Challenges feed URL:", challengesUrl)
-        
-        const [challengesResponse, streaksResponse, cvResponse] = await Promise.all([
-          fetch(challengesUrl, {
+        // Fetch challenges for all three days in parallel
+        const [challengesTodayResponse, challengesYesterdayResponse, challengesDayBeforeResponse, streaksResponse, cvResponse] = await Promise.all([
+          fetch(`${SOCIAL_API_BASE_URL}v1/users/social/get_challenges_feed?day=${today}&limit=50`, {
             method: "GET",
             headers: {
               "Accept": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            // Add cache control for browser caching
-            cache: 'default',
+            cache: 'no-store',
+          }),
+          fetch(`${SOCIAL_API_BASE_URL}v1/users/social/get_challenges_feed?day=${yesterday}&limit=50`, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: 'no-store',
+          }),
+          fetch(`${SOCIAL_API_BASE_URL}v1/users/social/get_challenges_feed?day=${dayBeforeYesterday}&limit=50`, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: 'no-store',
           }),
           fetch(`/api/users/social/get_streaks_feed?day=${today}&limit=20`, {
             method: "GET",
@@ -798,48 +811,83 @@ export default function HomePage() {
         let validCvs: any[] = []
 
         console.log("[Home] 📥 Feed responses received")
-        console.log("[Home] Challenges response status:", challengesResponse.status, challengesResponse.statusText)
-        console.log("[Home] Challenges response ok:", challengesResponse.ok)
+        console.log("[Home] Challenges Today response status:", challengesTodayResponse.status, challengesTodayResponse.statusText)
+        console.log("[Home] Challenges Yesterday response status:", challengesYesterdayResponse.status, challengesYesterdayResponse.statusText)
+        console.log("[Home] Challenges Day Before response status:", challengesDayBeforeResponse.status, challengesDayBeforeResponse.statusText)
         console.log("[Home] Streaks response status:", streaksResponse.status, streaksResponse.statusText)
         console.log("[Home] CV response status:", cvResponse.status, cvResponse.statusText)
         
-        // Process challenges feed
-        if (challengesResponse.ok) {
+        // Process challenges feed - combine all three days
+        const allChallenges: any[] = []
+        
+        // Process today's challenges
+        if (challengesTodayResponse.ok) {
           try {
-            console.log("[Home] ✅ Processing challenges feed response...")
-            const challengesData = await challengesResponse.json()
-            console.log("[Home] Challenges feed raw response:", JSON.stringify(challengesData, null, 2))
+            console.log("[Home] ✅ Processing today's challenges feed response...")
+            const challengesData = await challengesTodayResponse.json()
+            console.log("[Home] Today's challenges feed raw response:", JSON.stringify(challengesData, null, 2))
             const challenges = challengesData?.data || []
-            console.log("[Home] Challenges array length:", challenges.length)
-            
-            // Enrich challenges with user profile data
-            const enrichedChallenges = await Promise.all(
-              challenges.map(async (challenge: any, idx: number) => {
-                try {
-                  return {
-                    ...challenge,
-                    type: 'challenge_feed',
-                  }
-                } catch (error) {
-                  return null
-                }
-              })
-            )
-            validChallenges = enrichedChallenges.filter((c: any) => c !== null)
-            setChallengesFeed(validChallenges)
-            // Cache raw challenges data
-            setCachedFeed(FEED_CACHE_KEYS.challenges, challenges, today)
+            console.log("[Home] Today's challenges array length:", challenges.length)
+            allChallenges.push(...challenges)
           } catch (error) {
-            console.error("[Home] ❌ Error processing challenges feed:", error)
+            console.error("[Home] ❌ Error processing today's challenges feed:", error)
           }
         } else {
-          console.error("[Home] ❌ Challenges feed response not ok:", challengesResponse.status, challengesResponse.statusText)
+          console.error("[Home] ❌ Today's challenges feed response not ok:", challengesTodayResponse.status, challengesTodayResponse.statusText)
+        }
+        
+        // Process yesterday's challenges
+        if (challengesYesterdayResponse.ok) {
           try {
-            const errorText = await challengesResponse.text()
-            console.error("[Home] ❌ Challenges feed error body:", errorText)
-          } catch (e) {
-            console.error("[Home] ❌ Could not read error body")
+            console.log("[Home] ✅ Processing yesterday's challenges feed response...")
+            const challengesData = await challengesYesterdayResponse.json()
+            const challenges = challengesData?.data || []
+            console.log("[Home] Yesterday's challenges array length:", challenges.length)
+            allChallenges.push(...challenges)
+          } catch (error) {
+            console.error("[Home] ❌ Error processing yesterday's challenges feed:", error)
           }
+        } else {
+          console.error("[Home] ❌ Yesterday's challenges feed response not ok:", challengesYesterdayResponse.status, challengesYesterdayResponse.statusText)
+        }
+        
+        // Process day before yesterday's challenges
+        if (challengesDayBeforeResponse.ok) {
+          try {
+            console.log("[Home] ✅ Processing day before yesterday's challenges feed response...")
+            const challengesData = await challengesDayBeforeResponse.json()
+            const challenges = challengesData?.data || []
+            console.log("[Home] Day before yesterday's challenges array length:", challenges.length)
+            allChallenges.push(...challenges)
+          } catch (error) {
+            console.error("[Home] ❌ Error processing day before yesterday's challenges feed:", error)
+          }
+        } else {
+          console.error("[Home] ❌ Day before yesterday's challenges feed response not ok:", challengesDayBeforeResponse.status, challengesDayBeforeResponse.statusText)
+        }
+        
+        console.log("[Home] ✅ Total challenges from all days:", allChallenges.length)
+        
+        // Enrich all challenges with user profile data
+        if (allChallenges.length > 0) {
+          const enrichedChallenges = await Promise.all(
+            allChallenges.map(async (challenge: any, idx: number) => {
+              try {
+                return {
+                  ...challenge,
+                  type: 'challenge_feed',
+                }
+              } catch (error) {
+                return null
+              }
+            })
+          )
+          validChallenges = enrichedChallenges.filter((c: any) => c !== null)
+          setChallengesFeed(validChallenges)
+          // Cache raw challenges data
+          setCachedFeed(FEED_CACHE_KEYS.challenges, allChallenges, today)
+        } else {
+          console.log("[Home] ⚠️ No challenges found for any of the three days")
           setChallengesFeed([])
         }
 
@@ -1093,41 +1141,6 @@ export default function HomePage() {
     }
   }
 
-  const handleCreatePost = () => {
-    if (!activePostType) return
-
-    let postContent = ""
-    
-    switch (activePostType) {
-      case 'resume_score':
-        postContent = `Resume score jumped from ${userData.resumeScore.previous} to ${userData.resumeScore.current}! ${userData.resumeScore.improvements.join(", ")}. ${postMessage ? postMessage : "Every update gets me closer to my dream job!"} 📈`
-        break
-      case 'challenge':
-        if (!selectedChallenge) return
-        const challenge = userData.completedChallenges.find(c => c.id === selectedChallenge)
-        if (!challenge) return
-        postContent = `Challenge Complete! Finished the ${challenge.name}! Gained ${challenge.xpEarned} XP. ${postMessage ? postMessage : "Consistency pays off!"} 💪`
-        break
-      case 'streak':
-        postContent = `${userData.currentStreak.type} - ${userData.currentStreak.days} days of streak! ${userData.currentStreak.activities.join(", ")}. ${postMessage ? postMessage : "Small daily actions lead to big wins!"} ⚡`
-        break
-      case 'leaderboard':
-        if (!selectedLeaderboard) return
-        const ranking = userData.leaderboardRankings[selectedLeaderboard]
-        if (!ranking) return
-        postContent = `Leaderboard Update! Climbed from #${ranking.previousRank} to #${ranking.currentRank} on the ${ranking.category} Leaderboard! ${postMessage ? postMessage : "The grind never stops!"} 🏅`
-        break
-    }
-    
-    // In a real app, this would create a new post and add it to the feed
-    
-    // Reset form
-    setActivePostType(null)
-    setSelectedChallenge(null)
-    setSelectedLeaderboard(null)
-    setPostMessage("")
-  }
-
   const toggleTaskCompletion = (taskId: number) => {
     if (completedTasks.includes(taskId)) {
       setCompletedTasks(completedTasks.filter((id) => id !== taskId))
@@ -1149,41 +1162,7 @@ export default function HomePage() {
   }
 
   // Mock data for suggestions and progress cards that appear in feed
-  const suggestionCards = [
-    {
-      id: "suggestion-1",
-      type: "network_suggestion",
-      title: "Connect with High Achievers",
-      subtitle: "People you may know",
-      suggestions: networkSuggestions.slice(0, 2),
-    },
-    {
-      id: "progress-1",
-      type: "progress_update",
-      title: "Your Progress This Week",
-      subtitle: "Keep up the momentum!",
-      stats: {
-        xpGained: 450,
-        tasksCompleted: 8,
-        streakDays: 12,
-        levelProgress: 75,
-        nextLevel: 6,
-      },
-    },
-    {
-      id: "challenge-1",
-      type: "challenge_suggestion",
-      title: "Weekly Challenge",
-      subtitle: "Earn bonus XP",
-      challenge: {
-        title: "Complete 3 Skill Assessments",
-        description: "Take assessments in your chosen field to earn 200 XP",
-        xpReward: 200,
-        deadline: "3 days left",
-        participants: 1247,
-      },
-    },
-  ]
+  const suggestionCards: any[] = []
 
   // Mix API feed data with suggestion cards for natural feed integration
   const createMixedFeed = () => {
@@ -1394,265 +1373,6 @@ export default function HomePage() {
               <p className="text-xs sm:text-base text-zinc-400 px-2">Every post is someone getting better. Your turn.</p>
             </div>
 
-            {/* Create Post - Minimized LinkedIn Style */}
-            {!activePostType ? (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 sm:p-4 transition-all duration-300 ease-in-out">
-                <div className="flex items-center gap-2.5 mb-1">
-                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                    <AvatarFallback className="bg-zinc-800 text-xs">U</AvatarFallback>
-                  </Avatar>
-                  <button
-                    onClick={() => setActivePostType('resume_score')}
-                    className="flex-1 text-left px-3 py-2 sm:px-4 sm:py-2.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-full text-zinc-400 text-xs sm:text-base transition-colors"
-                  >
-                    Share your progress...
-                  </button>
-                </div>
-                <div className="flex items-center justify-around mt-3 pt-3 border-t border-zinc-800 gap-1">
-                  <button
-                    onClick={() => setActivePostType('resume_score')}
-                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
-                  >
-                    <BarChart2 className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-[11px] sm:text-sm">Resume</span>
-                  </button>
-                  <button
-                    onClick={() => setActivePostType('challenge')}
-                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
-                  >
-                    <Award className="h-3.5 w-3.5 text-fuchsia-400" />
-                    <span className="text-[11px] sm:text-sm">Challenge</span>
-                  </button>
-                  <button
-                    onClick={() => setActivePostType('streak')}
-                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
-                  >
-                    <Zap className="h-3.5 w-3.5 text-yellow-400" />
-                    <span className="text-[11px] sm:text-sm">Streak</span>
-                  </button>
-                  <button
-                    onClick={() => setActivePostType('leaderboard')}
-                    className="flex items-center gap-1 px-2 py-2 sm:px-3 sm:py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
-                  >
-                    <Trophy className="h-3.5 w-3.5 text-orange-400" />
-                    <span className="text-[11px] sm:text-sm hidden sm:inline">Leaderboard</span>
-                    <span className="text-[11px] sm:hidden">Board</span>
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Post Creation Form */}
-            {activePostType && (
-              <AnimatedSection delay={0.1}>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-xl transition-all duration-300 ease-in-out">
-                  <div className="p-3 sm:p-4 border-b border-zinc-800">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {activePostType === 'resume_score' && <BarChart2 className="h-4 w-4 text-emerald-400" />}
-                        {activePostType === 'challenge' && <Award className="h-4 w-4 text-fuchsia-400" />}
-                        {activePostType === 'streak' && <Zap className="h-4 w-4 text-yellow-400" />}
-                        {activePostType === 'leaderboard' && <Trophy className="h-4 w-4 text-orange-400" />}
-                        <h3 className="text-sm sm:text-lg font-semibold text-white">
-                          Share {activePostType === 'resume_score' ? 'Resume Score' : activePostType === 'challenge' ? 'Challenge' : activePostType === 'streak' ? 'Streak' : 'Leaderboard'}
-                        </h3>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setActivePostType(null)
-                          setSelectedChallenge(null)
-                          setSelectedLeaderboard(null)
-                          setPostMessage("")
-                        }}
-                        className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-3 sm:p-4">
-                    <div className="space-y-4 sm:space-y-5">
-                      {activePostType === 'resume_score' && (
-                        <div>
-                          <div className="bg-zinc-800/30 rounded-lg p-3 sm:p-4 border border-zinc-700/50">
-                            <div className="flex items-center justify-between mb-3 sm:mb-4">
-                              <span className="text-xs sm:text-base font-medium text-zinc-300">Your Resume Score</span>
-                              <span className="text-[10px] sm:text-sm text-zinc-500">{userData.resumeScore.lastUpdated}</span>
-                            </div>
-                            <div className="flex items-center justify-center gap-3 sm:gap-6 mb-4 sm:mb-5">
-                              <div className="text-center">
-                                <div className="text-xl sm:text-3xl font-bold text-zinc-400">{userData.resumeScore.previous}</div>
-                                <div className="text-[10px] sm:text-sm text-zinc-500 mt-0.5">Previous</div>
-                              </div>
-                              <ChevronRight className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-zinc-600 flex-shrink-0" />
-                              <div className="text-center">
-                                <div className="text-2xl sm:text-4xl font-bold text-emerald-400">{userData.resumeScore.current}</div>
-                                <div className="text-[10px] sm:text-sm text-emerald-400 mt-0.5">Current</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-xl sm:text-3xl font-bold text-green-400">+{userData.resumeScore.current - userData.resumeScore.previous}</div>
-                                <div className="text-[10px] sm:text-sm text-zinc-500 mt-0.5">Points</div>
-                              </div>
-                            </div>
-                            <div className="pt-3 border-t border-zinc-700/50">
-                              <div className="text-[10px] sm:text-sm font-medium text-zinc-400 mb-2">Recent improvements:</div>
-                              <div className="space-y-1.5">
-                                {userData.resumeScore.improvements.map((improvement, idx) => (
-                                  <li key={idx} className="flex items-center gap-2 text-xs sm:text-base text-zinc-300">
-                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-400 flex-shrink-0" />
-                                    <span>{improvement}</span>
-                                  </li>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {activePostType === 'challenge' && (
-                        <div className="space-y-3">
-                          <p className="text-xs sm:text-base text-zinc-400">Select a completed challenge to share:</p>
-                          <div className="space-y-2">
-                            {userData.completedChallenges.map((challenge) => (
-                              <button
-                                key={challenge.id}
-                                onClick={() => setSelectedChallenge(challenge.id)}
-                                className={cn(
-                                  "w-full p-3 rounded-lg border text-left transition-all duration-200",
-                                  selectedChallenge === challenge.id
-                                    ? "bg-fuchsia-900/10 border-fuchsia-700/50 ring-1 ring-fuchsia-700/50"
-                                    : "bg-zinc-800/30 border-zinc-700/50 hover:bg-zinc-800/50 hover:border-zinc-600"
-                                )}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-white text-xs sm:text-base">{challenge.name}</div>
-                                    <div className="text-[10px] sm:text-sm text-zinc-500 mt-0.5">Completed {challenge.completedDate}</div>
-                                  </div>
-                                  <Badge className="bg-fuchsia-950/50 text-fuchsia-400 border-fuchsia-900/50 text-[10px] ml-2">
-                                    +{challenge.xpEarned} XP
-                                  </Badge>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {activePostType === 'streak' && (
-                        <div>
-                          <div className="bg-zinc-800/30 rounded-lg p-3 sm:p-4 border border-zinc-700/50">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs sm:text-sm font-medium text-zinc-300">Current Streak</span>
-                              <Badge className="bg-yellow-950/50 text-yellow-400 border-yellow-900/50 text-[10px]">
-                                Active
-                              </Badge>
-                            </div>
-                            <div className="text-center mb-4 sm:mb-4 py-2">
-                              <div className="text-3xl sm:text-5xl font-bold text-yellow-400">{userData.currentStreak.days}</div>
-                              <div className="text-[10px] sm:text-sm text-zinc-400 mt-0.5">Days</div>
-                            </div>
-                            <div className="space-y-2 pt-3 border-t border-zinc-700/50">
-                              <div className="text-xs sm:text-sm">
-                                <span className="text-zinc-500">Type:</span>
-                                <span className="text-white ml-2 font-medium">{userData.currentStreak.type}</span>
-                              </div>
-                              <div className="text-xs sm:text-sm">
-                                <span className="text-zinc-500">Started:</span>
-                                <span className="text-white ml-2">{userData.currentStreak.startDate}</span>
-                              </div>
-                              <div>
-                                <div className="text-[10px] sm:text-xs font-medium text-zinc-400 mb-1.5">Daily activities:</div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {userData.currentStreak.activities.map((activity, idx) => (
-                                    <Badge key={idx} className="bg-zinc-800 text-zinc-300 border-zinc-700 text-[10px]">
-                                      {activity}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {activePostType === 'leaderboard' && (
-                        <div className="space-y-3">
-                          <p className="text-xs sm:text-sm text-zinc-400">Select a leaderboard ranking to share:</p>
-                          <div className="space-y-2">
-                            {userData.leaderboardRankings.map((ranking, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => setSelectedLeaderboard(idx)}
-                                className={cn(
-                                  "w-full p-3 sm:p-3 rounded-lg border text-left transition-all duration-200",
-                                  selectedLeaderboard === idx
-                                    ? "bg-orange-900/10 border-orange-700/50 ring-1 ring-orange-700/50"
-                                    : "bg-zinc-800/30 border-zinc-700/50 hover:bg-zinc-800/50 hover:border-zinc-600"
-                                )}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-white text-xs sm:text-sm mb-1">{ranking.category}</div>
-                                    <div className="text-[10px] sm:text-xs text-zinc-500">
-                                      #{ranking.previousRank} → #{ranking.currentRank} <span className="text-zinc-600">•</span> {ranking.totalParticipants.toLocaleString()} participants
-                                    </div>
-                                  </div>
-                                  <div className="text-right ml-2">
-                                    <div className="text-sm sm:text-base font-bold text-emerald-400">
-                                      +{ranking.previousRank - ranking.currentRank}
-                                    </div>
-                                    <div className="text-[10px] sm:text-xs text-zinc-500">spots</div>
-                                  </div>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div>
-                        <label htmlFor="post-message" className="text-xs sm:text-sm text-zinc-400 mb-1.5 block">Add a personal message (optional)</label>
-                        <textarea
-                          id="post-message"
-                          placeholder="Share your thoughts, tips, or motivation..."
-                          value={postMessage}
-                          onChange={(e) => setPostMessage(e.target.value)}
-                          className="w-full p-3 sm:p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 resize-none h-20 sm:h-20 text-xs sm:text-base focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="px-3 sm:px-4 py-3 sm:py-4 border-t border-zinc-800 flex gap-2.5">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setActivePostType(null)
-                        setSelectedChallenge(null)
-                        setSelectedLeaderboard(null)
-                        setPostMessage("")
-                      }}
-                      className="flex-1 bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-10 sm:h-12 rounded-lg text-sm sm:text-base"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreatePost}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-10 sm:h-12 rounded-lg text-sm sm:text-base"
-                      disabled={
-                        (activePostType === 'challenge' && !selectedChallenge) ||
-                        (activePostType === 'leaderboard' && selectedLeaderboard === null)
-                      }
-                    >
-                      Share Progress
-                    </Button>
-                  </div>
-                </div>
-              </AnimatedSection>
-            )}
-
             {/* Feed Tabs */}
             <Tabs defaultValue="feed" className="w-full">
               <div className="flex items-center justify-between mb-5 sm:mb-6">
@@ -1861,12 +1581,6 @@ export default function HomePage() {
                             {'type' in item.data && item.data.type === "network_suggestion" && (
                               <Users className="h-4 w-4 mr-2 text-blue-400" />
                             )}
-                            {'type' in item.data && item.data.type === "progress_update" && (
-                              <BarChart2 className="h-4 w-4 mr-2 text-green-400" />
-                            )}
-                            {'type' in item.data && item.data.type === "challenge_suggestion" && (
-                              <Trophy className="h-4 w-4 mr-2 text-fuchsia-400" />
-                            )}
                             <span className="bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent font-extrabold">
                               {item.data.title}
                             </span>
@@ -1906,64 +1620,6 @@ export default function HomePage() {
                                   </EnhancedButton>
                                 </div>
                               ))}
-                            </div>
-                          )}
-                          
-                          {'type' in item.data && item.data.type === "progress_update" && 'stats' in item.data && item.data.stats && (
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-zinc-800/60 border border-green-700/30 rounded-lg p-2.5">
-                                  <div className="text-[10px] text-zinc-400 mb-0.5">XP Gained</div>
-                                  <div className="text-base font-bold text-green-400">+{item.data.stats.xpGained}</div>
-                                </div>
-                                <div className="bg-zinc-800/60 border border-blue-700/30 rounded-lg p-2.5">
-                                  <div className="text-[10px] text-zinc-400 mb-0.5">Tasks Done</div>
-                                  <div className="text-base font-bold text-blue-400">{item.data.stats.tasksCompleted}</div>
-                                </div>
-                              </div>
-                              <div className="bg-zinc-800/60 border border-yellow-700/30 rounded-lg p-2.5">
-                                <div className="flex justify-between items-center mb-1.5">
-                                  <span className="text-xs font-medium text-white">Level Progress</span>
-                                  <span className="text-[10px] text-zinc-400">{item.data.stats.levelProgress}%</span>
-                                </div>
-                                <AnimatedProgress 
-                                  value={item.data.stats.levelProgress} 
-                                  max={100} 
-                                  className="[&>div]:bg-gradient-to-r [&>div]:from-yellow-500 [&>div]:to-orange-500"
-                                />
-                                <p className="text-[10px] text-zinc-500 mt-1">Next: Level {item.data.stats.nextLevel}</p>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {'type' in item.data && item.data.type === "challenge_suggestion" && 'challenge' in item.data && item.data.challenge && (
-                            <div className="space-y-2.5">
-                              <div className="bg-zinc-800/60 border border-fuchsia-700/30 rounded-lg p-3">
-                                <div className="flex items-start justify-between mb-1.5">
-                                  <h3 className="font-bold text-white text-xs">{item.data.challenge.title}</h3>
-                                  <Badge className="bg-fuchsia-900/50 text-fuchsia-300 border-fuchsia-800 text-[9px]">
-                                    +{item.data.challenge.xpReward} XP
-                                  </Badge>
-                                </div>
-                                <p className="text-[10px] text-zinc-400 mb-2">{item.data.challenge.description}</p>
-                                <div className="flex items-center justify-between">
-                                  <div className="text-[9px] text-zinc-500">
-                                    {item.data.challenge.participants.toLocaleString()} participants
-                                  </div>
-                                  <div className="text-[9px] text-red-400 font-medium">
-                                    {item.data.challenge.deadline}
-                                  </div>
-                                </div>
-                              </div>
-                              <EnhancedButton
-                                size="sm"
-                                rounded="full"
-                                variant="gradient"
-                                animation="shimmer"
-                                className="w-full bg-gradient-to-r from-fuchsia-500 via-purple-500 to-blue-500 shadow-[0_0_8px_0_rgba(217,70,239,0.4)] text-xs py-2"
-                              >
-                                Join Challenge
-                              </EnhancedButton>
                             </div>
                           )}
                         </EnhancedCardContent>

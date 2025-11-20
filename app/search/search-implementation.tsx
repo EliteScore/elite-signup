@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Search, X, Users, Trophy, Hash, Bell, Clock, Globe, Lock, TrendingUp } from "lucide-react"
 import { motion } from "framer-motion"
@@ -16,561 +16,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { getStoredAccessToken } from "@/lib/auth-storage"
 
-const API_BASE_URL = "https://elitescore-auth-fafc42d40d58.herokuapp.com/"
-const RESUME_SCORES_API_BASE_URL = "https://elite-challenges-xp-c57c556a0fd2.herokuapp.com/"
-const COMMUNITIES_API_BASE_URL = "https://elitescore-social-4046880acb02.herokuapp.com/"
-
-type Resume = {
-  currentRole?: string | null
-  company?: string | null
-  profilePicture?: string | null
-  profilePictureUrl?: string | null
-  avatarUrl?: string | null
-  [key: string]: unknown
-}
-
-type ProfileInfo = {
-  userId: number
-  phoneNumber: string | null
-  firstName: string | null
-  lastName: string | null
-  bio: string | null
-  resume: Resume | null
-  followersCount: number | null
-  followingCount: number | null
-  visibility: "PUBLIC" | "PRIVATE" | null
-  createdAt: string | null
-  updatedAt: string | null
-  profilePictureUrl?: string | null
-  profilePicture?: string | null
-  avatarUrl?: string | null
-}
-
-type ApiResponse<T> = {
-  success: boolean
-  message: string | null
-  data: T | null
-}
-
-type SearchResult = {
-  userId: number
-  name: string
-  title: string | null
-  image: string | null
-  bio: string | null
-  followersCount: number | null
-  followingCount: number | null
-  visibility: "PUBLIC" | "PRIVATE" | null
-  resumeScore: number | null
-}
-
-type CommunitySearchResult = {
-  id: number
-  name: string
-  slug?: string
-  visibility?: string
-  description?: string
-  is_pro?: boolean
-  members?: number
-  image?: string | null
-}
-
-const pickFirstValidPicture = (...candidates: Array<string | null | undefined>) => {
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
-      return candidate
-    }
-  }
-  return null
-}
-
-const resolvePictureFromApiProfile = (profile: any): string | null => {
-  if (!profile || typeof profile !== "object") return null
-
-  // Top-level picture fields (like profile page uses)
-  const directPicture = pickFirstValidPicture(
-    profile.profilePictureUrl,
-    profile.profilePicture,
-    profile.avatarUrl,
-  )
-
-  if (directPicture) return directPicture
-
-  // Nested resume picture fields
-  if (profile.resume) {
-    return pickFirstValidPicture(
-      profile.resume.profilePictureUrl,
-      profile.resume.profilePicture,
-      profile.resume.avatarUrl,
-    )
-  }
-
-  return null
-}
-
-const mapProfileInfoToResult = (profile: ProfileInfo): SearchResult => {
-  const firstName = profile.firstName?.trim() ?? ""
-  const lastName = profile.lastName?.trim() ?? ""
-  const fullName = `${firstName} ${lastName}`.trim() || `User ${profile.userId}`
-
-  // Check if resume contains structured CV data (wrapped in { profile: {...} })
-  const resumeFromProfile = profile.resume as any
-  const structuredResumeProfile = resumeFromProfile?.profile || resumeFromProfile
-  
-  // Extract title from structured CV data (LinkedIn-style)
-  let title: string | null = null
-  
-  if (structuredResumeProfile && typeof structuredResumeProfile === 'object' && !Array.isArray(structuredResumeProfile)) {
-    // Try to get current/most recent job from structured CV
-    const experience = structuredResumeProfile.experience || []
-    if (Array.isArray(experience) && experience.length > 0) {
-      // Find current job first, then most recent
-      const currentJob = experience.find((exp: any) => 
-        exp.is_current === true || exp.end_date === null || exp.end_date === undefined
-      )
-      
-      const jobToUse = currentJob || experience.sort((a: any, b: any) => {
-        const dateA = a.start_date || ""
-        const dateB = b.start_date || ""
-        return dateB.localeCompare(dateA)
-      })[0]
-      
-      if (jobToUse) {
-        title = jobToUse.title || null
-        if (jobToUse.company) {
-          title = title ? `${title} at ${jobToUse.company}` : jobToUse.company
-        }
-      }
-    }
-    
-    // If no job, try headline from basics
-    if (!title && structuredResumeProfile.basics?.headline) {
-      title = structuredResumeProfile.basics.headline
-    }
-  }
-  
-  // Fallback to legacy resume fields
-  if (!title && profile.resume?.currentRole) {
-    title = `${profile.resume.currentRole}${profile.resume.company ? ` at ${profile.resume.company}` : ""}`
-  }
-
-  // Try multiple sources for profile picture
-  const image =
-    profile.resume?.profilePictureUrl ||
-    profile.resume?.profilePicture ||
-    profile.resume?.avatarUrl ||
-    null
-
-  return {
-    userId: profile.userId,
-    name: fullName,
-    title,
-    image,
-    bio: profile.bio,
-    followersCount: profile.followersCount,
-    followingCount: profile.followingCount,
-    visibility: profile.visibility,
-    resumeScore: null, // Will be enriched later
-  }
-}
-
-
-
-const getSearchUrl = (input: string) => {
-  const trimmed = input.trim()
-  const encoded = encodeURIComponent(trimmed)
-  const url = `${API_BASE_URL}v1/users/search/${encoded}`
-  return url
-}
-
-const COMMUNITY_SEARCH_DEFAULT_LIMIT = 20
-
-const sanitizeVisibilityFilter = (value?: string): string | undefined => {
-  if (!value) return undefined
-  const normalized = value.trim().toLowerCase()
-  if (normalized === "public" || normalized === "private") {
-    return normalized
-  }
-  return undefined
-}
-
-const clampCommunityLimit = (value?: number) => {
-  if (value == null) return COMMUNITY_SEARCH_DEFAULT_LIMIT
-  if (Number.isNaN(value)) return COMMUNITY_SEARCH_DEFAULT_LIMIT
-  return Math.min(50, Math.max(1, value))
-}
-
-const getCommunitySearchUrl = (
-  input: string,
-  options?: {
-    limit?: number
-    name?: string
-    slug?: string
-    visibility?: string
-    is_pro?: boolean
-    tags?: string[]
-    tagMode?: "any" | "all"
-  },
-) => {
-  const trimmed = input.trim() || "_"
-  const encoded = encodeURIComponent(trimmed)
-  const searchParams = new URLSearchParams()
-  const limit = clampCommunityLimit(options?.limit)
-  searchParams.set("limit", limit.toString())
-
-  if (options?.name) {
-    searchParams.set("name", options.name.trim())
-  }
-
-  if (options?.slug) {
-    searchParams.set("slug", options.slug.trim())
-  }
-
-  const visibility = sanitizeVisibilityFilter(options?.visibility)
-  if (visibility) {
-    searchParams.set("visibility", visibility)
-  }
-
-  if (options?.is_pro !== undefined) {
-    searchParams.set("is_pro", options.is_pro ? "true" : "false")
-  }
-
-  // Add tags support (CSV format)
-  if (options?.tags && options.tags.length > 0) {
-    const tagsCsv = options.tags.map(tag => tag.trim()).filter(tag => tag.length > 0).join(",")
-    if (tagsCsv) {
-      searchParams.set("tags", tagsCsv)
-      // Add mode (any | all), default to "any"
-      const mode = options.tagMode === "all" ? "all" : "any"
-      searchParams.set("mode", mode)
-      console.log("[Search] Adding tags to search:", tagsCsv, "mode:", mode)
-    }
-  }
-
-  const queryString = searchParams.toString()
-  // Use Next.js API route instead of direct backend call
-  const url = `/api/communities/search/${encoded}${queryString ? `?${queryString}` : ""}`
-  console.log("[Search] Community search URL constructed:", url)
-  return url
-}
-
-const parseBooleanFlag = (value: unknown): boolean | undefined => {
-  if (typeof value === "boolean") return value
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase()
-    if (normalized === "true" || normalized === "1") return true
-    if (normalized === "false" || normalized === "0") return false
-  }
-  return undefined
-}
-
-const normalizeCommunityResult = (raw: any): CommunitySearchResult | null => {
-  if (!raw || typeof raw !== "object") return null
-  const rawId = raw.id ?? raw.communityId ?? raw.community_id
-  const id = Number(rawId)
-  if (!Number.isFinite(id)) return null
-
-  const rawName = typeof raw.name === "string" && raw.name.trim()
-    ? raw.name.trim()
-    : raw.slug ?? raw.community_slug ?? `Community ${id}`
-
-  const slugCandidate = raw.slug ?? raw.community_slug ?? raw.slugified
-  const slug = typeof slugCandidate === "string" ? slugCandidate : undefined
-  const visibility = typeof raw.visibility === "string" ? raw.visibility.toUpperCase() : undefined
-  const description = typeof raw.description === "string"
-    ? raw.description
-    : typeof raw.summary === "string"
-      ? raw.summary
-      : undefined
-
-  const membersValue =
-    Number(raw.members ?? raw.members_count ?? raw.member_count ?? raw.membersCount)
-  const members = Number.isFinite(membersValue) ? membersValue : undefined
-
-  const isPro = parseBooleanFlag(raw.is_pro ?? raw.isPro ?? raw.pro)
-
-  return {
-    id,
-    name: rawName,
-    slug,
-    visibility,
-    description,
-    members,
-    is_pro: isPro,
-  }
-}
-
-// Fetch profile picture for a user using the new endpoint
-async function fetchUserProfilePicture(userId: number): Promise<string | null> {
-  const token = getStoredAccessToken()
-  if (!token) {
-    return null
-  }
-
-  try {
-    // Check cache first
-    const cacheKey = `profile.picture.${userId}`
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(cacheKey)
-        if (cached) {
-          const cachedData = JSON.parse(cached)
-          const cacheAge = Date.now() - (cachedData.timestamp || 0)
-          const oneHour = 60 * 60 * 1000
-          
-          if (cacheAge < oneHour && cachedData.dataUrl) {
-            return cachedData.dataUrl
-          } else {
-            localStorage.removeItem(cacheKey)
-          }
-        }
-      } catch (e) {
-        // Invalid cache, continue to fetch
-      }
-    }
-
-    // Fetch raw image directly (skip metadata check for speed)
-    const imageResponse = await fetch(`/api/user/profile/pfp/${userId}/raw`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (imageResponse.ok) {
-      const imageData = await imageResponse.json()
-      // Check if response indicates default picture
-      if (imageData.default) {
-        // Default picture, no custom image
-        return null
-      } else if (imageData.dataUrl) {
-        // Cache the image
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              dataUrl: imageData.dataUrl,
-              timestamp: Date.now(),
-            }))
-          } catch (e) {
-            // Ignore cache write errors
-          }
-        }
-        return imageData.dataUrl
-      }
-    }
-    
-    return null
-  } catch (error) {
-    return null
-  }
-}
-
-// Fetch profile pictures in parallel for all users (much faster)
-async function fetchAllProfilePictures(userIds: number[]): Promise<Map<number, string | null>> {
-  const token = getStoredAccessToken()
-  if (!token || userIds.length === 0) {
-    return new Map()
-  }
-
-  // Check cache for all users first
-  const cacheResults = new Map<number, string | null>()
-  const usersToFetch: number[] = []
-
-  if (typeof window !== "undefined") {
-    userIds.forEach(userId => {
-      const cacheKey = `profile.picture.${userId}`
-      try {
-        const cached = localStorage.getItem(cacheKey)
-        if (cached) {
-          const cachedData = JSON.parse(cached)
-          const cacheAge = Date.now() - (cachedData.timestamp || 0)
-          const oneHour = 60 * 60 * 1000
-          
-          if (cacheAge < oneHour && cachedData.dataUrl) {
-            cacheResults.set(userId, cachedData.dataUrl)
-            return
-          } else {
-            localStorage.removeItem(cacheKey)
-          }
-        }
-      } catch (e) {
-        // Invalid cache, continue
-      }
-      usersToFetch.push(userId)
-    })
-  } else {
-    usersToFetch.push(...userIds)
-  }
-
-  if (usersToFetch.length === 0) {
-    return cacheResults
-  }
-
-  // Fetch all missing pictures in parallel
-  const fetchPromises = usersToFetch.map(async (userId) => {
-    try {
-      const imageResponse = await fetch(`/api/user/profile/pfp/${userId}/raw`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (imageResponse.ok) {
-        const imageData = await imageResponse.json()
-        if (imageData.dataUrl) {
-          // Cache the image
-          if (typeof window !== "undefined") {
-            try {
-              const cacheKey = `profile.picture.${userId}`
-              localStorage.setItem(cacheKey, JSON.stringify({
-                dataUrl: imageData.dataUrl,
-                timestamp: Date.now(),
-              }))
-            } catch (e) {
-              // Ignore cache write errors
-            }
-          }
-          return { userId, image: imageData.dataUrl }
-        }
-      }
-      return { userId, image: null }
-    } catch (error) {
-      return { userId, image: null }
-    }
-  })
-
-  const fetchedResults = await Promise.all(fetchPromises)
-  fetchedResults.forEach(({ userId, image }) => {
-    cacheResults.set(userId, image)
-  })
-
-  return cacheResults
-}
-
-// Enrich base search results with extra profile data (especially pictures) from get_profile
-async function enrichResultsWithProfiles(results: SearchResult[]): Promise<SearchResult[]> {
-  const token = getStoredAccessToken()
-  if (!token) {
-    return results
-  }
-
-  if (results.length === 0) {
-    return results
-  }
-
-  // Fetch all profile pictures in parallel first (fastest approach)
-  const userIds = results.map(r => r.userId)
-  const pictureMap = await fetchAllProfilePictures(userIds)
-
-  // Now enrich with profile data in parallel (but skip if we already have a picture)
-  return Promise.all(
-    results.map(async (user) => {
-      // If we already have a picture from the parallel fetch, use it
-      const cachedPicture = pictureMap.get(user.userId)
-      if (cachedPicture) {
-        return {
-          ...user,
-          image: cachedPicture,
-        }
-      }
-
-      // Otherwise, try to get picture from profile data (but don't wait for it if slow)
-      try {
-        const url = `${API_BASE_URL}v1/users/profile/get_profile/${user.userId}`
-
-        const resp = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (resp.ok) {
-          const result = await resp.json()
-          const profile = result?.data || result
-          if (profile) {
-            const picture = resolvePictureFromApiProfile(profile)
-            if (picture) {
-              return {
-                ...user,
-                image: picture,
-              }
-            }
-          }
-        }
-      } catch (error) {
-        // Ignore errors, use existing image
-      }
-
-      return {
-        ...user,
-        image: user.image,
-      }
-    }),
-  )
-}
-
-// Fetch resume scores for multiple users
-async function enrichResultsWithResumeScores(results: SearchResult[]): Promise<SearchResult[]> {
-  const token = getStoredAccessToken()
-  if (!token) {
-    return results
-  }
-
-  if (results.length === 0) {
-    return results
-  }
-
-  return Promise.all(
-    results.map(async (user) => {
-      try {
-        const url = `${RESUME_SCORES_API_BASE_URL}v1/users/resume-scores/${user.userId}`
-
-        const resp = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!resp.ok) {
-          // 404 means no resume score, which is fine
-          if (resp.status === 404) {
-            return { ...user, resumeScore: null }
-          }
-          return { ...user, resumeScore: null }
-        }
-
-        let result
-        try {
-          result = await resp.json()
-        } catch (parseError) {
-          return { ...user, resumeScore: null }
-        }
-
-        // Handle wrapped response
-        const data = result?.data || result
-        const score = data?.overall_score || null
-
-        return {
-          ...user,
-          resumeScore: typeof score === 'number' ? score : null,
-        }
-      } catch (error) {
-        // swallow errors; continue without resume score
-        return { ...user, resumeScore: null }
-      }
-    }),
-  )
-}
+// Import types and utilities from separate files
+import { 
+  API_BASE_URL, 
+  RESUME_SCORES_API_BASE_URL, 
+  COMMUNITIES_API_BASE_URL,
+  type ProfileInfo, 
+  type SearchResult, 
+  type CommunitySearchResult,
+  type ApiResponse
+} from "./types"
+import {
+  mapProfileInfoToResult,
+  getSearchUrl,
+  getCommunitySearchUrl,
+  normalizeCommunityResult,
+  enrichResultsWithProfiles,
+  enrichResultsWithResumeScores,
+  pickFirstValidPicture,
+} from "./utils"
 
 export default function SearchPage() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState<"all" | "people" | "communities" | "leaderboards">("all")
+  const [activeTab, setActiveTab] = useState<"all" | "people" | "communities">("all")
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchError, setSearchError] = useState<string | null>(null)
@@ -600,6 +69,8 @@ export default function SearchPage() {
   const [tagSearchQuery, setTagSearchQuery] = useState("")
   const [searchTags, setSearchTags] = useState<string[]>([])
   const [tagSearchMode, setTagSearchMode] = useState<"any" | "all">("any")
+  const [communityProfilePictures, setCommunityProfilePictures] = useState<Map<number, string>>(new Map())
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     if (ownUserId !== null) return
@@ -1000,47 +471,122 @@ export default function SearchPage() {
   }
 
   const fetchCommunitySearchResults = useCallback(async (query: string, headers: Record<string, string>, tags?: string[], tagMode?: "any" | "all") => {
-    // Only search communities when tags are provided
-    if (!tags || tags.length === 0) {
-      setCommunityResults([])
-      return
-    }
-
-    // For tag-only search, use "_" as placeholder input since we're searching by tags only
-    const url = getCommunitySearchUrl("_", {
-      tags: tags,
-      tagMode: tagMode || "any",
+    // Search communities by query text, with optional tag filters
+    // Use the query text for community search, or "_" if empty (for tag-only search)
+    const searchQuery = query.trim() || "_"
+    
+    const url = getCommunitySearchUrl(searchQuery, {
+      tags: tags && tags.length > 0 ? tags : undefined,
+      tagMode: tags && tags.length > 0 ? (tagMode || "any") : undefined,
     })
 
+    console.log("[Search] ===== Fetching Communities ======")
+    console.log("[Search] Query:", searchQuery)
+    console.log("[Search] Tags:", tags)
+    console.log("[Search] Tag Mode:", tagMode)
+    console.log("[Search] URL:", url)
+    console.log("[Search] Headers:", { ...headers, Authorization: headers.Authorization ? "Bearer ***" : "none" })
+
     try {
+      const startTime = Date.now()
       const response = await fetch(url, {
         method: "GET",
         headers,
+        cache: 'no-store',
       })
+      const fetchDuration = Date.now() - startTime
 
-      console.log("[Search] Community response status:", response.status, response.statusText)
+      console.log("[Search] Community response received in", fetchDuration, "ms")
+      console.log("[Search] Response status:", response.status, response.statusText)
+      console.log("[Search] Response ok:", response.ok)
+      console.log("[Search] Response headers:", Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
+        let errorDetails: any = null
+        let errorText: string | null = null
+        
+        try {
+          const contentType = response.headers.get('content-type')
+          console.error("[Search] ERROR: Community search failed with status", response.status)
+          console.error("[Search] Error response content-type:", contentType)
+          
+          if (contentType?.includes('application/json')) {
+            errorDetails = await response.json()
+            console.error("[Search] Error response (JSON):", JSON.stringify(errorDetails, null, 2))
+          } else {
+            errorText = await response.text()
+            console.error("[Search] Error response (text):", errorText)
+          }
+        } catch (readError) {
+          console.error("[Search] ERROR: Failed to read error response:", readError)
+          errorText = response.statusText
+        }
+
+        // Check for DB error specifically
+        const errorMessage = errorDetails?.error || errorDetails?.message || errorDetails?.details || errorText || response.statusText
+        if (errorMessage && (errorMessage.includes('DB error') || errorMessage.includes('statement has been closed') || errorMessage.includes('statement'))) {
+          console.error("[Search] ===== DATABASE ERROR DETECTED =====")
+          console.error("[Search] Error message:", errorMessage)
+          console.error("[Search] Full error details:", errorDetails)
+          console.error("[Search] This is likely a backend database connection issue")
+          
+          // Set error state so user can see it
+          setSearchError(`Database error: ${errorMessage}. Please try again in a moment.`)
+        }
+        
         setCommunityResults([])
+        setCommunityProfilePictures(new Map())
         return
       }
 
       let payload: any = null
       try {
+        const contentType = response.headers.get('content-type')
+        console.log("[Search] Parsing response, content-type:", contentType)
+        
         payload = await response.json()
+        console.log("[Search] Response parsed successfully")
+        console.log("[Search] Payload structure:", {
+          hasSuccess: 'success' in payload,
+          success: payload?.success,
+          hasData: 'data' in payload,
+          dataIsArray: Array.isArray(payload?.data),
+          dataLength: Array.isArray(payload?.data) ? payload.data.length : 'N/A',
+          isArray: Array.isArray(payload),
+          arrayLength: Array.isArray(payload) ? payload.length : 'N/A',
+        })
       } catch (parseError) {
+        console.error("[Search] ERROR: Failed to parse JSON response")
+        console.error("[Search] Parse error:", parseError)
+        console.error("[Search] Response might be empty or invalid JSON")
         setCommunityResults([])
+        setCommunityProfilePictures(new Map())
         return
       }
 
       if (!payload) {
+        console.warn("[Search] WARNING: Empty payload received")
         setCommunityResults([])
+        setCommunityProfilePictures(new Map())
         return
       }
 
       // Check for API success flag if present
       if (payload.success === false) {
+        const errorMsg = payload.error || payload.message || payload.details || 'Unknown error'
+        console.error("[Search] ERROR: API returned success: false")
+        console.error("[Search] Error message:", errorMsg)
+        
+        // Check for DB error
+        if (errorMsg.includes('DB error') || errorMsg.includes('statement has been closed') || errorMsg.includes('statement')) {
+          console.error("[Search] ===== DATABASE ERROR DETECTED IN PAYLOAD =====")
+          console.error("[Search] Error message:", errorMsg)
+          console.error("[Search] Full payload:", JSON.stringify(payload, null, 2))
+          setSearchError(`Database error: ${errorMsg}. Please try again in a moment.`)
+        }
+        
         setCommunityResults([])
+        setCommunityProfilePictures(new Map())
         return
       }
 
@@ -1059,9 +605,51 @@ export default function SearchPage() {
         .filter((entry: any): entry is CommunitySearchResult => entry !== null)
 
       console.log("[Search] Normalized community results:", normalizedResults.length)
+      
+      // Clear previous profile pictures
+      setCommunityProfilePictures(new Map())
+      
       setCommunityResults(normalizedResults)
+
+      // Fetch community profile pictures
+      if (normalizedResults.length > 0) {
+        const token = getStoredAccessToken()
+        const pictureMap = new Map<number, string>()
+        
+        // Create URLs for all communities
+        normalizedResults.forEach((community: CommunitySearchResult) => {
+          if (community.id) {
+            const url = `/api/communities/${community.id}/pfp/raw`
+            const fullUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url
+            pictureMap.set(community.id, fullUrl)
+          }
+        })
+        
+        setCommunityProfilePictures(pictureMap)
+      }
+      
+      console.log("[Search] ===== Community Search Complete =====")
     } catch (error) {
+      console.error("[Search] ===== EXCEPTION IN COMMUNITY SEARCH =====")
+      console.error("[Search] Error type:", error instanceof Error ? error.constructor.name : typeof error)
+      console.error("[Search] Error message:", error instanceof Error ? error.message : String(error))
+      console.error("[Search] Error stack:", error instanceof Error ? error.stack : 'No stack trace')
+      
+      // Check if it's a network/connection error
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('network')) {
+          console.error("[Search] Network error detected - possible connection issue")
+          setSearchError("Network error: Cannot connect to search service. Please check your connection and try again.")
+        } else if (error.message.includes('aborted') || error.name === 'AbortError') {
+          console.warn("[Search] Request was aborted (likely timeout or cancellation)")
+        } else {
+          console.error("[Search] Unexpected error:", error.message)
+          setSearchError(`Search error: ${error.message}`)
+        }
+      }
+      
       setCommunityResults([])
+      setCommunityProfilePictures(new Map())
     }
   }, [])
 
@@ -1070,17 +658,47 @@ export default function SearchPage() {
 
     if (!trimmedQuery) {
       setSearchResults([])
-      setCommunityResults([])
       setSearchError(null)
-      setIsSearching(false)
+      // If no query but tags are present, search communities by tags only
+      if (searchTags.length > 0) {
+        setIsSearching(true)
+        try {
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          }
+          const token = getStoredAccessToken()
+          if (token) {
+            headers.Authorization = `Bearer ${token}`
+          }
+          await fetchCommunitySearchResults("", { ...headers }, searchTags, tagSearchMode)
+        } catch (error) {
+          setCommunityResults([])
+          setCommunityProfilePictures(new Map())
+        } finally {
+          setIsSearching(false)
+        }
+      } else {
+        setCommunityResults([])
+        setIsSearching(false)
+      }
       return
     }
 
     setIsSearching(true)
     setSearchError(null)
 
+    console.log("[Search] ===== PERFORMING SEARCH ======")
+    console.log("[Search] Query:", trimmedQuery)
+    console.log("[Search] Tags:", searchTags)
+    console.log("[Search] Tag Mode:", tagSearchMode)
+
     try {
       const url = getSearchUrl(trimmedQuery)
+      console.log("[Search] ===== PEOPLE SEARCH API CALL =====")
+      console.log("[Search] Method: GET")
+      console.log("[Search] URL:", url)
+      console.log("[Search] Full endpoint: GET", url)
       
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -1089,11 +707,20 @@ export default function SearchPage() {
       const token = getStoredAccessToken()
       if (token) {
         headers.Authorization = `Bearer ${token}`
+        console.log("[Search] Authorization: Bearer token present")
+      } else {
+        console.log("[Search] Authorization: No token")
       }
 
+      // Cancel previous request if exists
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      
       // Add timeout and better error handling for production
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      abortControllerRef.current = controller
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout (reduced from 30s)
 
       let response: Response
       try {
@@ -1119,12 +746,11 @@ export default function SearchPage() {
       // Handle 204 No Content explicitly
       if (response.status === 204) {
         setSearchResults([])
-        setCommunityResults([])
         setSearchError(null)
-        // Only search communities if tags are present
-        if (searchTags.length > 0) {
-          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
-        }
+        // Always search communities when there's a query (run in parallel)
+        fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags.length > 0 ? searchTags : undefined, tagSearchMode).catch(() => {
+          // Silently handle community search errors
+        })
         setIsSearching(false)
         return
       }
@@ -1144,7 +770,7 @@ export default function SearchPage() {
             }
           }
         } catch (readError) {
-          // Ignore read errors
+          console.log('readerr'+readError)    
         }
         throw new Error(errorMessage)
       }
@@ -1164,11 +790,10 @@ export default function SearchPage() {
       
       if (!responseText || responseText.trim() === "") {
         setSearchResults([])
-        setCommunityResults([])
-        // Only search communities if tags are present
-        if (searchTags.length > 0) {
-          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
-        }
+        // Always search communities when there's a query (run in parallel)
+        fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags.length > 0 ? searchTags : undefined, tagSearchMode).catch(() => {
+          // Silently handle community search errors
+        })
         setIsSearching(false)
         return
       }
@@ -1181,11 +806,10 @@ export default function SearchPage() {
       if (!isJsonContent) {
         // If it's not JSON but we got a 200, treat as empty results
         setSearchResults([])
-        setCommunityResults([])
-        // Only search communities if tags are present
-        if (searchTags.length > 0) {
-          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
-        }
+        // Always search communities when there's a query (run in parallel)
+        fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags.length > 0 ? searchTags : undefined, tagSearchMode).catch(() => {
+          // Silently handle community search errors
+        })
         setIsSearching(false)
         return
       }
@@ -1199,10 +823,10 @@ export default function SearchPage() {
       if (payload?.success && payload.data) {
         if (payload.data.length === 0) {
           setSearchResults([])
-          // Only search communities if tags are present
-          if (searchTags.length > 0) {
-            await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
-          }
+          // Always search communities when there's a query (run in parallel)
+          fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags.length > 0 ? searchTags : undefined, tagSearchMode).catch(() => {
+            // Silently handle community search errors
+          })
           return
         }
         
@@ -1235,40 +859,93 @@ export default function SearchPage() {
         
         const dedupedResults = Array.from(userMap.values())
 
-        // Fetch profile pictures and resume scores in parallel for speed
-        const [enrichedResults, resultsWithScores] = await Promise.all([
-          enrichResultsWithProfiles(dedupedResults),
-          enrichResultsWithResumeScores(dedupedResults),
-        ])
+        // Show basic results immediately for faster UI response
+        setSearchResults(dedupedResults)
         
-        // Merge profile pictures into results with scores
-        const finalResults = resultsWithScores.map(result => {
-          const enriched = enrichedResults.find(r => r.userId === result.userId)
-          return {
-            ...result,
-            image: enriched?.image ?? result.image,
-          }
-        })
+        // Run people enrichment and community search in parallel for maximum speed
+        const peopleEnrichmentPromise = (async () => {
+          // Limit enrichment to top 20 results for faster performance
+          const resultsToEnrich = dedupedResults.slice(0, 20)
+          
+          // Fetch profile pictures and resume scores in parallel for speed
+          const [enrichedResults, resultsWithScores] = await Promise.all([
+            enrichResultsWithProfiles(resultsToEnrich),
+            enrichResultsWithResumeScores(resultsToEnrich),
+          ])
+          
+          // Merge profile pictures into results with scores
+          const enrichedTopResults = resultsWithScores.map(result => {
+            const enriched = enrichedResults.find(r => r.userId === result.userId)
+            return {
+              ...result,
+              image: enriched?.image ?? result.image,
+            }
+          })
+          
+          // Merge enriched top results with remaining unenriched results
+          const finalResults = [
+            ...enrichedTopResults,
+            ...dedupedResults.slice(20)
+          ]
+          
+          setSearchResults(finalResults)
+        })()
         
-        setSearchResults(finalResults)
-        // Only search communities if tags are present
-        if (searchTags.length > 0) {
-          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
-        }
+        console.log("[Search] ===== COMMUNITY SEARCH API CALL =====")
+        console.log("[Search] Will call: GET /api/communities/search/[query]")
+        console.log("[Search] Query:", trimmedQuery)
+        console.log("[Search] Tags:", searchTags.length > 0 ? searchTags : "none")
+        
+        const communitySearchPromise = fetchCommunitySearchResults(
+          trimmedQuery, 
+          { ...headers }, 
+          searchTags.length > 0 ? searchTags : undefined, 
+          tagSearchMode
+        )
+        
+        // Wait for both to complete in parallel
+        await Promise.all([peopleEnrichmentPromise, communitySearchPromise])
+        
+        console.log("[Search] ===== SEARCH COMPLETE ======")
       } else {
         setSearchResults([])
-        // Only search communities if tags are present
-        if (searchTags.length > 0) {
-          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
-        }
+        console.log("[Search] ===== COMMUNITY SEARCH API CALL (no people results) =====")
+        console.log("[Search] Will call: GET /api/communities/search/[query]")
+        console.log("[Search] Query:", trimmedQuery)
+        // Always search communities when there's a query (run in parallel with error handling)
+        fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags.length > 0 ? searchTags : undefined, tagSearchMode).catch(() => {
+          // Silently handle community search errors
+        })
       }
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "We couldn't complete your search. Please try again."
+      console.log(error     )
+      console.error("[Search] ===== SEARCH EXCEPTION ======")
+      console.error("[Search] Error type:", error instanceof Error ? error.constructor.name : typeof error)
+      console.error("[Search] Error message:", error instanceof Error ? error.message : String(error))
+      console.error("[Search] Error stack:", error instanceof Error ? error.stack : 'No stack trace')
+      
+      let errorMessage = "We couldn't complete your search. Please try again."
+      
+      if (error instanceof Error) {
+        // Check for specific error types
+        if (error.message.includes('DB error') || error.message.includes('statement has been closed') || error.message.includes('statement')) {
+          console.error("[Search] Database error detected in main search")
+          errorMessage = "Database error: The search service encountered a database issue. Please try again in a moment."
+        } else if (error.message.includes('timeout') || error.name === 'AbortError') {
+          console.error("[Search] Timeout error detected")
+          errorMessage = "Search request timed out. Please try again with a shorter query."
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          console.error("[Search] Network error detected")
+          errorMessage = "Network error: Cannot connect to search service. Please check your connection."
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       setSearchError(errorMessage)
       setSearchResults([])
       setCommunityResults([])
+      setCommunityProfilePictures(new Map())
     } finally {
       setIsSearching(false)
     }
@@ -1291,7 +968,7 @@ export default function SearchPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       performSearch(searchQuery)
-    }, 300)
+    }, 150) // Reduced from 300ms to 150ms for faster response
 
     return () => {
       clearTimeout(timer)
@@ -1302,37 +979,34 @@ export default function SearchPage() {
     (person) => ownUserId === null || person.userId !== ownUserId,
   )
   const filteredCommunities = communityResults
-  const filteredLeaderboards: any[] = []
 
   const showPeople = activeTab === "all" || activeTab === "people"
   const showCommunities = activeTab === "all" || activeTab === "communities"
-  const showLeaderboards = activeTab === "all" || activeTab === "leaderboards"
 
   const hasVisibleResults =
     (showPeople && filteredPeople.length > 0) ||
-    (showCommunities && filteredCommunities.length > 0) ||
-    (showLeaderboards && filteredLeaderboards.length > 0)
+    (showCommunities && filteredCommunities.length > 0)
 
   return (
     <DashboardLayout>
       <div className="min-h-screen pb-20">
         {/* Search Header */}
-        <div className="sticky top-0 z-40 bg-black border-b border-zinc-800">
-          <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="sticky top-0 z-40 bg-black/95 backdrop-blur-sm border-b border-zinc-800/50">
+          <div className="max-w-2xl mx-auto px-4 py-4 sm:py-5">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
               <Input
                 type="text"
-                placeholder="Search people, communities, leaderboards..."
+                placeholder="Search people, communities..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 pr-10 h-11 bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-lg transition-all"
+                className="pl-11 pr-10 h-12 bg-zinc-900/80 border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl transition-all text-sm"
                 autoFocus
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-all"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-all"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1340,14 +1014,15 @@ export default function SearchPage() {
             </div>
 
             {/* Tag Search Section */}
-            {searchQuery && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-3 space-y-2"
-              >
-                <div className="flex items-center gap-2">
-                  <Hash className="h-4 w-4 text-zinc-400" />
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 space-y-3"
+            >
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-zinc-900/50 border border-zinc-800/50">
+                    <Hash className="h-4 w-4 text-blue-400" />
+                  </div>
                   <Input
                     type="text"
                     placeholder="Add tags to filter communities..."
@@ -1359,94 +1034,97 @@ export default function SearchPage() {
                         handleAddSearchTag()
                       }
                     }}
-                    className="flex-1 h-8 bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs"
+                    className="flex-1 h-9 bg-zinc-900/50 border-zinc-800/50 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-sm rounded-lg"
                   />
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleAddSearchTag}
                     disabled={!tagSearchQuery.trim()}
-                    className="h-8 px-3 text-xs bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800"
+                    className="h-9 px-4 text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium"
                   >
                     Add
                   </Button>
                 </div>
                 {searchTags.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-zinc-400">Tags:</span>
-                    {searchTags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        className="bg-blue-900/40 text-blue-300 border-blue-800 text-xs px-2 py-0.5 flex items-center gap-1.5"
-                      >
-                        <Hash className="h-3 w-3" />
-                        {tag}
-                        <button
-                          onClick={() => handleRemoveSearchTag(tag)}
-                          className="ml-1 hover:text-red-400 transition-colors"
+                  <div className="space-y-3 pt-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Active Tags</span>
+                      {searchTags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border-blue-500/30 text-xs px-3 py-1.5 flex items-center gap-1.5 rounded-full font-medium"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSearchTags([])}
-                      className="h-6 px-2 text-xs text-zinc-400 hover:text-white"
-                    >
-                      Clear all
-                    </Button>
-                    <div className="flex items-center gap-2 ml-auto">
-                      <span className="text-xs text-zinc-400">Mode:</span>
+                          <Hash className="h-3 w-3" />
+                          {tag}
+                          <button
+                            onClick={() => handleRemoveSearchTag(tag)}
+                            className="ml-1.5 hover:text-red-400 transition-colors p-0.5 rounded-full hover:bg-red-500/10"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
                       <Button
-                        variant={tagSearchMode === "any" ? "default" : "outline"}
+                        variant="ghost"
                         size="sm"
-                        onClick={() => setTagSearchMode("any")}
-                        className={cn(
-                          "h-6 px-2 text-xs",
-                          tagSearchMode === "any"
-                            ? "bg-blue-600 text-white"
-                            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
-                        )}
+                        onClick={() => setSearchTags([])}
+                        className="h-7 px-3 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-full"
                       >
-                        Any
+                        Clear all
                       </Button>
-                      <Button
-                        variant={tagSearchMode === "all" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setTagSearchMode("all")}
-                        className={cn(
-                          "h-6 px-2 text-xs",
-                          tagSearchMode === "all"
-                            ? "bg-blue-600 text-white"
-                            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
-                        )}
-                      >
-                        All
-                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Match:</span>
+                      <div className="flex items-center gap-1.5 bg-zinc-900/50 rounded-lg p-0.5 border border-zinc-800/50">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setTagSearchMode("any")}
+                          className={cn(
+                            "h-7 px-3 text-xs rounded-md transition-all",
+                            tagSearchMode === "any"
+                              ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/20"
+                              : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                          )}
+                        >
+                          Any
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setTagSearchMode("all")}
+                          className={cn(
+                            "h-7 px-3 text-xs rounded-md transition-all",
+                            tagSearchMode === "all"
+                              ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/20"
+                              : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                          )}
+                        >
+                          All
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
-              </motion.div>
-            )}
+            </motion.div>
 
             {/* Filter Tabs */}
             {searchQuery && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex gap-2 mt-3 overflow-x-auto pb-1 hide-scrollbar"
+                className="flex gap-2 mt-4 overflow-x-auto pb-2 hide-scrollbar"
               >
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setActiveTab("all")}
                   className={cn(
-                    "rounded-full transition-all whitespace-nowrap h-8 px-3 text-xs",
+                    "rounded-full transition-all whitespace-nowrap h-9 px-4 text-sm font-medium",
                     activeTab === "all"
-                      ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                      : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-white"
+                      ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-transparent shadow-lg shadow-blue-500/20"
+                      : "bg-zinc-900/50 text-zinc-400 border-zinc-800/50 hover:bg-zinc-800/50 hover:text-white"
                   )}
                 >
                   All
@@ -1456,13 +1134,13 @@ export default function SearchPage() {
                   size="sm"
                   onClick={() => setActiveTab("people")}
                   className={cn(
-                    "rounded-full transition-all whitespace-nowrap h-8 px-3 text-xs",
+                    "rounded-full transition-all whitespace-nowrap h-9 px-4 text-sm font-medium",
                     activeTab === "people"
-                      ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                      : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-white"
+                      ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-transparent shadow-lg shadow-blue-500/20"
+                      : "bg-zinc-900/50 text-zinc-400 border-zinc-800/50 hover:bg-zinc-800/50 hover:text-white"
                   )}
                 >
-                  <Users className="h-3.5 w-3.5 mr-1" />
+                  <Users className="h-4 w-4 mr-1.5" />
                   People
                 </Button>
                 <Button
@@ -1470,28 +1148,14 @@ export default function SearchPage() {
                   size="sm"
                   onClick={() => setActiveTab("communities")}
                   className={cn(
-                    "rounded-full transition-all whitespace-nowrap h-8 px-3 text-xs",
+                    "rounded-full transition-all whitespace-nowrap h-9 px-4 text-sm font-medium",
                     activeTab === "communities"
-                      ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                      : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-white"
+                      ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-transparent shadow-lg shadow-blue-500/20"
+                      : "bg-zinc-900/50 text-zinc-400 border-zinc-800/50 hover:bg-zinc-800/50 hover:text-white"
                   )}
                 >
-                  <Hash className="h-3.5 w-3.5 mr-1" />
+                  <Hash className="h-4 w-4 mr-1.5" />
                   Communities
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setActiveTab("leaderboards")}
-                  className={cn(
-                    "rounded-full transition-all whitespace-nowrap h-8 px-3 text-xs",
-                    activeTab === "leaderboards"
-                      ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                      : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-white"
-                  )}
-                >
-                  <Trophy className="h-3.5 w-3.5 mr-1" />
-                  Leaderboards
                 </Button>
               </motion.div>
             )}
@@ -1499,40 +1163,68 @@ export default function SearchPage() {
         </div>
 
         {/* Results */}
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          {!searchQuery ? (
-            <div className="text-center py-16">
-              <Search className="h-16 w-16 text-zinc-700 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Search EliteScore</h3>
-              <p className="text-zinc-400 text-sm max-w-md mx-auto">
-                Find people to connect with, communities to join, and leaderboards to compete in
+        <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+          {!searchQuery && searchTags.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-20 sm:py-24"
+            >
+              <div className="flex justify-center mb-6">
+                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 flex items-center justify-center border border-blue-500/20">
+                  <Search className="h-10 w-10 text-blue-400" />
+                </div>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Search EliteScore
+              </h3>
+              <p className="text-zinc-400 text-sm sm:text-base max-w-md mx-auto px-4">
+                Find people to connect with and communities to join
               </p>
-            </div>
+            </motion.div>
           ) : isSearching ? (
-            <div className="text-center py-16">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto mb-4" />
-              <p className="text-zinc-400 text-sm">Searching...</p>
+            <div className="text-center py-20 sm:py-24">
+              <div className="h-10 w-10 animate-spin rounded-full border-3 border-blue-500 border-t-transparent mx-auto mb-4" />
+              <p className="text-zinc-400 text-sm sm:text-base font-medium">Searching...</p>
             </div>
           ) : searchError ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">⚠️</div>
-              <h3 className="text-xl font-bold text-white mb-2">Search error</h3>
-              <p className="text-zinc-400 text-sm">{searchError}</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-20 sm:py-24"
+            >
+              <div className="flex justify-center mb-6">
+                <div className="h-20 w-20 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                  <div className="text-4xl">⚠️</div>
+                </div>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Search Error</h3>
+              <p className="text-zinc-400 text-sm sm:text-base max-w-md mx-auto px-4">{searchError}</p>
+            </motion.div>
           ) : !hasVisibleResults ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">🔍</div>
-              <h3 className="text-xl font-bold text-white mb-2">No results found</h3>
-              <p className="text-zinc-400 text-sm">Try searching for something else</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-20 sm:py-24"
+            >
+              <div className="flex justify-center mb-6">
+                <div className="h-20 w-20 rounded-full bg-zinc-800/50 flex items-center justify-center border border-zinc-700/50">
+                  <Search className="h-10 w-10 text-zinc-500" />
+                </div>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">No Results Found</h3>
+              <p className="text-zinc-400 text-sm sm:text-base max-w-md mx-auto px-4">
+                Try searching for something else or adjust your filters
+              </p>
+            </motion.div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6 sm:space-y-8">
               {showPeople && filteredPeople.length > 0 && (
                 <div>
                   {showPeople && (
-                    <h2 className="text-sm font-semibold text-zinc-400 mb-3 px-1">PEOPLE</h2>
+                    <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4 px-1">People</h2>
                   )}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {filteredPeople.map((person) => (
                       <motion.div
                         key={`user-${person.userId}`}
@@ -1540,35 +1232,35 @@ export default function SearchPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 hover:bg-zinc-850 active:scale-[0.98] transition-all cursor-pointer"
+                        className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-4 hover:bg-zinc-800/50 hover:border-zinc-700/50 active:scale-[0.98] transition-all cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-11 w-11 border border-zinc-800">
+                        <div className="flex items-start gap-3.5">
+                          <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border-2 border-zinc-800/50 flex-shrink-0">
                             <AvatarImage 
                               src={person.image ?? undefined} 
                               alt={person.name}
                               className="object-cover"
                             />
-                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold text-base">
                               {person.name.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <h3 className="font-semibold text-white text-sm truncate">{person.name}</h3>
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <h3 className="font-semibold text-white text-sm sm:text-base truncate">{person.name}</h3>
                               {person.visibility && (
-                                <Badge className="bg-zinc-800/80 text-zinc-400 border-zinc-700/50 text-[10px] px-1.5 py-0">
+                                <Badge className="bg-zinc-800/60 text-zinc-300 border-zinc-700/50 text-[10px] px-2 py-0.5 rounded-full">
                                   {person.visibility}
                                 </Badge>
                               )}
                             </div>
                             {person.title && (
-                              <p className="text-xs text-zinc-400 truncate mb-1">{person.title}</p>
+                              <p className="text-xs sm:text-sm text-zinc-400 truncate mb-1.5 font-medium">{person.title}</p>
                             )}
                             {person.bio && (
-                              <p className="text-[10px] text-zinc-500 line-clamp-2">{person.bio}</p>
+                              <p className="text-xs text-zinc-500 line-clamp-2 mb-2 leading-relaxed">{person.bio}</p>
                             )}
-                            <div className="flex flex-wrap gap-3 text-[10px] text-zinc-500 mt-1">
+                            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-zinc-500 mt-2">
                               {typeof person.followersCount === "number" && (
                                 <button
                                   type="button"
@@ -1631,17 +1323,17 @@ export default function SearchPage() {
                               )}
                             </div>
                           </div>
-                          <Button
+                          <EnhancedButton
                             size="sm"
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation()
-                            navigateToProfile(person.userId)
+                              navigateToProfile(person.userId)
                             }}
-                            className="bg-zinc-900 border border-zinc-700 text-white hover:bg-zinc-800 h-8 px-3 text-xs rounded-lg flex-shrink-0"
+                            className="bg-zinc-800/50 border border-zinc-700/50 text-white hover:bg-zinc-700/50 h-9 px-4 text-xs sm:text-sm rounded-lg flex-shrink-0 font-medium"
                           >
-                            View profile
-                          </Button>
+                            View
+                          </EnhancedButton>
                         </div>
                       </motion.div>
                     ))}
@@ -1651,7 +1343,7 @@ export default function SearchPage() {
               {showCommunities && filteredCommunities.length > 0 && (
                 <div>
                   {showCommunities && (
-                    <h2 className="text-sm font-semibold text-zinc-400 mb-3 px-1">COMMUNITIES</h2>
+                    <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4 px-1">Communities</h2>
                   )}
                   <div className="space-y-3">
                     {filteredCommunities.map((community) => (
@@ -1660,66 +1352,81 @@ export default function SearchPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 hover:bg-zinc-850 transition-all cursor-pointer"
+                        className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-4 hover:bg-zinc-800/50 hover:border-zinc-700/50 active:scale-[0.98] transition-all cursor-pointer"
                         onClick={() => {
                           // Navigate to community profile when clicking anywhere on the card
                           router.push(`/for-you?communityId=${community.id}`)
                         }}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          {community.image && (
-                            <Avatar className="h-12 w-12 border border-zinc-800 flex-shrink-0">
-                              <AvatarImage src={community.image} alt={community.name} />
-                              <AvatarFallback className="bg-zinc-800 text-white font-semibold">
-                                {community.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold text-white text-sm truncate">{community.name}</h3>
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {community.visibility && (
-                                  <Badge className="bg-zinc-800/80 text-zinc-400 border-zinc-700/50 text-[10px] px-1.5 py-0">
-                                    {community.visibility.toUpperCase()}
-                                  </Badge>
+                        <div className="flex items-start gap-3.5">
+                          {(() => {
+                            const pfpUrl = communityProfilePictures.get(community.id) || community.image
+                            return pfpUrl ? (
+                              <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border-2 border-zinc-800/50 flex-shrink-0">
+                                <AvatarImage 
+                                  src={pfpUrl} 
+                                  alt={community.name} 
+                                  className="object-cover"
+                                  onError={(e) => {
+                                    // If profile picture fails to load, hide the image and show fallback
+                                    const target = e.target as HTMLImageElement
+                                    target.style.display = 'none'
+                                  }}
+                                />
+                                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white font-semibold text-base">
+                                  {community.name.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                                <Hash className="h-6 w-6 sm:h-7 sm:w-7 text-purple-400" />
+                              </div>
+                            )
+                          })()}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1.5">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <h3 className="font-semibold text-white text-sm sm:text-base truncate">{community.name}</h3>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {community.visibility && (
+                                      <Badge className="bg-zinc-800/60 text-zinc-300 border-zinc-700/50 text-[10px] px-2 py-0.5 rounded-full">
+                                        {community.visibility.toUpperCase()}
+                                      </Badge>
+                                    )}
+                                    {community.is_pro !== undefined && (
+                                      <Badge className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border-purple-500/30 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                                        {community.is_pro ? "Pro" : "Standard"}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                {community.slug && (
+                                  <p className="text-xs text-blue-400 font-mono mb-1.5">/{community.slug}</p>
                                 )}
-                                {community.is_pro !== undefined && (
-                                  <Badge className="bg-purple-900/40 text-purple-300 border-purple-800 text-[10px] px-1.5 py-0">
-                                    {community.is_pro ? "Pro" : "Standard"}
-                                  </Badge>
-              )}
-            </div>
+                              </div>
+                              {community.members !== undefined && (
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-xs font-medium text-zinc-400">{community.members.toLocaleString()}</p>
+                                  <p className="text-[10px] text-zinc-500">members</p>
+                                </div>
+                              )}
                             </div>
-                            {community.slug && (
-                              <p className="text-[11px] text-blue-400">/{community.slug}</p>
-                            )}
                             {community.description && (
-                              <p className="text-[10px] sm:text-[11px] text-zinc-500 line-clamp-2">{community.description}</p>
+                              <p className="text-xs text-zinc-500 line-clamp-2 mb-3 leading-relaxed">{community.description}</p>
                             )}
+                            <EnhancedButton
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/for-you?communityId=${community.id}`)
+                              }}
+                              className="bg-zinc-800/50 border border-zinc-700/50 text-white hover:bg-zinc-700/50 h-9 px-4 text-xs sm:text-sm rounded-lg font-medium"
+                            >
+                              View Community
+                            </EnhancedButton>
                           </div>
-                          <div className="text-right text-[10px] text-zinc-400">
-                            {community.members !== undefined && (
-                              <p>{community.members.toLocaleString()} members</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-3 gap-2">
-                          <div className="text-[10px] text-zinc-500">
-                            {community.description ? "Community details" : "No description available"}
-                          </div>
-                          <EnhancedButton
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              // Navigate directly to community profile
-                              router.push(`/for-you?communityId=${community.id}`)
-                            }}
-                            className="bg-transparent border border-zinc-700 text-white hover:bg-zinc-800 h-9 px-3 text-xs rounded-full"
-                          >
-                            View Community
-                          </EnhancedButton>
                         </div>
                       </motion.div>
                     ))}
@@ -1733,17 +1440,17 @@ export default function SearchPage() {
 
       {/* Followers Modal */}
       <Dialog open={showFollowersModal} onOpenChange={setShowFollowersModal}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md max-h-[80vh] flex flex-col">
+        <DialogContent className="bg-zinc-900/95 backdrop-blur-xl border-zinc-800/50 max-w-md max-h-[80vh] flex flex-col rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white text-center border-b border-zinc-800 pb-3">Followers</DialogTitle>
+            <DialogTitle className="text-white text-center border-b border-zinc-800/50 pb-4 text-lg font-semibold">Followers</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto mt-4">
+          <div className="flex-1 overflow-y-auto mt-4 px-1">
             {isLoadingModalProfiles ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
               </div>
             ) : modalProfiles.length === 0 ? (
-              <div className="text-center py-8 text-zinc-400 text-sm">No followers yet</div>
+              <div className="text-center py-12 text-zinc-400 text-sm">No followers yet</div>
             ) : (
               <div className="space-y-2">
                 {modalProfiles.map((profile) => {
@@ -1759,13 +1466,13 @@ export default function SearchPage() {
                   return (
                     <div
                       key={profile.userId}
-                      className="flex items-center gap-3 p-3 hover:bg-zinc-800/50 rounded-lg transition-colors cursor-pointer"
+                      className="flex items-center gap-3.5 p-3.5 hover:bg-zinc-800/50 rounded-xl transition-all cursor-pointer active:scale-[0.98]"
                       onClick={() => {
                         setShowFollowersModal(false)
                         navigateToProfile(profile.userId)
                       }}
                     >
-                      <Avatar className="h-11 w-11 border border-zinc-800">
+                      <Avatar className="h-12 w-12 border-2 border-zinc-800/50 flex-shrink-0">
                         <AvatarImage src={profilePic || undefined} alt={fullName} />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
                           {fullName.charAt(0).toUpperCase()}
@@ -1774,7 +1481,7 @@ export default function SearchPage() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-white text-sm truncate">{fullName}</h3>
                         {profile.bio && (
-                          <p className="text-xs text-zinc-400 truncate mt-0.5">{profile.bio}</p>
+                          <p className="text-xs text-zinc-400 truncate mt-1 leading-relaxed">{profile.bio}</p>
                         )}
                       </div>
                       {!isOwnProfile && (
@@ -1810,17 +1517,17 @@ export default function SearchPage() {
 
       {/* Following Modal */}
       <Dialog open={showFollowingModal} onOpenChange={setShowFollowingModal}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md max-h-[80vh] flex flex-col">
+        <DialogContent className="bg-zinc-900/95 backdrop-blur-xl border-zinc-800/50 max-w-md max-h-[80vh] flex flex-col rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white text-center border-b border-zinc-800 pb-3">Following</DialogTitle>
+            <DialogTitle className="text-white text-center border-b border-zinc-800/50 pb-4 text-lg font-semibold">Following</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto mt-4">
+          <div className="flex-1 overflow-y-auto mt-4 px-1">
             {isLoadingModalProfiles ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
               </div>
             ) : modalProfiles.length === 0 ? (
-              <div className="text-center py-8 text-zinc-400 text-sm">Not following anyone yet</div>
+              <div className="text-center py-12 text-zinc-400 text-sm">Not following anyone yet</div>
             ) : (
               <div className="space-y-2">
                 {modalProfiles.map((profile) => {
@@ -1836,13 +1543,13 @@ export default function SearchPage() {
                   return (
                     <div
                       key={profile.userId}
-                      className="flex items-center gap-3 p-3 hover:bg-zinc-800/50 rounded-lg transition-colors cursor-pointer"
+                      className="flex items-center gap-3.5 p-3.5 hover:bg-zinc-800/50 rounded-xl transition-all cursor-pointer active:scale-[0.98]"
                       onClick={() => {
                         setShowFollowingModal(false)
                         navigateToProfile(profile.userId)
                       }}
                     >
-                      <Avatar className="h-11 w-11 border border-zinc-800">
+                      <Avatar className="h-12 w-12 border-2 border-zinc-800/50 flex-shrink-0">
                         <AvatarImage src={profilePic || undefined} alt={fullName} />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
                           {fullName.charAt(0).toUpperCase()}
@@ -1851,7 +1558,7 @@ export default function SearchPage() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-white text-sm truncate">{fullName}</h3>
                         {profile.bio && (
-                          <p className="text-xs text-zinc-400 truncate mt-0.5">{profile.bio}</p>
+                          <p className="text-xs text-zinc-400 truncate mt-1 leading-relaxed">{profile.bio}</p>
                         )}
                       </div>
                       {!isOwnProfile && (
@@ -1910,8 +1617,18 @@ export default function SearchPage() {
               {/* Community Header */}
               <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg">
                 <Avatar className="h-20 w-20 border-2 border-zinc-700 flex-shrink-0">
-                  <AvatarImage src={selectedCommunity.image || undefined} alt={selectedCommunity.name} />
-                  <AvatarFallback className="bg-zinc-800 text-white font-semibold text-xl">
+                  <AvatarImage 
+                    src={(() => {
+                      const pfpUrl = selectedCommunity.id ? communityProfilePictures.get(selectedCommunity.id) : null
+                      return pfpUrl || selectedCommunity.image || undefined
+                    })()} 
+                    alt={selectedCommunity.name}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.style.display = 'none'
+                    }}
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white font-semibold text-xl">
                       {selectedCommunity.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
