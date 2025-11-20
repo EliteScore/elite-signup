@@ -36,6 +36,7 @@ import {
   Camera,
   Upload,
   UserX,
+  CheckSquare,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -306,6 +307,9 @@ export default function ForYouPage() {
   const [isCommunityMember, setIsCommunityMember] = useState(false)
   const [isCheckingMembership, setIsCheckingMembership] = useState(false)
   const [isCommunityOwner, setIsCommunityOwner] = useState(false)
+  const [isLeavingCommunity, setIsLeavingCommunity] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
   
   // Fetch current user ID
   useEffect(() => {
@@ -812,8 +816,13 @@ export default function ForYouPage() {
             
             // Extract resume data
             const resume = profile?.resume || {}
-            const title = resume?.currentRole || resume?.title || 'Member'
+            const jobTitle = resume?.currentRole || resume?.title || ''
             const company = resume?.company || ''
+            
+            // Determine display title - show job title if available, otherwise "Member"
+            // Note: Community role (admin/staff/member) is not available from profile API
+            // This will be enhanced when community role API is available
+            const displayTitle = jobTitle || 'Member'
 
             return {
               id: userId,
@@ -821,7 +830,7 @@ export default function ForYouPage() {
                 ? `${profile.firstName} ${profile.lastName}` 
                 : profile?.username || 'Member',
               image: image,
-              title: title,
+              title: displayTitle,
               company: company,
               joined: '', // We don't have this data from the API
               isOnline: false, // We don't have this data from the API
@@ -1636,6 +1645,85 @@ export default function ForYouPage() {
   }
 
   /**
+   * Leaves the selected community.
+   * 
+   * Authorization Requirements (enforced by backend):
+   * - User must be a member of the community
+   * 
+   * The backend will return 403 Forbidden if not authorized.
+   */
+  const handleLeaveCommunity = async () => {
+    if (!community || !community.id) {
+      setLeaveError("No community selected")
+      return
+    }
+
+    setIsLeavingCommunity(true)
+    setLeaveError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setLeaveError("Authentication required. Please log in again.")
+        setIsLeavingCommunity(false)
+        return
+      }
+
+      console.log('[ForYou] ===== Leaving community =====')
+      console.log('[ForYou] Community ID:', community.id)
+
+      const response = await fetch(`/api/communities/${community.id}/leave`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      })
+
+      console.log('[ForYou] Leave community response status:', response.status)
+
+      if (!response.ok) {
+        let errorMessage = "Failed to leave community"
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            const errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        setLeaveError(errorMessage)
+        setIsLeavingCommunity(false)
+        return
+      }
+
+      console.log('[ForYou] Successfully left community')
+      
+      setShowLeaveConfirm(false)
+      
+      // Remove the community from the list
+      setCommunityList((prev) => prev.filter((item) => item.id !== community.id))
+      
+      // Select the first available community or null
+      const remainingCommunities = communityList.filter((item) => item.id !== community.id)
+      setSelectedCommunity(remainingCommunities[0]?.id ?? null)
+      
+      // If no communities left, redirect or show message
+      if (remainingCommunities.length === 0) {
+        router.push('/for-you/create')
+      }
+    } catch (error) {
+      console.error('[ForYou] Error leaving community:', error)
+      setLeaveError(error instanceof Error ? error.message : "An unexpected error occurred")
+    } finally {
+      setIsLeavingCommunity(false)
+    }
+  }
+
+  /**
    * Kicks a member from the selected community.
    * 
    * Authorization Requirements (enforced by backend):
@@ -1900,30 +1988,44 @@ export default function ForYouPage() {
                       <h1 className="text-lg sm:text-2xl font-extrabold leading-tight bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent truncate">
                         {community?.name}
                       </h1>
-                      {isCommunityOwner && (
-                        <div className="flex items-center gap-1">
-                          <EnhancedButton
-                            variant="ghost"
-                            size="sm"
-                            rounded="full"
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                            onClick={handleStartEdit}
-                            title="Edit community"
-                          >
-                            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          </EnhancedButton>
+                      <div className="flex items-center gap-1">
+                        {isCommunityOwner && (
+                          <>
+                            <EnhancedButton
+                              variant="ghost"
+                              size="sm"
+                              rounded="full"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                              onClick={handleStartEdit}
+                              title="Edit community"
+                            >
+                              <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </EnhancedButton>
+                            <EnhancedButton
+                              variant="ghost"
+                              size="sm"
+                              rounded="full"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
+                              onClick={() => setShowDeleteConfirm(true)}
+                              title="Delete community"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </EnhancedButton>
+                          </>
+                        )}
+                        {isCommunityMember && !isCommunityOwner && (
                           <EnhancedButton
                             variant="ghost"
                             size="sm"
                             rounded="full"
                             className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
-                            onClick={() => setShowDeleteConfirm(true)}
-                            title="Delete community"
+                            onClick={() => setShowLeaveConfirm(true)}
+                            title="Leave community"
                           >
-                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </EnhancedButton>
-                        </div>
-                      )}
+                        )}
+                      </div>
                         <Select value={selectedCommunity !== null ? selectedCommunity.toString() : undefined} onValueChange={(value) => setSelectedCommunity(Number(value))}>
                           <SelectTrigger className="h-7 w-7 sm:h-8 sm:w-8 p-0 bg-zinc-800/80 border-zinc-700/50 hover:bg-zinc-700">
                             <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-zinc-400" />
@@ -1994,16 +2096,19 @@ export default function ForYouPage() {
                     </span>
                     <span className="text-[10px] sm:text-xs text-zinc-400">Growth</span>
                   </div>
-                  <EnhancedButton
-                    variant="gradient"
-                    size="sm"
-                    rounded="full"
-                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4"
-                  >
-                    <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1.5" />
-                    <span className="hidden sm:inline">Invite Friends</span>
-                    <span className="sm:hidden">Invite</span>
-                  </EnhancedButton>
+                  {isCommunityMember && !isCommunityOwner && (
+                    <EnhancedButton
+                      variant="outline"
+                      size="sm"
+                      rounded="full"
+                      className="bg-red-900/20 border-red-700/50 text-red-400 hover:bg-red-900/40 hover:border-red-600 h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4"
+                      onClick={() => setShowLeaveConfirm(true)}
+                    >
+                      <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Leave Community</span>
+                      <span className="sm:hidden">Leave</span>
+                    </EnhancedButton>
+                  )}
                 </div>
 
                 {/* Progress Bar - Compact */}
@@ -2235,6 +2340,75 @@ export default function ForYouPage() {
                 </AnimatedSection>
               )}
 
+              {/* Leave Community Confirmation Dialog */}
+              {showLeaveConfirm && (
+                <AnimatedSection delay={0.1}>
+                  <EnhancedCard variant="default" className="bg-zinc-900 border border-orange-800/50 rounded-xl mb-4 sm:mb-5">
+                    <EnhancedCardHeader className="p-3 sm:p-4 border-b border-orange-800/30">
+                      <div className="flex items-center justify-between">
+                        <EnhancedCardTitle className="text-sm sm:text-base font-bold text-orange-400 flex items-center gap-2">
+                          <UserX className="h-4 w-4" />
+                          Leave Community
+                        </EnhancedCardTitle>
+                        <button
+                          onClick={() => {
+                            setShowLeaveConfirm(false)
+                            setLeaveError(null)
+                          }}
+                          className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+                          disabled={isLeavingCommunity}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </EnhancedCardHeader>
+                    <EnhancedCardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+                      {leaveError && (
+                        <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-red-300">
+                          {leaveError}
+                        </div>
+                      )}
+                      
+                      <div className="space-y-2">
+                        <p className="text-xs sm:text-sm text-zinc-300">
+                          Are you sure you want to leave <span className="font-bold text-white">{community?.name}</span>?
+                        </p>
+                        <p className="text-xs sm:text-sm text-zinc-400">
+                          You will no longer have access to this community's announcements, members, and other features. You can rejoin later if the community is public.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        <EnhancedButton
+                          type="button"
+                          variant="outline"
+                          rounded="full"
+                          className="flex-1 bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 h-9 sm:h-10 text-xs sm:text-sm"
+                          onClick={() => {
+                            setShowLeaveConfirm(false)
+                            setLeaveError(null)
+                          }}
+                          disabled={isLeavingCommunity}
+                        >
+                          Cancel
+                        </EnhancedButton>
+                        <EnhancedButton
+                          type="button"
+                          variant="outline"
+                          rounded="full"
+                          className="flex-1 bg-orange-900/20 border-orange-700/50 text-orange-400 hover:bg-orange-900/40 hover:border-orange-600 h-9 sm:h-10 text-xs sm:text-sm font-bold"
+                          onClick={handleLeaveCommunity}
+                          disabled={isLeavingCommunity}
+                          isLoading={isLeavingCommunity}
+                        >
+                          {isLeavingCommunity ? "Leaving..." : "Leave Community"}
+                        </EnhancedButton>
+                      </div>
+                    </EnhancedCardContent>
+                  </EnhancedCard>
+                </AnimatedSection>
+              )}
+
               {/* Delete Community Confirmation Dialog */}
               {showDeleteConfirm && (
                 <AnimatedSection delay={0.1}>
@@ -2311,10 +2485,10 @@ export default function ForYouPage() {
                     <span className="hidden sm:inline">Announcements</span>
                     <span className="sm:hidden">News</span>
                   </TabsTrigger>
-                  <TabsTrigger value="leaderboard" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5">
-                    <Trophy className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Leaderboard</span>
-                    <span className="sm:hidden">Board</span>
+                  <TabsTrigger value="tasks" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5">
+                    <CheckSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Tasks</span>
+                    <span className="sm:hidden">Tasks</span>
                   </TabsTrigger>
                   <TabsTrigger value="members" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5">
                     <Users className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -2383,31 +2557,33 @@ export default function ForYouPage() {
                                       {announcement.timestamp}
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-1.5 flex-shrink-0">
-                                  <EnhancedButton
-                                    variant="ghost"
-                                    size="sm"
-                                    rounded="full"
-                                    className="h-7 w-7 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                                    onClick={() => handleStartEditAnnouncement(announcement)}
-                                    title="Edit announcement"
-                                    disabled={isDeletingAnnouncement || isUpdatingAnnouncement}
-                                  >
-                                    <Edit className="h-3.5 w-3.5" />
-                                  </EnhancedButton>
-                                  <EnhancedButton
-                                    variant="ghost"
-                                    size="sm"
-                                    rounded="full"
-                                    className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
-                                    onClick={() => handleDeleteAnnouncement(announcement.id)}
-                                    title="Delete announcement"
-                                    disabled={isDeletingAnnouncement || isUpdatingAnnouncement || deletingAnnouncementId === announcement.id}
-                                    isLoading={deletingAnnouncementId === announcement.id}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </EnhancedButton>
-                                </div>
+                                {isUserStaff && (
+                                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                                    <EnhancedButton
+                                      variant="ghost"
+                                      size="sm"
+                                      rounded="full"
+                                      className="h-7 w-7 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                                      onClick={() => handleStartEditAnnouncement(announcement)}
+                                      title="Edit announcement"
+                                      disabled={isDeletingAnnouncement || isUpdatingAnnouncement}
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </EnhancedButton>
+                                    <EnhancedButton
+                                      variant="ghost"
+                                      size="sm"
+                                      rounded="full"
+                                      className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-950/20"
+                                      onClick={() => handleDeleteAnnouncement(announcement.id)}
+                                      title="Delete announcement"
+                                      disabled={isDeletingAnnouncement || isUpdatingAnnouncement || deletingAnnouncementId === announcement.id}
+                                      isLoading={deletingAnnouncementId === announcement.id}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </EnhancedButton>
+                                  </div>
+                                )}
                               </div>
                             </EnhancedCardContent>
                           </EnhancedCard>
@@ -2529,86 +2705,23 @@ export default function ForYouPage() {
                        )}
                     </TabsContent>
 
-                    <TabsContent value="leaderboard" className="space-y-3">
+                    <TabsContent value="tasks" className="space-y-3">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent flex items-center gap-1.5">
-                          <Trophy className="h-4 w-4 text-yellow-500" />
-                          <span className="hidden sm:inline">Community Leaderboard</span>
-                          <span className="sm:hidden">Top Performers</span>
+                          <CheckSquare className="h-4 w-4 text-blue-500" />
+                          <span>Tasks</span>
                         </h3>
-                        <EnhancedButton variant="outline" size="sm" rounded="full" className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 text-xs px-3 py-1">
-                          View All
-                        </EnhancedButton>
                       </div>
 
-                       {communityLeaderboard.length ? communityLeaderboard.map((user, index) => (
-                        <AnimatedSection key={user.id} delay={0.1 + index * 0.1}>
-                          <EnhancedCard variant="default" hover="lift" className="bg-zinc-900 border border-zinc-800 rounded-xl">
-                            <EnhancedCardContent className="p-3 sm:p-3.5">
-                              <div className="flex items-center gap-2.5">
-                                <div className={cn(
-                                  'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm relative flex-shrink-0',
-                                  index === 0 ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-black' :
-                                  index === 1 ? 'bg-gradient-to-br from-zinc-300 to-zinc-400 text-black' :
-                                  index === 2 ? 'bg-gradient-to-br from-amber-700 to-amber-800 text-white' :
-                                  'bg-zinc-800 text-white border border-zinc-700'
-                                )}>
-                                  {index < 3 ? (
-                                    index === 0 ? <Crown className="h-4 w-4 sm:h-5 sm:w-5" /> :
-                                    index === 1 ? <Medal className="h-4 w-4 sm:h-5 sm:w-5" /> :
-                                    <Star className="h-4 w-4 sm:h-5 sm:w-5" />
-                                  ) : (
-                                    <span className="text-xs">{index + 1}</span>
-                                  )}
-                        </div>
-                                <Avatar className="h-9 w-9 border border-blue-500/30">
-                          <AvatarImage src={user.image} />
-                           <AvatarFallback className="bg-zinc-800 text-xs">{user.name?.charAt(0) ?? 'M'}</AvatarFallback>
-                        </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <h4 className="font-bold text-white text-xs sm:text-sm truncate">{user.name}</h4>
-                                    <Badge className="bg-blue-900/40 text-blue-300 border-blue-800 text-[9px] sm:text-[10px] flex items-center gap-0.5 flex-shrink-0">
-                                      <Zap className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                      <span className="hidden sm:inline">{user.points}</span>
-                                      <span className="sm:hidden">{Math.floor(user.points / 100)}k</span>
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-2 sm:gap-3 mt-0.5 text-[10px] sm:text-xs text-zinc-400">
-                                    <span className="flex items-center gap-0.5">
-                                      <Award className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                      {user.badges}
-                                    </span>
-                                    <span className="flex items-center gap-0.5">
-                                      <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                      {user.streak}d
-                                    </span>
-                                    <span className="hidden sm:flex items-center gap-0.5">
-                                      <MessageCircle className="h-3 w-3" />
-                                      {user.contributions}
-                                    </span>
-                                  </div>
-                                </div>
-                                <EnhancedButton 
-                                  variant="outline" 
-                                  size="sm" 
-                                  rounded="full" 
-                                  className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 text-[10px] sm:text-xs px-2 sm:px-3 py-1 h-auto flex-shrink-0"
-                                >
-                                  <UserPlus className="h-3 w-3 sm:mr-1" />
-                                  <span className="hidden sm:inline">Connect</span>
-                                </EnhancedButton>
-                              </div>
-                            </EnhancedCardContent>
-                          </EnhancedCard>
-                        </AnimatedSection>
-                       )) : (
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
-                          <EnhancedCardContent className="p-4 text-xs sm:text-sm text-zinc-400">
-                            No leaderboard entries yet.
-                          </EnhancedCardContent>
-                        </EnhancedCard>
-                       )}
+                      <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
+                        <EnhancedCardContent className="p-8 text-center">
+                          <CheckSquare className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
+                          <h4 className="text-lg font-bold text-white mb-2">Coming Soon</h4>
+                          <p className="text-sm text-zinc-400">
+                            Community tasks and assignments will be available here soon.
+                          </p>
+                        </EnhancedCardContent>
+                      </EnhancedCard>
                     </TabsContent>
 
                     <TabsContent value="members" className="space-y-3">
@@ -2692,7 +2805,7 @@ export default function ForYouPage() {
                                     <div className="flex-1 min-w-0">
                                       <h4 className="font-bold text-white text-xs sm:text-sm truncate">{member.name}</h4>
                                       <p className="text-[10px] sm:text-xs text-zinc-400 truncate">
-                                        {member.title}{member.company ? ` at ${member.company}` : ''}
+                                        {member.title}
                                       </p>
                                     </div>
                                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -2713,15 +2826,6 @@ export default function ForYouPage() {
                                     ))}
             </div>
                                   <div className="flex gap-1.5 mt-2">
-                                    <EnhancedButton 
-                                      variant="outline" 
-                                      size="sm" 
-                                      rounded="full" 
-                                      className="bg-zinc-800/80 border-blue-700/40 text-white hover:bg-zinc-700 text-[10px] sm:text-xs px-2 sm:px-3 py-1 h-auto flex-1"
-                                    >
-                                      <MessageCircle className="h-3 w-3 sm:mr-1" />
-                                      <span className="hidden sm:inline">Message</span>
-                                    </EnhancedButton>
                                     <EnhancedButton 
                                       variant="gradient" 
                                       size="sm"
@@ -2746,7 +2850,7 @@ export default function ForYouPage() {
                                         <UserX className="h-3 w-3" />
                                       </EnhancedButton>
                                     )}
-        </div>
+                                  </div>
           </div>
             </div>
                             </EnhancedCardContent>
