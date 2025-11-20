@@ -24,6 +24,10 @@ import {
   Code,
   Languages,
   X,
+  UserPlus,
+  Check,
+  Clock,
+  Bell,
 } from "lucide-react"
 import { motion } from "framer-motion"
 
@@ -71,6 +75,16 @@ type ProfileData = {
   avatarUrl?: string | null
 }
 
+type FollowRequest = {
+  requestId: number
+  userId: number
+  username?: string
+  firstName?: string | null
+  lastName?: string | null
+  profilePicture?: string | null
+  createdAt?: string
+}
+
 export default function ProfilePage() {
   const isAuthorized = useRequireAuth()
   const router = useRouter()
@@ -84,9 +98,14 @@ export default function ProfilePage() {
   const [profilePicture, setProfilePicture] = useState<string | null>(null)
   const [ownFollowersIds, setOwnFollowersIds] = useState<number[] | null>(null)
   const [ownFollowingIds, setOwnFollowingIds] = useState<number[] | null>(null)
+  const [sentFollowRequests, setSentFollowRequests] = useState<Set<number>>(new Set())
+  const [incomingFollowRequests, setIncomingFollowRequests] = useState<FollowRequest[]>([])
+  const [isLoadingIncomingRequests, setIsLoadingIncomingRequests] = useState(false)
+  const [showRequestsModal, setShowRequestsModal] = useState(false)
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false)
   const [isUpdatingBlock, setIsUpdatingBlock] = useState(false)
   const [isBlockedViewedUser, setIsBlockedViewedUser] = useState(false)
+  const [processingRequestId, setProcessingRequestId] = useState<number | null>(null)
   const [profileRefreshKey, setProfileRefreshKey] = useState(0)
   const [cvData, setCvData] = useState<any>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
@@ -486,6 +505,172 @@ export default function ProfilePage() {
 
     fetchOwnFollowStats()
   }, [isAuthorized])
+
+  // Fetch sent follow requests
+  useEffect(() => {
+    if (!isAuthorized) return
+
+    async function fetchSentFollowRequests() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) {
+          return
+        }
+
+        const response = await fetch(`${API_BASE_URL}v1/users/get_sent_requests`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const requestsData: number[] = result?.data || []
+          const normalizedRequests = Array.isArray(requestsData) ? requestsData : []
+          console.log("[Profile] Sent follow requests fetched:", normalizedRequests.length)
+          setSentFollowRequests(new Set(normalizedRequests))
+        }
+      } catch (error) {
+        console.warn("[Profile] Failed to fetch sent follow requests:", error)
+      }
+    }
+
+    fetchSentFollowRequests()
+  }, [isAuthorized])
+
+  // Fetch incoming follow requests (for private account owners)
+  const fetchIncomingFollowRequests = async () => {
+    if (!isAuthorized) return
+
+    setIsLoadingIncomingRequests(true)
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setIsLoadingIncomingRequests(false)
+        return
+      }
+
+      const response = await fetch(`${API_BASE_URL}v1/users/get_own_requests`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        const requestsData: any[] = result?.data || []
+        
+        // Enrich requests with user profile data
+        const enrichedRequests: FollowRequest[] = await Promise.all(
+          requestsData.map(async (req: any) => {
+            try {
+              // Fetch user profile to get name and picture
+              const profileResponse = await fetch(`${API_BASE_URL}v1/users/profile/get_profile/${req.userId || req.requestId}`, {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+
+              if (profileResponse.ok) {
+                const profileResult = await profileResponse.json()
+                const profile = profileResult?.data || profileResult
+                return {
+                  requestId: req.requestId || req.userId,
+                  userId: req.userId || req.requestId,
+                  username: profile.username || `user${req.userId}`,
+                  firstName: profile.firstName,
+                  lastName: profile.lastName,
+                  profilePicture: profile.profilePictureUrl || profile.profilePicture,
+                  createdAt: req.createdAt,
+                }
+              }
+            } catch (error) {
+              console.warn("[Profile] Failed to fetch profile for request:", error)
+            }
+
+            // Fallback if profile fetch fails
+            return {
+              requestId: req.requestId || req.userId,
+              userId: req.userId || req.requestId,
+              username: `user${req.userId}`,
+              firstName: null,
+              lastName: null,
+              profilePicture: null,
+              createdAt: req.createdAt,
+            }
+          })
+        )
+
+        setIncomingFollowRequests(enrichedRequests)
+        console.log("[Profile] Incoming follow requests fetched:", enrichedRequests.length)
+      } else if (response.status === 404) {
+        // No requests or not a private account
+        setIncomingFollowRequests([])
+      }
+    } catch (error) {
+      console.warn("[Profile] Failed to fetch incoming follow requests:", error)
+      setIncomingFollowRequests([])
+    } finally {
+      setIsLoadingIncomingRequests(false)
+    }
+  }
+
+  // Fetch incoming requests when viewing own profile and it's a private account
+  useEffect(() => {
+    if (!isAuthorized || !isViewingOwnProfile || !currentUserId) return
+    if (profileData?.visibility !== "PRIVATE") {
+      setIncomingFollowRequests([])
+      return
+    }
+
+    fetchIncomingFollowRequests()
+  }, [isAuthorized, isViewingOwnProfile, currentUserId, profileData?.visibility])
+
+  // Check if follow request was sent to viewed user (works for both public and private)
+  useEffect(() => {
+    if (!isAuthorized || !numericViewingUserId || isViewingOwnProfile) return
+
+    async function checkFollowRequestSent() {
+      try {
+        const token = getStoredAccessToken()
+        if (!token) return
+
+        const response = await fetch(`${API_BASE_URL}v1/users/check_request_sent`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ userId: numericViewingUserId }),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const requestSent = result?.success === true || result?.data === true
+          
+          setSentFollowRequests((prev) => {
+            const newSet = new Set(prev)
+            if (requestSent) {
+              newSet.add(numericViewingUserId)
+            } else {
+              newSet.delete(numericViewingUserId)
+            }
+            return newSet
+          })
+        }
+      } catch (error) {
+        console.warn("[Profile] Failed to check follow request status:", error)
+      }
+    }
+
+    checkFollowRequestSent()
+  }, [isAuthorized, numericViewingUserId, isViewingOwnProfile])
 
   // Fetch real-time followers/following for viewed user (when viewing someone else's profile)
   useEffect(() => {
@@ -1281,6 +1466,12 @@ export default function ProfilePage() {
       ? ownFollowingIds.includes(numericViewingUserId)
       : false
 
+  // Check if follow request was sent (for private accounts)
+  const hasRequestSent = !!numericViewingUserId && sentFollowRequests.has(numericViewingUserId)
+  
+  // Determine profile visibility
+  const isPrivateAccount = profileData?.visibility === "PRIVATE"
+
   // IMPORTANT: followersCount/followingCount from get_own_profile may be stale/cached.
   // The dedicated endpoints (get_own_followers/get_own_following) query the actual follow
   // relationships table and return real-time data. Always prefer those for own profile.
@@ -1463,14 +1654,34 @@ export default function ProfilePage() {
     setIsUpdatingFollow(true)
 
     const isCurrentlyFollowing = isFollowingViewedUser
-    const endpoint = isCurrentlyFollowing
-      ? `${API_BASE_URL}v1/users/unfollow`
-      : `${API_BASE_URL}v1/users/follow`
+    const hasRequestSent = sentFollowRequests.has(numericViewingUserId)
+    const isPrivateAccount = profileData?.visibility === "PRIVATE"
+
+    // Determine action: unfollow, cancel request, or follow/request
+    let endpoint: string
+    let action: "unfollow" | "cancel_request" | "follow"
+    
+    if (isCurrentlyFollowing) {
+      // Unfollow (works for both public and private)
+      endpoint = `${API_BASE_URL}v1/users/unfollow`
+      action = "unfollow"
+    } else if (hasRequestSent && isPrivateAccount) {
+      // Cancel follow request for private account
+      endpoint = `${API_BASE_URL}v1/users/cancel_request`
+      action = "cancel_request"
+    } else {
+      // Follow (creates request for private, immediate follow for public)
+      endpoint = `${API_BASE_URL}v1/users/follow`
+      action = "follow"
+    }
 
     console.log("[Profile] Follow/unfollow starting", {
       viewingUserId,
       numericViewingUserId,
       isCurrentlyFollowing,
+      hasRequestSent,
+      isPrivateAccount,
+      action,
       endpoint,
     })
 
@@ -1500,6 +1711,7 @@ export default function ProfilePage() {
           status: response.status,
           statusText: response.statusText,
           endpoint,
+          action,
           errorBody,
         })
 
@@ -1525,6 +1737,15 @@ export default function ProfilePage() {
             })
             return
           }
+          if (/already\s+requested/i.test(msg)) {
+            // Request already sent, update state
+            setSentFollowRequests((prev) => {
+              const newSet = new Set(prev)
+              newSet.add(numericViewingUserId)
+              return newSet
+            })
+            return
+          }
         }
         return
       }
@@ -1537,38 +1758,58 @@ export default function ProfilePage() {
       }
       console.log("[Profile] Follow/unfollow succeeded", {
         endpoint,
+        action,
         successBody,
       })
 
-      // Update local following list so UI reflects the change immediately
-      setOwnFollowingIds((prev) => {
-        const current = Array.isArray(prev) ? prev : []
-        if (isCurrentlyFollowing) {
+      // Update state based on action
+      if (action === "unfollow") {
+        // Remove from following list
+        setOwnFollowingIds((prev) => {
+          const current = Array.isArray(prev) ? prev : []
           return current.filter((id) => id !== numericViewingUserId)
-        }
-        if (!current.includes(numericViewingUserId)) {
-          return [...current, numericViewingUserId]
-        }
-        return current
-      })
-
-      // Update viewed user's followers count immediately
-      if (currentUserId) {
-        if (!isCurrentlyFollowing) {
-          // Following: add current user to viewed user's followers list
-          setViewedUserFollowersIds((prev) => {
-            const current = Array.isArray(prev) ? prev : []
-            if (!current.includes(currentUserId)) {
-              return [...current, currentUserId]
-            }
-            return current
-          })
-        } else {
-          // Unfollowing: remove current user from viewed user's followers list
+        })
+        // Remove from viewed user's followers
+        if (currentUserId) {
           setViewedUserFollowersIds((prev) => {
             const current = Array.isArray(prev) ? prev : []
             return current.filter((id) => id !== currentUserId)
           })
+        }
+      } else if (action === "cancel_request") {
+        // Remove from sent requests
+        setSentFollowRequests((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(numericViewingUserId)
+          return newSet
+        })
+      } else if (action === "follow") {
+        // If private account, add to sent requests; if public, add to following
+        if (isPrivateAccount) {
+          setSentFollowRequests((prev) => {
+            const newSet = new Set(prev)
+            newSet.add(numericViewingUserId)
+            return newSet
+          })
+        } else {
+          // Public account: immediate follow
+          setOwnFollowingIds((prev) => {
+            const current = Array.isArray(prev) ? prev : []
+            if (!current.includes(numericViewingUserId)) {
+              return [...current, numericViewingUserId]
+            }
+            return current
+          })
+          // Update viewed user's followers count
+          if (currentUserId) {
+            setViewedUserFollowersIds((prev) => {
+              const current = Array.isArray(prev) ? prev : []
+              if (!current.includes(currentUserId)) {
+                return [...current, currentUserId]
+              }
+              return current
+            })
+          }
         }
       }
 
@@ -1592,6 +1833,92 @@ export default function ProfilePage() {
       console.warn("[Profile] Error during follow/unfollow:", error)
     } finally {
       setIsUpdatingFollow(false)
+    }
+  }
+
+  // Handle accepting a follow request
+  const handleAcceptRequest = async (requestId: number, userId: number) => {
+    if (!isAuthorized || processingRequestId !== null) return
+
+    const token = getStoredAccessToken()
+    if (!token) {
+      console.warn("[Profile] No token available for accepting request")
+      return
+    }
+
+    setProcessingRequestId(requestId)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}v1/users/accept_request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (response.ok) {
+        // Remove from incoming requests
+        setIncomingFollowRequests((prev) => prev.filter((req) => req.requestId !== requestId))
+        
+        // Add to followers list
+        setOwnFollowersIds((prev) => {
+          const current = Array.isArray(prev) ? prev : []
+          if (!current.includes(userId)) {
+            return [...current, userId]
+          }
+          return current
+        })
+
+        // Refresh profile stats
+        setProfileRefreshKey((prev) => prev + 1)
+        console.log("[Profile] Follow request accepted:", requestId)
+      } else {
+        const errorBody = await response.json().catch(() => ({}))
+        console.warn("[Profile] Failed to accept request:", response.status, errorBody)
+      }
+    } catch (error) {
+      console.warn("[Profile] Error accepting follow request:", error)
+    } finally {
+      setProcessingRequestId(null)
+    }
+  }
+
+  // Handle declining a follow request
+  const handleDeclineRequest = async (requestId: number, userId: number) => {
+    if (!isAuthorized || processingRequestId !== null) return
+
+    const token = getStoredAccessToken()
+    if (!token) {
+      console.warn("[Profile] No token available for declining request")
+      return
+    }
+
+    setProcessingRequestId(requestId)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}v1/users/decline_request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (response.ok) {
+        // Remove from incoming requests
+        setIncomingFollowRequests((prev) => prev.filter((req) => req.requestId !== requestId))
+        console.log("[Profile] Follow request declined:", requestId)
+      } else {
+        const errorBody = await response.json().catch(() => ({}))
+        console.warn("[Profile] Failed to decline request:", response.status, errorBody)
+      }
+    } catch (error) {
+      console.warn("[Profile] Error declining follow request:", error)
+    } finally {
+      setProcessingRequestId(null)
     }
   }
 
@@ -1921,6 +2248,32 @@ export default function ProfilePage() {
                     >
                       Edit Profile
                     </EnhancedButton>
+                    {/* Show Follow Requests button for private accounts */}
+                    {profileData?.visibility === "PRIVATE" && (
+                      <EnhancedButton
+                        size="sm"
+                        rounded="full"
+                        variant="outline"
+                        className={cn(
+                          "px-5 py-1.5 text-xs sm:text-sm font-bold relative",
+                          incomingFollowRequests.length > 0
+                            ? "border-amber-500/50 text-amber-300 hover:bg-amber-500/10 hover:border-amber-400"
+                            : "border-zinc-600 text-zinc-300 hover:bg-zinc-800/50"
+                        )}
+                        onClick={() => {
+                          setShowRequestsModal(true)
+                          fetchIncomingFollowRequests()
+                        }}
+                      >
+                        <Bell className="h-3 w-3 mr-1.5" />
+                        Requests
+                        {incomingFollowRequests.length > 0 && (
+                          <Badge className="ml-1.5 h-4 min-w-4 px-1 bg-amber-500 text-black text-[10px] font-bold">
+                            {incomingFollowRequests.length}
+                          </Badge>
+                        )}
+                      </EnhancedButton>
+                    )}
                     {/* Only show "Finish Your Setup" if CV hasn't been parsed/set up */}
                     {!isProfileSetup && (
                       <EnhancedButton
@@ -1943,19 +2296,37 @@ export default function ProfilePage() {
                     <EnhancedButton
                       size="sm"
                       rounded="full"
-                      variant={isFollowingViewedUser ? "outline" : "gradient"}
-                      animation={isFollowingViewedUser ? undefined : "shimmer"}
+                      variant={
+                        isFollowingViewedUser 
+                          ? "outline" 
+                          : hasRequestSent
+                          ? "outline"
+                          : "gradient"
+                      }
+                      animation={
+                        isFollowingViewedUser || hasRequestSent
+                          ? undefined 
+                          : "shimmer"
+                      }
                       className={cn(
                         "px-5 py-1.5 text-xs sm:text-sm font-bold",
                         isFollowingViewedUser
-                          ? "border-zinc-600 text-zinc-200 bg-transparent"
+                          ? "border-zinc-600 text-zinc-200 bg-transparent hover:bg-zinc-800/50"
+                          : hasRequestSent
+                          ? "border-amber-500/50 text-amber-300 bg-transparent hover:bg-amber-500/10 hover:border-amber-400"
                           : "bg-gradient-to-r from-blue-500 via-purple-500 to-fuchsia-500 shadow-[0_0_16px_0_rgba(80,0,255,0.4)]",
                       )}
                       disabled={isUpdatingFollow || isBlockedViewedUser}
                       isLoading={isUpdatingFollow}
                       onClick={handleToggleFollow}
                     >
-                      {isFollowingViewedUser ? "Unfollow" : "Follow"}
+                      {isFollowingViewedUser 
+                        ? "Following" 
+                        : hasRequestSent
+                        ? "Request Sent"
+                        : isPrivateAccount
+                        ? "Request"
+                        : "Follow"}
                     </EnhancedButton>
 
                     <EnhancedButton
@@ -2543,6 +2914,102 @@ export default function ProfilePage() {
                         </EnhancedButton>
                       )}
                     </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Follow Requests Modal */}
+      <Dialog open={showRequestsModal} onOpenChange={setShowRequestsModal}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-white text-center border-b border-zinc-800 pb-3">
+              Follow Requests
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription className="sr-only">
+            Manage incoming follow requests for your private account
+          </DialogDescription>
+
+          <div className="flex-1 overflow-y-auto mt-4">
+            {isLoadingIncomingRequests ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+              </div>
+            ) : incomingFollowRequests.length === 0 ? (
+              <div className="text-center py-12">
+                <UserPlus className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
+                <p className="text-zinc-400 text-sm">No pending follow requests</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {incomingFollowRequests.map((request) => {
+                  const displayName = request.firstName && request.lastName
+                    ? `${request.firstName} ${request.lastName}`
+                    : request.firstName || request.lastName || request.username || `user${request.userId}`
+                  
+                  return (
+                    <EnhancedCard
+                      key={request.requestId}
+                      variant="default"
+                      className="bg-zinc-900/80 border border-zinc-800"
+                    >
+                      <EnhancedCardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12 flex-shrink-0">
+                            <AvatarImage src={request.profilePicture || undefined} />
+                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                              {displayName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-white text-sm truncate">
+                              {displayName}
+                            </p>
+                            {request.username && (
+                              <p className="text-xs text-zinc-400 truncate">
+                                @{request.username}
+                              </p>
+                            )}
+                            {request.createdAt && (
+                              <p className="text-xs text-zinc-500 mt-1">
+                                <Clock className="h-3 w-3 inline mr-1" />
+                                {new Date(request.createdAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 flex-shrink-0">
+                            <EnhancedButton
+                              size="sm"
+                              rounded="full"
+                              variant="gradient"
+                              className="px-4 py-1.5 text-xs font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                              disabled={processingRequestId === request.requestId}
+                              isLoading={processingRequestId === request.requestId}
+                              onClick={() => handleAcceptRequest(request.requestId, request.userId)}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Accept
+                            </EnhancedButton>
+                            <EnhancedButton
+                              size="sm"
+                              rounded="full"
+                              variant="outline"
+                              className="px-4 py-1.5 text-xs font-bold border-red-500/50 text-red-300 hover:bg-red-500/10 hover:border-red-400"
+                              disabled={processingRequestId === request.requestId}
+                              onClick={() => handleDeclineRequest(request.requestId, request.userId)}
+                            >
+                              <X className="h-3 w-3" />
+                            </EnhancedButton>
+                          </div>
+                        </div>
+                      </EnhancedCardContent>
+                    </EnhancedCard>
                   )
                 })}
               </div>

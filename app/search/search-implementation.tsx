@@ -180,7 +180,6 @@ const getSearchUrl = (input: string) => {
   const trimmed = input.trim()
   const encoded = encodeURIComponent(trimmed)
   const url = `${API_BASE_URL}v1/users/search/${encoded}`
-  console.log("[Search] Constructed URL:", url)
   return url
 }
 
@@ -249,7 +248,8 @@ const getCommunitySearchUrl = (
   }
 
   const queryString = searchParams.toString()
-  const url = `${COMMUNITIES_API_BASE_URL}v1/communities/search/${encoded}${queryString ? `?${queryString}` : ""}`
+  // Use Next.js API route instead of direct backend call
+  const url = `/api/communities/search/${encoded}${queryString ? `?${queryString}` : ""}`
   console.log("[Search] Community search URL constructed:", url)
   return url
 }
@@ -319,7 +319,6 @@ async function fetchUserProfilePicture(userId: number): Promise<string | null> {
           const oneHour = 60 * 60 * 1000
           
           if (cacheAge < oneHour && cachedData.dataUrl) {
-            console.log(`[Search] Using cached profile picture for user ${userId}`)
             return cachedData.dataUrl
           } else {
             localStorage.removeItem(cacheKey)
@@ -331,7 +330,6 @@ async function fetchUserProfilePicture(userId: number): Promise<string | null> {
     }
 
     // Fetch raw image directly (skip metadata check for speed)
-    console.log(`[Search] Fetching profile picture for user ${userId}`)
     const imageResponse = await fetch(`/api/user/profile/pfp/${userId}/raw`, {
       method: "GET",
       headers: {
@@ -363,7 +361,6 @@ async function fetchUserProfilePicture(userId: number): Promise<string | null> {
     
     return null
   } catch (error) {
-    console.warn(`[Search] Error fetching profile picture for user ${userId}:`, error)
     return null
   }
 }
@@ -374,8 +371,6 @@ async function fetchAllProfilePictures(userIds: number[]): Promise<Map<number, s
   if (!token || userIds.length === 0) {
     return new Map()
   }
-
-  console.log(`[Search] Fetching profile pictures in parallel for ${userIds.length} users`)
 
   // Check cache for all users first
   const cacheResults = new Map<number, string | null>()
@@ -408,7 +403,6 @@ async function fetchAllProfilePictures(userIds: number[]): Promise<Map<number, s
   }
 
   if (usersToFetch.length === 0) {
-    console.log(`[Search] All profile pictures found in cache`)
     return cacheResults
   }
 
@@ -442,7 +436,6 @@ async function fetchAllProfilePictures(userIds: number[]): Promise<Map<number, s
       }
       return { userId, image: null }
     } catch (error) {
-      console.warn(`[Search] Error fetching profile picture for user ${userId}:`, error)
       return { userId, image: null }
     }
   })
@@ -452,7 +445,6 @@ async function fetchAllProfilePictures(userIds: number[]): Promise<Map<number, s
     cacheResults.set(userId, image)
   })
 
-  console.log(`[Search] Fetched ${fetchedResults.filter(r => r.image).length} profile pictures`)
   return cacheResults
 }
 
@@ -460,15 +452,12 @@ async function fetchAllProfilePictures(userIds: number[]): Promise<Map<number, s
 async function enrichResultsWithProfiles(results: SearchResult[]): Promise<SearchResult[]> {
   const token = getStoredAccessToken()
   if (!token) {
-    console.log("[Search] No token available, skipping enrichment")
     return results
   }
 
   if (results.length === 0) {
     return results
   }
-
-  console.log("[Search] Enriching", results.length, "results with profile data")
 
   // Fetch all profile pictures in parallel first (fastest approach)
   const userIds = results.map(r => r.userId)
@@ -527,15 +516,12 @@ async function enrichResultsWithProfiles(results: SearchResult[]): Promise<Searc
 async function enrichResultsWithResumeScores(results: SearchResult[]): Promise<SearchResult[]> {
   const token = getStoredAccessToken()
   if (!token) {
-    console.log("[Search] No token available, skipping resume scores enrichment")
     return results
   }
 
   if (results.length === 0) {
     return results
   }
-
-  console.log("[Search] Enriching", results.length, "results with resume scores")
 
   return Promise.all(
     results.map(async (user) => {
@@ -553,10 +539,8 @@ async function enrichResultsWithResumeScores(results: SearchResult[]): Promise<S
         if (!resp.ok) {
           // 404 means no resume score, which is fine
           if (resp.status === 404) {
-            console.log(`[Search] No resume score found for user ${user.userId}`)
             return { ...user, resumeScore: null }
           }
-          console.warn(`[Search] Resume score fetch failed for user ${user.userId}:`, resp.status, resp.statusText)
           return { ...user, resumeScore: null }
         }
 
@@ -564,7 +548,6 @@ async function enrichResultsWithResumeScores(results: SearchResult[]): Promise<S
         try {
           result = await resp.json()
         } catch (parseError) {
-          console.warn(`[Search] Failed to parse resume score response for user ${user.userId}:`, parseError)
           return { ...user, resumeScore: null }
         }
 
@@ -578,7 +561,6 @@ async function enrichResultsWithResumeScores(results: SearchResult[]): Promise<S
         }
       } catch (error) {
         // swallow errors; continue without resume score
-        console.warn(`[Search] Resume score enrichment error for user ${user.userId}:`, error)
         return { ...user, resumeScore: null }
       }
     }),
@@ -643,7 +625,7 @@ export default function SearchPage() {
           }
         }
       } catch (error) {
-        console.warn("[Search] Failed to fetch own user ID:", error)
+        // Ignore error
       }
     }
 
@@ -673,7 +655,7 @@ export default function SearchPage() {
           setOwnFollowingIds(Array.isArray(followingData) ? followingData : [])
         }
       } catch (error) {
-        console.warn("[Search] Failed to fetch own following:", error)
+        // Ignore error
       }
     }
 
@@ -722,7 +704,6 @@ export default function SearchPage() {
       }
       return false
     } catch (error) {
-      console.warn('[Search] Error checking pending request:', error)
       return false
     }
   }
@@ -755,7 +736,7 @@ export default function SearchPage() {
         }
       }
     } catch (error) {
-      console.error('[Search] Error fetching community details:', error)
+      // Ignore error
     } finally {
       setIsLoadingCommunityDetails(false)
     }
@@ -782,7 +763,7 @@ export default function SearchPage() {
         setCommunityAnnouncements(announcements.slice(0, 5)) // Show only first 5
       }
     } catch (error) {
-      console.error('[Search] Error fetching announcements:', error)
+      // Ignore error
     } finally {
       setIsLoadingAnnouncements(false)
     }
@@ -830,7 +811,7 @@ export default function SearchPage() {
               }
             }
           } catch (error) {
-            console.error(`[Search] Error fetching member profile ${userId}:`, error)
+            // Ignore error
           }
           return null
         })
@@ -839,7 +820,7 @@ export default function SearchPage() {
         setCommunityMembers(members)
       }
     } catch (error) {
-      console.error('[Search] Error fetching members:', error)
+      // Ignore error
     } finally {
       setIsLoadingMembers(false)
     }
@@ -862,7 +843,6 @@ export default function SearchPage() {
       }
       return []
     } catch (error) {
-      console.warn(`[Search] Failed to fetch followers for user ${userId}:`, error)
       return []
     }
   }
@@ -883,7 +863,6 @@ export default function SearchPage() {
       }
       return []
     } catch (error) {
-      console.warn(`[Search] Failed to fetch following for user ${userId}:`, error)
       return []
     }
   }
@@ -925,7 +904,6 @@ export default function SearchPage() {
           }
           return null
         } catch (error) {
-          console.warn(`[Search] Failed to fetch profile for user ${userId}:`, error)
           return null
         }
       })
@@ -934,7 +912,6 @@ export default function SearchPage() {
       const validProfiles = profiles.filter((p): p is ProfileInfo => p !== null)
       setModalProfiles(validProfiles)
     } catch (error) {
-      console.error("[Search] Error fetching modal profiles:", error)
       setModalProfiles([])
     } finally {
       setIsLoadingModalProfiles(false)
@@ -943,7 +920,6 @@ export default function SearchPage() {
 
   // Handle opening followers modal
   const handleOpenFollowersModal = async (userId: number) => {
-    console.log("[Search] Opening followers modal for user:", userId)
     setModalTargetUserId(userId)
     setShowFollowersModal(true)
     setModalProfiles([]) // Clear previous profiles
@@ -951,17 +927,14 @@ export default function SearchPage() {
     
     try {
       const followerIds = await fetchUserFollowersIds(userId)
-      console.log("[Search] Fetched follower IDs:", followerIds.length)
       await fetchProfilesForUserIds(followerIds)
     } catch (error) {
-      console.error("[Search] Error opening followers modal:", error)
       setIsLoadingModalProfiles(false)
     }
   }
 
   // Handle opening following modal
   const handleOpenFollowingModal = async (userId: number) => {
-    console.log("[Search] Opening following modal for user:", userId)
     setModalTargetUserId(userId)
     setShowFollowingModal(true)
     setModalProfiles([]) // Clear previous profiles
@@ -969,10 +942,8 @@ export default function SearchPage() {
     
     try {
       const followingIds = await fetchUserFollowingIds(userId)
-      console.log("[Search] Fetched following IDs:", followingIds.length)
       await fetchProfilesForUserIds(followingIds)
     } catch (error) {
-      console.error("[Search] Error opening following modal:", error)
       setIsLoadingModalProfiles(false)
     }
   }
@@ -983,7 +954,6 @@ export default function SearchPage() {
 
     const token = getStoredAccessToken()
     if (!token) {
-      console.warn("[Search] No token available for follow/unfollow in modal")
       return
     }
 
@@ -1019,21 +989,26 @@ export default function SearchPage() {
 
         // If unfollowing, remove from modal profiles if in "Following" modal
         if (isCurrentlyFollowing && showFollowingModal) {
-          setModalProfiles((prev) => prev.filter((p) => p.userId !== userId))
+            setModalProfiles((prev) => prev.filter((p) => p.userId !== userId))
+          }
         }
-      } else {
-        console.warn("[Search] Follow/unfollow failed in modal:", response.status)
-      }
-    } catch (error) {
-      console.warn("[Search] Error during follow/unfollow in modal:", error)
-    } finally {
+      } catch (error) {
+        // Ignore error
+      } finally {
       setIsUpdatingFollow(false)
     }
   }
 
   const fetchCommunitySearchResults = useCallback(async (query: string, headers: Record<string, string>, tags?: string[], tagMode?: "any" | "all") => {
-    const url = getCommunitySearchUrl(query, {
-      tags: tags && tags.length > 0 ? tags : undefined,
+    // Only search communities when tags are provided
+    if (!tags || tags.length === 0) {
+      setCommunityResults([])
+      return
+    }
+
+    // For tag-only search, use "_" as placeholder input since we're searching by tags only
+    const url = getCommunitySearchUrl("_", {
+      tags: tags,
       tagMode: tagMode || "any",
     })
 
@@ -1046,7 +1021,6 @@ export default function SearchPage() {
       console.log("[Search] Community response status:", response.status, response.statusText)
 
       if (!response.ok) {
-        console.warn("[Search] Community search failed with status:", response.status)
         setCommunityResults([])
         return
       }
@@ -1055,27 +1029,28 @@ export default function SearchPage() {
       try {
         payload = await response.json()
       } catch (parseError) {
-        console.warn("[Search] Failed to parse community search response:", parseError)
+        setCommunityResults([])
+        return
       }
 
       if (!payload) {
-        console.warn("[Search] Empty community payload")
         setCommunityResults([])
         return
       }
 
       // Check for API success flag if present
       if (payload.success === false) {
-        console.warn("[Search] Community search API returned success: false", payload.message)
         setCommunityResults([])
         return
       }
 
       const listSource = Array.isArray(payload?.data)
         ? payload.data
-        : Array.isArray(payload)
-          ? payload
-          : []
+        : Array.isArray(payload?.items)
+          ? payload.items
+          : Array.isArray(payload)
+            ? payload
+            : []
       
       console.log("[Search] Raw community results count:", listSource.length)
 
@@ -1086,7 +1061,6 @@ export default function SearchPage() {
       console.log("[Search] Normalized community results:", normalizedResults.length)
       setCommunityResults(normalizedResults)
     } catch (error) {
-      console.warn("[Search] Community search error:", error)
       setCommunityResults([])
     }
   }, [])
@@ -1117,13 +1091,6 @@ export default function SearchPage() {
         headers.Authorization = `Bearer ${token}`
       }
 
-      console.log("[Search] Making request to:", url)
-      console.log("[Search] Query:", trimmedQuery)
-      console.log("[Search] Encoded:", encodeURIComponent(trimmedQuery))
-      console.log("[Search] Has token:", !!token)
-      console.log("[Search] Token preview:", token ? `${token.substring(0, 20)}...${token.substring(token.length - 10)}` : "none")
-      console.log("[Search] Headers:", { ...headers, Authorization: token ? "Bearer ***" : "none" })
-
       // Add timeout and better error handling for production
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
@@ -1143,24 +1110,21 @@ export default function SearchPage() {
             throw new Error("Search request timed out. Please try again.")
           }
           if (fetchError.message.includes("Failed to fetch") || fetchError.message.includes("NetworkError")) {
-            console.error("[Search] Network/CORS error detected:", fetchError)
             throw new Error("Cannot connect to search API. This may be a CORS or network issue.")
           }
         }
-        console.error("[Search] Fetch error:", fetchError)
         throw fetchError
       }
 
-      console.log("[Search] Response status:", response.status, response.statusText)
-      console.log("[Search] Response ok:", response.ok)
-
       // Handle 204 No Content explicitly
       if (response.status === 204) {
-        console.log("[Search] No content (204) - no results found")
         setSearchResults([])
         setCommunityResults([])
         setSearchError(null)
-        await fetchCommunitySearchResults(trimmedQuery, { ...headers })
+        // Only search communities if tags are present
+        if (searchTags.length > 0) {
+          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
+        }
         setIsSearching(false)
         return
       }
@@ -1170,19 +1134,17 @@ export default function SearchPage() {
         let errorMessage = `Search failed with status ${response.status}`
         try {
           const errorText = await response.text()
-          console.warn("[Search] Error response text:", errorText)
           if (errorText && errorText.trim()) {
             try {
               const errorPayload = JSON.parse(errorText)
               errorMessage = errorPayload?.message || errorPayload?.error || errorMessage
-              console.warn("[Search] Parsed error payload:", errorPayload)
             } catch (parseError) {
               // If it's not JSON, use the text as error message
               errorMessage = errorText.length > 100 ? errorText.substring(0, 100) + "..." : errorText
             }
           }
         } catch (readError) {
-          console.warn("[Search] Could not read error response:", readError)
+          // Ignore read errors
         }
         throw new Error(errorMessage)
       }
@@ -1193,21 +1155,20 @@ export default function SearchPage() {
       
       // Check content type
       const contentType = response.headers.get("content-type")
-      console.log("[Search] Response content-type:", contentType)
       
       try {
         responseText = await response.text()
-        console.log("[Search] Response text length:", responseText?.length || 0)
-        console.log("[Search] Response text:", responseText)
       } catch (readError) {
-        console.error("[Search] Failed to read response text:", readError)
         throw new Error("Failed to read server response")
       }
       
       if (!responseText || responseText.trim() === "") {
-        console.warn("[Search] Empty response body")
         setSearchResults([])
         setCommunityResults([])
+        // Only search communities if tags are present
+        if (searchTags.length > 0) {
+          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
+        }
         setIsSearching(false)
         return
       }
@@ -1218,42 +1179,34 @@ export default function SearchPage() {
                            (responseText.trim().startsWith("{") || responseText.trim().startsWith("["))
 
       if (!isJsonContent) {
-        console.warn("[Search] Response is not JSON, content-type:", contentType)
         // If it's not JSON but we got a 200, treat as empty results
         setSearchResults([])
         setCommunityResults([])
+        // Only search communities if tags are present
+        if (searchTags.length > 0) {
+          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
+        }
         setIsSearching(false)
         return
       }
 
       try {
         payload = JSON.parse(responseText) as ApiResponse<ProfileInfo[]>
-        console.log("[Search] Parsed payload:", {
-          success: payload?.success,
-          message: payload?.message,
-          hasData: !!payload?.data,
-          dataType: Array.isArray(payload?.data) ? 'array' : typeof payload?.data,
-          dataLength: Array.isArray(payload?.data) ? payload.data.length : 0,
-        })
-        if (payload?.data && Array.isArray(payload.data) && payload.data.length === 0) {
-          console.warn("[Search] Backend returned empty array - no users found matching query:", trimmedQuery)
-        }
       } catch (parseError) {
-        console.error("[Search] Failed to parse JSON:", parseError)
-        console.error("[Search] Response text (first 200 chars):", responseText.substring(0, 200))
         throw new Error(`Invalid response format: ${parseError instanceof Error ? parseError.message : String(parseError)}`)
       }
 
       if (payload?.success && payload.data) {
         if (payload.data.length === 0) {
-          console.log("[Search] API returned success but empty data array")
           setSearchResults([])
+          // Only search communities if tags are present
+          if (searchTags.length > 0) {
+            await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
+          }
           return
         }
         
         const mappedResults = payload.data.map(mapProfileInfoToResult)
-        console.log("[Search] Mapped results:", mappedResults.length)
-        console.log("[Search] Sample result:", mappedResults[0])
         
         // Deduplicate by userId (keep the most complete profile - prefer ones with images)
         const userMap = new Map<number, SearchResult>()
@@ -1281,7 +1234,6 @@ export default function SearchPage() {
         }
         
         const dedupedResults = Array.from(userMap.values())
-        console.log("[Search] Deduplicated results:", dedupedResults.length)
 
         // Fetch profile pictures and resume scores in parallel for speed
         const [enrichedResults, resultsWithScores] = await Promise.all([
@@ -1298,19 +1250,19 @@ export default function SearchPage() {
           }
         })
         
-        console.log("[Search] Final results with pictures and scores:", finalResults.length)
         setSearchResults(finalResults)
-        await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags.length > 0 ? searchTags : undefined, tagSearchMode)
+        // Only search communities if tags are present
+        if (searchTags.length > 0) {
+          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
+        }
       } else {
-        console.log("[Search] No results in payload:", {
-          success: payload?.success,
-          hasData: !!payload?.data,
-          message: payload?.message,
-        })
         setSearchResults([])
+        // Only search communities if tags are present
+        if (searchTags.length > 0) {
+          await fetchCommunitySearchResults(trimmedQuery, { ...headers }, searchTags, tagSearchMode)
+        }
       }
     } catch (error) {
-      console.error("[Search] Search error:", error)
       const errorMessage = error instanceof Error 
         ? error.message 
         : "We couldn't complete your search. Please try again."
@@ -1320,7 +1272,7 @@ export default function SearchPage() {
     } finally {
       setIsSearching(false)
     }
-  }, [searchTags, tagSearchMode])
+  }, [searchTags, tagSearchMode, fetchCommunitySearchResults])
 
   // Handle adding a tag to search
   const handleAddSearchTag = () => {
@@ -1635,7 +1587,6 @@ export default function SearchPage() {
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     e.preventDefault()
-                                    console.log("[Search] Clicked followers for user:", person.userId, "count:", person.followersCount)
                                     if (person.followersCount && person.followersCount > 0) {
                                       handleOpenFollowersModal(person.userId)
                                     }
@@ -1663,7 +1614,6 @@ export default function SearchPage() {
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     e.preventDefault()
-                                    console.log("[Search] Clicked following for user:", person.userId, "count:", person.followingCount)
                                     if (person.followingCount && person.followingCount > 0) {
                                       handleOpenFollowingModal(person.userId)
                                     }
@@ -2229,9 +2179,6 @@ export default function SearchPage() {
                             ? { message: joinMessage.trim() }
                             : {}
 
-                          console.log("[Search] Joining community with body:", requestBody)
-                            console.log("[Search] Calling POST /v1/communities/{communityId}/join")
-
                           const response = await fetch(`/api/communities/${selectedCommunity.id}/join`, {
                             method: "POST",
                             headers: {
@@ -2240,8 +2187,6 @@ export default function SearchPage() {
                             },
                             body: JSON.stringify(requestBody),
                           })
-
-                            console.log("[Search] Join response status:", response.status)
 
                           if (!response.ok) {
                             let errorMessage = "Failed to join community"
@@ -2278,7 +2223,6 @@ export default function SearchPage() {
 
                             if (isPendingRequest) {
                               // Pending request - mark as pending and navigate
-                              console.log("[Search] Request is pending (202)")
                               setPendingRequests(prev => new Set(prev).add(selectedCommunity.id))
                               setShowJoinModal(false)
                               setJoinError(null)
@@ -2288,7 +2232,6 @@ export default function SearchPage() {
                               router.push(`/for-you?communityId=${selectedCommunity.id}&pending=true`)
                             } else if (response.status === 200 || response.status === 204) {
                               // Successfully joined - update membership status
-                              console.log("[Search] Successfully joined (200/204)")
                           setIsMember(prev => new Map(prev).set(selectedCommunity.id, true))
                           setShowJoinModal(false)
                           setJoinError(null)
@@ -2298,12 +2241,10 @@ export default function SearchPage() {
                           router.push(`/for-you?communityId=${selectedCommunity.id}`)
                             } else {
                               // Unexpected status
-                              console.warn("[Search] Unexpected response status:", response.status)
                               setJoinError("Unexpected response from server")
                               setIsJoining(false)
                             }
                         } catch (error) {
-                          console.error("[Search] Error joining community:", error)
                           setJoinError(error instanceof Error ? error.message : "An unexpected error occurred")
                           setIsJoining(false)
                         }

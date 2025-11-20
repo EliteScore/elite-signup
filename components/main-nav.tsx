@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { Home, Target, Users, Search } from "lucide-react"
+import { Home, Target, Users, Trophy } from "lucide-react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
@@ -11,7 +11,7 @@ export function MainNav() {
 
   const navItems = [
     { icon: Home, label: "Home", href: "/home" },
-		{ icon: Search, label: "Search", href: "/search" },
+    { icon: Trophy, label: "Leaderboards", href: "/leaderboard" },
     { icon: Target, label: "Goals", href: "/goals" },
     { icon: Users, label: "Community", href: "/for-you" },
   ]

@@ -757,8 +757,15 @@ export default function HomePage() {
           return
         }
         
+        console.log("[Home] 🚀 Starting feed fetch - challenges, streaks, cv")
+        console.log("[Home] Today's date:", today)
+        console.log("[Home] Token present:", !!token)
+        
+        const challengesUrl = `/api/users/social/get_challenges_feed?day=${today}&limit=20`
+        console.log("[Home] Challenges feed URL:", challengesUrl)
+        
         const [challengesResponse, streaksResponse, cvResponse] = await Promise.all([
-          fetch(`/api/users/social/get_challenges_feed?day=${today}&limit=20`, {
+          fetch(challengesUrl, {
             method: "GET",
             headers: {
               "Accept": "application/json",
@@ -790,11 +797,20 @@ export default function HomePage() {
         let validStreaks: any[] = []
         let validCvs: any[] = []
 
+        console.log("[Home] 📥 Feed responses received")
+        console.log("[Home] Challenges response status:", challengesResponse.status, challengesResponse.statusText)
+        console.log("[Home] Challenges response ok:", challengesResponse.ok)
+        console.log("[Home] Streaks response status:", streaksResponse.status, streaksResponse.statusText)
+        console.log("[Home] CV response status:", cvResponse.status, cvResponse.statusText)
+        
         // Process challenges feed
         if (challengesResponse.ok) {
           try {
+            console.log("[Home] ✅ Processing challenges feed response...")
             const challengesData = await challengesResponse.json()
+            console.log("[Home] Challenges feed raw response:", JSON.stringify(challengesData, null, 2))
             const challenges = challengesData?.data || []
+            console.log("[Home] Challenges array length:", challenges.length)
             
             // Enrich challenges with user profile data
             const enrichedChallenges = await Promise.all(
@@ -814,9 +830,16 @@ export default function HomePage() {
             // Cache raw challenges data
             setCachedFeed(FEED_CACHE_KEYS.challenges, challenges, today)
           } catch (error) {
-            // Silent fail
+            console.error("[Home] ❌ Error processing challenges feed:", error)
           }
         } else {
+          console.error("[Home] ❌ Challenges feed response not ok:", challengesResponse.status, challengesResponse.statusText)
+          try {
+            const errorText = await challengesResponse.text()
+            console.error("[Home] ❌ Challenges feed error body:", errorText)
+          } catch (e) {
+            console.error("[Home] ❌ Could not read error body")
+          }
           setChallengesFeed([])
         }
 

@@ -336,6 +336,9 @@ export default function ForYouPage() {
   const [showTagsEditor, setShowTagsEditor] = useState(false)
   const [newTagInput, setNewTagInput] = useState("")
   const [tagsToEdit, setTagsToEdit] = useState<string[]>([])
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([])
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false)
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
   
   // Fetch current user ID
   useEffect(() => {
@@ -1065,7 +1068,6 @@ export default function ForYouPage() {
   const hasPendingRequest = selectedCommunity !== null && pendingRequests.has(selectedCommunity)
   const communityStats = community?.stats ?? DEFAULT_COMMUNITY_STATS
   const communityAnnouncements = community?.announcements ?? []
-  const communityLeaderboard = community?.leaderboard ?? []
   const communityMembers = community?.membersList ?? []
   const joinedCommunities = communityList.filter((c) => c.joined !== false)
 
@@ -2664,6 +2666,154 @@ export default function ForYouPage() {
   }, [isAuthorized, selectedCommunity, community?.id])
 
   /**
+   * Fetches leaderboard data for the selected community.
+   */
+  const fetchCommunityLeaderboard = async () => {
+    if (!selectedCommunity) {
+      setLeaderboardData([])
+      return
+    }
+
+    // Don't fetch if user has a pending request
+    if (pendingRequests.has(selectedCommunity)) {
+      return
+    }
+
+    setIsLoadingLeaderboard(true)
+    setLeaderboardError(null)
+
+    try {
+      const token = getStoredAccessToken()
+      if (!token) {
+        setLeaderboardError("Authentication required")
+        setIsLoadingLeaderboard(false)
+        return
+      }
+
+      const response = await fetch(`/api/communities/${selectedCommunity}/leaderboard?limit=100&offset=0`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        let errorMessage = "Failed to fetch leaderboard"
+        const errorText = await response.text()
+        
+        if (errorText) {
+          try {
+            const errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorData.error || errorData.details || errorMessage
+          } catch {
+            errorMessage = errorText
+          }
+        }
+
+        setLeaderboardError(errorMessage)
+        setLeaderboardData([])
+        setIsLoadingLeaderboard(false)
+        return
+      }
+
+      const data = await response.json()
+      const items = data?.items || data?.data?.items || []
+
+      // Enrich leaderboard entries with user profile data
+      const enrichedEntries = await Promise.all(
+        items.map(async (item: any) => {
+          try {
+            // Fetch profile
+            const profileResponse = await fetch(`${AUTH_API_BASE_URL}v1/users/profile/get_profile/${item.user_id}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            })
+
+            let name = `User ${item.user_id}`
+            let image: string | null = null
+
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json()
+              const profile = profileData?.data || profileData
+              const firstName = profile?.firstName || ""
+              const lastName = profile?.lastName || ""
+              name = [firstName, lastName].filter(Boolean).join(" ") || profile?.username || name
+              image = profile?.profilePictureUrl || profile?.profilePicture || profile?.avatarUrl || null
+            }
+
+            // Fetch profile picture if not available
+            if (!image) {
+              try {
+                const pfpResponse = await fetch(`/api/user/profile/pfp/${item.user_id}/raw`, {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
+                })
+                if (pfpResponse.ok) {
+                  const pfpData = await pfpResponse.json()
+                  if (pfpData?.dataUrl && !pfpData?.default) {
+                    image = pfpData.dataUrl
+                  }
+                }
+              } catch {
+                // Ignore pfp errors
+              }
+            }
+
+            return {
+              id: item.user_id,
+              userId: item.user_id,
+              name,
+              image: image || FALLBACK_MEMBER_IMAGE,
+              points: item.total_xp || 0,
+              xpWindow: item.xp_window || 0,
+              tasksCount: item.tasks_count || 0,
+              bonusXp: item.bonus_xp || 0,
+              rank: item.rank || 0,
+            }
+          } catch (error) {
+            // Return basic entry if profile fetch fails
+            return {
+              id: item.user_id,
+              userId: item.user_id,
+              name: `User ${item.user_id}`,
+              image: FALLBACK_MEMBER_IMAGE,
+              points: item.total_xp || 0,
+              xpWindow: item.xp_window || 0,
+              tasksCount: item.tasks_count || 0,
+              bonusXp: item.bonus_xp || 0,
+              rank: item.rank || 0,
+            }
+          }
+        })
+      )
+
+      setLeaderboardData(enrichedEntries)
+    } catch (error) {
+      setLeaderboardError(error instanceof Error ? error.message : "An unexpected error occurred")
+      setLeaderboardData([])
+    } finally {
+      setIsLoadingLeaderboard(false)
+    }
+  }
+
+  // Fetch leaderboard when community changes
+  useEffect(() => {
+    if (!isAuthorized || !selectedCommunity) {
+      setLeaderboardData([])
+      return
+    }
+
+    fetchCommunityLeaderboard()
+  }, [isAuthorized, selectedCommunity, pendingRequests])
+
+  /**
    * Kicks a member from the selected community.
    * 
    * Authorization Requirements (enforced by backend):
@@ -3644,13 +3794,13 @@ export default function ForYouPage() {
                     <span className="sm:hidden">News</span>
                   </TabsTrigger>
                   <TabsTrigger 
-                    value="tasks" 
+                    value="leaderboard" 
                     className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md transition-all text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 flex items-center gap-1.5"
                     disabled={hasPendingRequest}
                   >
-                    <CheckSquare className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Tasks</span>
-                    <span className="sm:hidden">Tasks</span>
+                    <Trophy className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Leaderboard</span>
+                    <span className="sm:hidden">Rankings</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="members" 
@@ -3996,10 +4146,10 @@ export default function ForYouPage() {
                         </AnimatedSection>
                        )}
                         </>
-                      )}
+                       )}
                     </TabsContent>
 
-                    <TabsContent value="tasks" className="space-y-3">
+                    <TabsContent value="leaderboard" className="space-y-3">
                       {hasPendingRequest ? (
                         <EnhancedCard variant="default" className="bg-zinc-900 border border-amber-800/50 rounded-xl">
                           <EnhancedCardContent className="p-6 text-center">
@@ -4007,7 +4157,7 @@ export default function ForYouPage() {
                             <h4 className="text-lg font-bold text-amber-300 mb-2">Request Pending</h4>
                             <p className="text-sm text-amber-200/80">
                               Your request to join this community is pending approval. 
-                              You'll be able to see tasks once your request is accepted.
+                              You'll be able to see the leaderboard once your request is accepted.
                             </p>
                           </EnhancedCardContent>
                         </EnhancedCard>
@@ -4015,20 +4165,164 @@ export default function ForYouPage() {
                         <>
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-[#2bbcff] to-[#a259ff] bg-clip-text text-transparent flex items-center gap-1.5">
-                          <CheckSquare className="h-4 w-4 text-blue-500" />
-                          <span>Tasks</span>
+                          <Trophy className="h-4 w-4 text-yellow-500" />
+                          <span>Leaderboard</span>
                         </h3>
                       </div>
 
-                        <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
-                        <EnhancedCardContent className="p-8 text-center">
-                          <CheckSquare className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
-                          <h4 className="text-lg font-bold text-white mb-2">Coming Soon</h4>
-                          <p className="text-sm text-zinc-400">
-                            Community tasks and assignments will be available here soon.
-                          </p>
+                      {isLoadingLeaderboard ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                          <span className="ml-2 text-xs sm:text-sm text-zinc-400">Loading leaderboard...</span>
+                        </div>
+                      ) : leaderboardError ? (
+                        <EnhancedCard variant="default" className="bg-zinc-900 border border-red-800/50 rounded-xl">
+                          <EnhancedCardContent className="p-4 text-xs sm:text-sm text-red-300">
+                            <div className="flex items-center gap-2">
+                              <X className="h-4 w-4" />
+                              <span>{leaderboardError}</span>
+                            </div>
                           </EnhancedCardContent>
                         </EnhancedCard>
+                      ) : leaderboardData.length > 0 ? (
+                        <div className="space-y-2">
+                          {leaderboardData.map((entry, index) => {
+                            const isTopThree = entry.rank <= 3
+                            const medalColors = [
+                              { bg: 'from-yellow-500 to-yellow-600', border: 'border-yellow-500/50', text: 'text-yellow-300' },
+                              { bg: 'from-zinc-400 to-zinc-500', border: 'border-zinc-400/50', text: 'text-zinc-300' },
+                              { bg: 'from-amber-600 to-amber-700', border: 'border-amber-600/50', text: 'text-amber-300' },
+                            ]
+                            const medalColor = isTopThree ? medalColors[entry.rank - 1] : null
+                            const isCurrentUser = entry.userId === currentUserId
+
+                            return (
+                              <AnimatedSection key={entry.userId} delay={0.05 * index}>
+                                <EnhancedCard 
+                                  variant="default" 
+                                  hover="lift" 
+                                  className={cn(
+                                    "bg-zinc-900 border rounded-xl cursor-pointer",
+                                    isTopThree 
+                                      ? `border-2 ${medalColor?.border} bg-gradient-to-br ${medalColor?.bg}/10` 
+                                      : isCurrentUser
+                                        ? "border-2 border-blue-500/50 bg-blue-500/5"
+                                        : "border-zinc-800"
+                                  )}
+                                  onClick={() => router.push(`/profile?userId=${entry.userId}`)}
+                                >
+                                  <EnhancedCardContent className="p-3 sm:p-4">
+                                    <div className="flex items-center gap-3">
+                                      {/* Rank Badge */}
+                                      <div className={cn(
+                                        "flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-sm sm:text-base border-2",
+                                        isTopThree
+                                          ? `bg-gradient-to-br ${medalColor?.bg} ${medalColor?.border} ${medalColor?.text}`
+                                          : isCurrentUser
+                                            ? "bg-blue-500 border-blue-400 text-white"
+                                            : "bg-zinc-800 border-zinc-700 text-zinc-400"
+                                      )}>
+                                        {isTopThree ? (
+                                          entry.rank === 1 ? <Crown className="h-5 w-5 sm:h-6 sm:w-6" /> :
+                                          entry.rank === 2 ? <Medal className="h-5 w-5 sm:h-6 sm:w-6" /> :
+                                          <Star className="h-5 w-5 sm:h-6 sm:w-6" />
+                                        ) : (
+                                          entry.rank
+                                        )}
+                                      </div>
+
+                                      {/* Avatar */}
+                                      <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border-2 border-blue-500/30 flex-shrink-0">
+                                        <AvatarImage src={entry.image} alt={entry.name} />
+                                        <AvatarFallback className="bg-zinc-800 text-sm sm:text-base">
+                                          {entry.name?.charAt(0).toUpperCase() ?? 'U'}
+                                        </AvatarFallback>
+                                      </Avatar>
+
+                                      {/* User Info */}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <h4 className={cn(
+                                            "font-bold text-xs sm:text-sm truncate",
+                                            isTopThree ? medalColor?.text : isCurrentUser ? "text-blue-400" : "text-white"
+                                          )}>
+                                            {entry.name}
+                                            {isCurrentUser && (
+                                              <Badge className="ml-2 bg-blue-900/40 text-blue-300 border-blue-800 text-[9px] px-1.5 py-0">
+                                                You
+                                              </Badge>
+                                            )}
+                                          </h4>
+                                          {isTopThree && (
+                                            <Badge className={cn(
+                                              "text-[9px] px-1.5 py-0",
+                                              entry.rank === 1 ? "bg-yellow-900/40 text-yellow-300 border-yellow-800" :
+                                              entry.rank === 2 ? "bg-zinc-700/40 text-zinc-300 border-zinc-600" :
+                                              "bg-amber-900/40 text-amber-300 border-amber-800"
+                                            )}>
+                                              #{entry.rank}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        
+                                        {/* Stats Grid */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-2">
+                                          <div className="flex items-center gap-1.5">
+                                            <Trophy className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="text-[10px] text-zinc-500">Total XP</p>
+                                              <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                                                {entry.points.toLocaleString()}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1.5">
+                                            <Zap className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="text-[10px] text-zinc-500">Window XP</p>
+                                              <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                                                {entry.xpWindow.toLocaleString()}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1.5">
+                                            <Award className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="text-[10px] text-zinc-500">Tasks</p>
+                                              <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                                                {entry.tasksCount}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1.5">
+                                            <TrendingUp className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="text-[10px] text-zinc-500">Bonus XP</p>
+                                              <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                                                {entry.bonusXp.toLocaleString()}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </EnhancedCardContent>
+                                </EnhancedCard>
+                              </AnimatedSection>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <EnhancedCard variant="default" className="bg-zinc-900 border border-zinc-800 rounded-xl">
+                          <EnhancedCardContent className="p-8 text-center">
+                            <Trophy className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
+                            <h4 className="text-lg font-bold text-white mb-2">No Leaderboard Data</h4>
+                            <p className="text-sm text-zinc-400">
+                              Leaderboard rankings will appear here once members start earning XP and completing tasks.
+                            </p>
+                          </EnhancedCardContent>
+                        </EnhancedCard>
+                      )}
                         </>
                       )}
                     </TabsContent>
